@@ -5,5 +5,7 @@ numpy
 pandas
 plotly
 requests
+scikit-learn
 shap
 streamlit>=1.45.0
+xgboost
