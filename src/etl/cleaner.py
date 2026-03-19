@@ -5,16 +5,13 @@ TVL 資料清洗模組
 """
 
 import re
-import logging
 import numpy as np
 import pandas as pd
 from pathlib import Path
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-logger = logging.getLogger(__name__)
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW_CSV = PROJECT_ROOT / "data" / "raw" / "all_teams_roster.csv"

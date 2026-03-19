@@ -5,17 +5,14 @@ TVL 球員名單爬蟲模組
 
 import re
 import time
-import logging
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 from pathlib import Path
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-logger = logging.getLogger(__name__)
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 # 位置中英對照表（依 CLAUDE.md 第 5 節定義）
 POSITION_MAP = {

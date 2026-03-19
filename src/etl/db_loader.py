@@ -4,22 +4,17 @@ TVL 資料庫載入模組
 """
 
 import sqlite3
-import logging
 import numpy as np
 import pandas as pd
 from pathlib import Path
 
 from src.etl.cleaner import load_raw, clean, quality_report
+from src.utils.db_config import PROJECT_ROOT, DB_PATH, get_connection
+from src.utils.logger import get_logger
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CSV_PATH = PROJECT_ROOT / "data" / "raw" / "all_teams_roster.csv"
-DB_PATH = PROJECT_ROOT / "data" / "db" / "tvl_database.db"
 SCHEMA_PATH = PROJECT_ROOT / "sql" / "schema.sql"
 
 
@@ -88,10 +83,7 @@ def verify(conn: sqlite3.Connection) -> pd.DataFrame:
 
 
 def main():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = get_connection()
 
     try:
         init_db(conn)

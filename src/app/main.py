@@ -31,7 +31,7 @@ matplotlib.rcParams["font.sans-serif"] = [
 ]
 matplotlib.rcParams["axes.unicode_minus"] = False
 
-DB_PATH = Path(__file__).resolve().parents[2] / "data" / "db" / "tvl_database.db"
+from src.utils.db_config import DB_PATH
 MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "match_predictor.pkl"
 
 

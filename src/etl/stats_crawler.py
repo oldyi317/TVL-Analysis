@@ -7,20 +7,14 @@ TVL 球員逐場數據爬蟲模組
 import re
 import time
 import sqlite3
-import logging
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
-from pathlib import Path
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-logger = logging.getLogger(__name__)
+from src.utils.db_config import DB_PATH, get_connection
+from src.utils.logger import get_logger
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = PROJECT_ROOT / "data" / "db" / "tvl_database.db"
+logger = get_logger(__name__)
 
 EXT_BASE = "http://114.35.229.141"
 CUP_ID = 21
@@ -193,8 +187,7 @@ def fetch_player_stats(team_id: int, ext_player_id: int) -> list[dict]:
 
 
 def main():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = get_connection()
 
     init_stats_table(conn)
     name_map = build_name_to_pid(conn)

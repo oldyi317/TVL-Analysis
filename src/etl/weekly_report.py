@@ -5,15 +5,14 @@
 
 import sqlite3
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import pandas as pd
 
-DB_PATH = Path(__file__).resolve().parents[2] / "data" / "db" / "tvl_database.db"
+from src.utils.db_config import get_connection
 
 
 def _conn():
-    return sqlite3.connect(DB_PATH)
+    return get_connection(foreign_keys=False)
 
 
 def get_match_weeks() -> list[tuple[str, str]]:
