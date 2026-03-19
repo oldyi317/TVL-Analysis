@@ -30,9 +30,28 @@ CJK_FONT_STACK = ["Noto Sans CJK TC", "Microsoft JhengHei", "SimHei", "DejaVu Sa
 
 @st.cache_resource
 def _init_matplotlib_fonts():
-    """重建字型快取（僅執行一次），確保系統新安裝的中文字型被偵測。"""
+    """掃描系統字型目錄，將 Noto CJK 字型檔明確註冊進 matplotlib。"""
     import matplotlib.font_manager as fm
-    fm._load_fontmanager(try_read_cache=False)
+    from pathlib import Path as _P
+    font_dirs = [
+        _P("/usr/share/fonts"),
+        _P("/usr/local/share/fonts"),
+    ]
+    font_exts = {".ttf", ".otf", ".ttc"}
+    added = 0
+    for d in font_dirs:
+        if not d.exists():
+            continue
+        for f in d.rglob("*"):
+            if f.suffix.lower() in font_exts and "noto" in f.name.lower():
+                try:
+                    fm.fontManager.addfont(str(f))
+                    added += 1
+                except Exception:
+                    pass
+    # 清除 matplotlib 字型比對快取，使新字型立即生效
+    if hasattr(fm.fontManager, '_findfont_cache'):
+        fm.fontManager._findfont_cache.clear()
 
 _init_matplotlib_fonts()
 matplotlib.rcParams["font.sans-serif"] = CJK_FONT_STACK
@@ -594,7 +613,7 @@ with tab1:
             legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5),
             height=480, margin=dict(l=60, r=60, t=40, b=60),
         )
-        st.plotly_chart(fig_radar, use_container_width=True)
+        st.plotly_chart(fig_radar, width="stretch")
 
     # ── 依位置動態逐場趨勢圖 ─────────────────────────────────
     # 各位置使用最有意義的效率指標作為折線
@@ -648,7 +667,7 @@ with tab1:
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
             height=480, margin=dict(l=50, r=50, t=50, b=80), bargap=0.3,
         )
-        st.plotly_chart(fig_trend, use_container_width=True)
+        st.plotly_chart(fig_trend, width="stretch")
 
     # 完整比賽紀錄
     with st.expander("📊 完整比賽紀錄", expanded=False):
@@ -664,7 +683,7 @@ with tab1:
         }
         st.dataframe(
             stats_df[list(display_cols.keys())].rename(columns=display_cols),
-            use_container_width=True, hide_index=True,
+            width="stretch", hide_index=True,
         )
 
 # ══════════════════════════════════════════════════════════════
@@ -847,7 +866,7 @@ with tab2:
         margin=dict(l=50, r=50, t=30, b=50),
         legend=dict(title="球隊"),
     )
-    st.plotly_chart(fig_scatter, use_container_width=True)
+    st.plotly_chart(fig_scatter, width="stretch")
 
     # ── 同位置排行表 ─────────────────────────────────────────
     with st.expander(f"📋 {selected_pos} 完整排行數據", expanded=False):
@@ -874,7 +893,7 @@ with tab2:
             .rename(columns=available)
             .sort_values("總得分", ascending=False)
         )
-        st.dataframe(show_df, use_container_width=True, hide_index=True)
+        st.dataframe(show_df, width="stretch", hide_index=True)
 
 # ══════════════════════════════════════════════════════════════
 # Tab 3：逐場賽事明細與對戰分析
@@ -955,7 +974,7 @@ with tab3:
             cmap="YlGnBu", subset=valid_gradient
         )
 
-    st.dataframe(styled, use_container_width=True, hide_index=True, height=450)
+    st.dataframe(styled, width="stretch", hide_index=True, height=450)
 
     st.download_button(
         label="📥 下載逐場數據 CSV",
@@ -1023,7 +1042,7 @@ with tab3:
             f"對手: %{{x}}<br>{selected_metric}: %{{y:.1f}}<extra></extra>"
         ),
     )
-    st.plotly_chart(fig_box, use_container_width=True)
+    st.plotly_chart(fig_box, width="stretch")
 
     # ── 對手績效摘要表 ───────────────────────────────────────
     with st.expander("📊 對戰對手績效摘要", expanded=False):
@@ -1048,7 +1067,7 @@ with tab3:
             "對手", "出賽場次", "總得分", "場均得分",
             "攻擊得分", "平均ASR%", "攔網得分", "平均GP%", "平均DIG%",
         ]
-        st.dataframe(opp_summary, use_container_width=True, hide_index=True)
+        st.dataframe(opp_summary, width="stretch", hide_index=True)
 
 # ══════════════════════════════════════════════════════════════
 # Tab 4：單場 Box Score 與對戰比較
@@ -1263,7 +1282,7 @@ with tab4:
             a_display = format_box_score(a_enriched)
             st.dataframe(
                 style_box_score(a_display),
-                use_container_width=True, hide_index=True, height=450,
+                width="stretch", hide_index=True, height=450,
             )
             a_total = int(team_a_df["total_points"].sum())
             st.caption(f"團隊總得分：**{a_total}**")
@@ -1284,7 +1303,7 @@ with tab4:
             b_display = format_box_score(b_enriched)
             st.dataframe(
                 style_box_score(b_display),
-                use_container_width=True, hide_index=True, height=450,
+                width="stretch", hide_index=True, height=450,
             )
             b_total = int(team_b_df["total_points"].sum())
             st.caption(f"團隊總得分：**{b_total}**")
@@ -1395,7 +1414,7 @@ with tab4:
                 xaxis_title=rank_label,
                 yaxis_title="",
             )
-            st.plotly_chart(fig_rank, use_container_width=True)
+            st.plotly_chart(fig_rank, width="stretch")
 
 # ══════════════════════════════════════════════════════════════
 # Tab 5：賽果預測 (ML Match Prediction)
