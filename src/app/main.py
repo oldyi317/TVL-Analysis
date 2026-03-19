@@ -26,8 +26,10 @@ st.set_page_config(
 )
 
 # ── 全域中文字型設定（matplotlib） ────────────────────────────
+import matplotlib.font_manager as _fm
+_fm._load_fontmanager(try_read_cache=False)  # 重建字型快取，確保新安裝的字型被偵測
 matplotlib.rcParams["font.sans-serif"] = [
-    "Microsoft JhengHei", "SimHei", "Noto Sans CJK TC", "DejaVu Sans",
+    "Noto Sans CJK TC", "Microsoft JhengHei", "SimHei", "DejaVu Sans",
 ]
 matplotlib.rcParams["axes.unicode_minus"] = False
 
@@ -1512,7 +1514,7 @@ with tab5:
 
         # 中文字型設定，避免 SHAP matplotlib 圖表亂碼
         matplotlib.rcParams["font.sans-serif"] = [
-            "Microsoft JhengHei", "SimHei", "Noto Sans CJK TC", "DejaVu Sans",
+            "Noto Sans CJK TC", "Microsoft JhengHei", "SimHei", "DejaVu Sans",
         ]
         matplotlib.rcParams["axes.unicode_minus"] = False
 
@@ -1584,7 +1586,8 @@ with tab6:
 
     import os as _os
 
-    _api_key = _os.environ.get("ANTHROPIC_API_KEY", "")
+    # 優先從 Streamlit Secrets 讀取，其次從環境變數（.env）
+    _api_key = st.secrets.get("ANTHROPIC_API_KEY", "") or _os.environ.get("ANTHROPIC_API_KEY", "")
 
     st.subheader("每周戰報產生器")
     st.caption("根據比賽數據，透過 Claude AI 自動產生結構化中文戰報。")
