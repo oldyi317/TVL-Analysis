@@ -143,10 +143,24 @@ def render(ctx: dict) -> None:
     med_x = pos_df[x_col].median()
     med_y = pos_df[y_col].median()
 
+    # 依位置選擇有意義的氣泡大小欄位
+    POS_SIZE_COL = {
+        "OH": "total_points",
+        "OP": "total_points",
+        "MB": "blk_pts",       # 中間手看攔網
+        "S":  "set_tot",       # 舉球員看舉球量
+        "L":  "def_load",      # 自由球員看防守負擔
+    }
+    size_col = POS_SIZE_COL.get(selected_pos, "total_points")
+    size_label = {
+        "total_points": "總得分", "blk_pts": "攔網得分",
+        "set_tot": "舉球總數", "def_load": "防守負擔",
+    }.get(size_col, size_col)
+
     hover_data_cfg = {
         x_col: ":.1f",
         y_col: ":.1f",
-        "total_points": ":.0f",
+        size_col: ":.0f",
         "n_games": True,
         "team_name": True,
         "is_selected": False,
@@ -162,14 +176,14 @@ def render(ctx: dict) -> None:
         pos_df,
         x=x_col,
         y=y_col,
-        size="total_points",
+        size=size_col,
         color="team_name",
         hover_name="name",
         hover_data=hover_data_cfg,
         labels={
             x_col: x_label,
             y_col: y_label,
-            "total_points": "總得分",
+            size_col: size_label,
             "team_name": "球隊",
             "n_games": "出賽場次",
         },
