@@ -32,13 +32,17 @@ REPORT_SYSTEM_PROMPT = """\
 
 
 def _get_gemini_key() -> str | None:
-    try:
-        return st.secrets["GOOGLE_API_KEY"]
-    except (KeyError, FileNotFoundError):
-        return os.getenv("GOOGLE_API_KEY")
+    for key_name in ("GOOGLE_API_KEY", "GEMINI_API_KEY"):
+        try:
+            return st.secrets[key_name]
+        except (KeyError, FileNotFoundError):
+            val = os.getenv(key_name)
+            if val:
+                return val
+    return None
 
 
-GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
+GEMINI_MODELS = ["gemini-2.5-flash-preview-04-17", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
 
 
 def _call_gemini(api_key: str, user_prompt: str) -> str:
