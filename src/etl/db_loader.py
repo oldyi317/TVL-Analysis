@@ -1,6 +1,6 @@
 """
 TVL 資料庫載入模組
-讀取 all_teams_roster.csv，正規化拆分為 teams / players 兩表並寫入 SQLite。
+讀取 raw CSV → 經 cleaner 清洗 → 正規化拆分為 teams / players 兩表並寫入 SQLite。
 """
 
 import sqlite3
@@ -8,6 +8,8 @@ import logging
 import numpy as np
 import pandas as pd
 from pathlib import Path
+
+from src.etl.cleaner import load_raw, clean, quality_report
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,10 +31,11 @@ def init_db(conn: sqlite3.Connection) -> None:
 
 
 def load_csv() -> pd.DataFrame:
-    """讀取 CSV 並將 NaN 轉為 None，確保寫入 SQLite 時為 NULL。"""
-    df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
-    df = df.replace({np.nan: None})
-    logger.info("已讀取 CSV：%d 筆資料", len(df))
+    """讀取 raw CSV 並經 cleaner 清洗，確保資料品質後回傳。"""
+    df = load_raw(CSV_PATH)
+    df = clean(df)
+    quality_report(df)
+    logger.info("清洗後資料：%d 筆", len(df))
     return df
 
 
