@@ -1665,6 +1665,24 @@ with tab6:
 
     # ── 撈取資料並預覽 ────────────────────────────────────────
     weekly_data = gather_weekly_data(date_from, date_to, wr_gender_code)
+
+    # 附加局數比資訊（從外部系統取得）
+    match_index = fetch_match_index()
+    for m in weekly_data.get("matches", []):
+        mid = find_match_id(match_index, m["date"], m["opponent"])
+        if mid:
+            scores = fetch_set_scores(mid)
+            if scores and len(scores) == 2:
+                # 找出哪一邊是本隊
+                t_a, t_b = scores[0], scores[1]
+                m["set_score"] = f"{t_a['sets_won']}:{t_b['sets_won']}"
+                m["set_details"] = [
+                    {"team": t_a["team"], "sets_won": t_a["sets_won"],
+                     "set_points": [s for s in t_a["sets"] if s is not None]},
+                    {"team": t_b["team"], "sets_won": t_b["sets_won"],
+                     "set_points": [s for s in t_b["sets"] if s is not None]},
+                ]
+
     n_matches = len(weekly_data["matches"])
 
     if n_matches == 0:
@@ -1701,12 +1719,13 @@ with tab6:
 
 撰寫規範：
 1. 使用繁體中文，語氣專業但生動，適合球迷閱讀。
-2. 每場比賽包含：比賽結果摘要、關鍵球員點評（引用具體數據）、戰術觀察。
-3. 若球員本場表現明顯高於或低於賽季平均，請特別指出。
-4. 在最後加上「本周數據亮點」段落，列出該周最佳表現者。
-5. 使用 Markdown 格式，包含標題層級和粗體強調。
-6. 攻擊成功率 (ASR) = 攻擊得分 / 攻擊總數 × 100%。
-7. 不要編造任何數據中沒有的資訊。"""
+2. 比賽結果必須以「局數比」(set_score) 呈現（例如「3:1」），不要用總得分表示勝負。各局比分 (set_details) 可在摘要中附帶說明。
+3. 每場比賽包含：比賽結果摘要、關鍵球員點評（引用具體數據）、戰術觀察。
+4. 若球員本場表現明顯高於或低於賽季平均，請特別指出。
+5. 在最後加上「本周數據亮點」段落，列出該周最佳表現者。
+6. 使用 Markdown 格式，包含標題層級和粗體強調。
+7. 攻擊成功率 (ASR) = 攻擊得分 / 攻擊總數 × 100%。
+8. 不要編造任何數據中沒有的資訊。"""
 
     def _build_user_prompt(data: dict) -> str:
         return (
