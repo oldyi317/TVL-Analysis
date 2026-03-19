@@ -1551,9 +1551,18 @@ with tab5:
         )
 
         # 繪製 Waterfall Plot
-        fig_shap, ax_shap = plt.subplots(figsize=(10, max(4, len(cn_labels) * 0.5 + 1)))
         _shap.plots.waterfall(explanation, show=False)
-        plt.title("SHAP 戰術診斷：各指標對勝率的影響", fontsize=14)
+        fig_shap = plt.gcf()  # SHAP 內部建立的 figure
+        fig_shap.set_size_inches(10, max(4, len(cn_labels) * 0.5 + 1))
+
+        # 強制所有文字元素使用中文字型（SHAP 內部不走 rcParams）
+        from matplotlib.font_manager import FontProperties
+        _cjk_fp = FontProperties(family=CJK_FONT_STACK)
+        for text_obj in fig_shap.findobj(matplotlib.text.Text):
+            text_obj.set_fontproperties(_cjk_fp)
+
+        plt.title("SHAP 戰術診斷：各指標對勝率的影響", fontsize=14,
+                  fontproperties=_cjk_fp)
         plt.tight_layout()
         st.pyplot(fig_shap)
         plt.close(fig_shap)
