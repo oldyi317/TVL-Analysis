@@ -100,3 +100,4 @@ streamlit run src/app/main.py
 - 缺失值保留為 `NA`/`None`，不做插補
 - 日期統一為 `YYYY-MM-DD` 格式
 - 數值欄位去除單位字串，轉為 Float/Integer
+
