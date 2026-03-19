@@ -143,19 +143,32 @@ def parse_player_card(card_div) -> dict:
 
 
 def extract_team_name(soup: BeautifulSoup) -> str | None:
-    """從頁面 <title> 萃取球隊名稱，例如 '臺北國北獅 | TVL' -> '臺北國北獅'。"""
+    """從頁面 <title> 萃取球隊名稱，並轉換為簡寫。例如 '臺北鯨華女子排球隊 | TVL' -> '臺北鯨華'。"""
     try:
         title_tag = soup.find("title")
         if title_tag:
             raw = title_tag.get_text(strip=True)
-            # 取 '|' 前的部分作為球隊名稱
-            return raw.split("|")[0].strip() or None
+            full_name = raw.split("|")[0].strip() or None
+            if full_name:
+                return TEAM_NAME_SHORT.get(full_name, full_name)
+            return None
     except Exception as e:
         logger.warning("萃取球隊名稱失敗: %s", e)
     return None
 
 
 GENDER_MAP = {"team": "M", "wteam": "F"}
+
+# 官網全名 → 簡寫對應（依 CLAUDE.md 第 7 節）
+TEAM_NAME_SHORT = {
+    "臺北鯨華女子排球隊": "臺北鯨華",
+    "新北中國人纖企業女子排球隊": "新北中纖",
+    "台灣電力公司女子排球隊": "高雄台電",
+    "義力營造女子排球隊": "義力營造",
+    "台灣電力公司男子排球隊": "屏東台電",
+    "美津濃男子排球隊": "雲林美津濃",
+    "桃園臺產隼鷹排球隊": "桃園臺產",
+}
 
 
 def scrape_team_roster(
