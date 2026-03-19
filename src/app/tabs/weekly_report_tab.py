@@ -38,21 +38,38 @@ def _get_gemini_key() -> str | None:
         return os.getenv("GOOGLE_API_KEY")
 
 
+GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"]
+
+
 def _call_gemini(api_key: str, user_prompt: str) -> str:
-    """呼叫 Gemini API 產生戰報。"""
+    """呼叫 Gemini API 產生戰報，自動重試與 fallback 模型。"""
+    import time
     from google import genai
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=user_prompt,
-        config={
-            "system_instruction": REPORT_SYSTEM_PROMPT,
-            "max_output_tokens": 8192,
-            "temperature": 0.7,
-        },
-    )
-    return response.text
+
+    for model in GEMINI_MODELS:
+        for attempt in range(2):  # 每個模型最多試 2 次
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=user_prompt,
+                    config={
+                        "system_instruction": REPORT_SYSTEM_PROMPT,
+                        "max_output_tokens": 8192,
+                        "temperature": 0.7,
+                    },
+                )
+                return response.text
+            except Exception as e:
+                if "429" in str(e) and attempt == 0:
+                    time.sleep(30)  # 速率限制，等 30 秒重試
+                    continue
+                if "429" in str(e):
+                    break  # 這個模型額度用完，換下一個
+                raise  # 其他錯誤直接拋出
+
+    raise RuntimeError("所有 Gemini 模型額度已用完，請稍後再試。")
 
 
 def _attach_set_scores(weekly_data: dict, match_index: list[dict]) -> dict:
