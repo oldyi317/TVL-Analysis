@@ -1,6 +1,6 @@
 """
-Tab 6：每周戰報（Claude API 生成）
-提供周次選擇、性別篩選，以視覺化卡片呈現該周比賽摘要，並可透過 Claude API 產生專業戰報。
+Tab 6：每周戰報（Gemini AI 生成）
+提供周次選擇、性別篩選，以視覺化卡片呈現該周比賽摘要，並透過 Gemini API 產生專業戰報。
 """
 
 import json
@@ -31,11 +31,28 @@ REPORT_SYSTEM_PROMPT = """\
 8. 不要編造任何數據中沒有的資訊。"""
 
 
-def _get_api_key() -> str | None:
+def _get_gemini_key() -> str | None:
     try:
-        return st.secrets["ANTHROPIC_API_KEY"]
+        return st.secrets["GOOGLE_API_KEY"]
     except (KeyError, FileNotFoundError):
-        return os.getenv("ANTHROPIC_API_KEY")
+        return os.getenv("GOOGLE_API_KEY")
+
+
+def _call_gemini(api_key: str, user_prompt: str) -> str:
+    """呼叫 Gemini API 產生戰報。"""
+    from google import genai
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=user_prompt,
+        config={
+            "system_instruction": REPORT_SYSTEM_PROMPT,
+            "max_output_tokens": 8192,
+            "temperature": 0.7,
+        },
+    )
+    return response.text
 
 
 def _attach_set_scores(weekly_data: dict, match_index: list[dict]) -> dict:
@@ -73,7 +90,6 @@ def _group_matches(matches: list[dict]) -> list[dict]:
 
 
 def _build_player_df(players: list[dict]) -> pd.DataFrame:
-    """從球員列表建立顯示用 DataFrame。"""
     rows = []
     for p in players[:8]:
         row = {
@@ -92,7 +108,6 @@ def _build_player_df(players: list[dict]) -> pd.DataFrame:
 
 
 def _render_team_side(m: dict):
-    """渲染單隊的 metric + 球員表。"""
     ts = m["team_stats"]
     atk_rate = ts.get("attack_rate")
 
@@ -109,12 +124,10 @@ def _render_team_side(m: dict):
 
 
 def _render_match_card(group: dict):
-    """渲染單場比賽的視覺化卡片（雙方並列）。"""
     a = group["team_a"]
-    b = group["team_b"]  # 可能為 None
+    b = group["team_b"]
     date_short = a["date"][5:]
 
-    # 局比分（從 team_a 的 set_details 取）
     set_score = a.get("set_score", "")
     set_str = ""
     if "set_details" in a and isinstance(a["set_details"], list) and len(a["set_details"]) == 2:
@@ -124,7 +137,6 @@ def _render_match_card(group: dict):
             for sa, sb in zip(d_a.get("set_points", []), d_b.get("set_points", []))
         )
 
-    # 標題
     st.markdown(
         f"#### {a['gender']}　{date_short}　{a['team_name']} vs {a['opponent']}"
         + (f"　**{set_score}**" if set_score else "")
@@ -133,7 +145,6 @@ def _render_match_card(group: dict):
         st.caption(set_str)
 
     if b:
-        # 雙方並列
         col_a, col_b = st.columns(2)
         with col_a:
             st.markdown(f"**{a['team_name']}**")
@@ -142,7 +153,6 @@ def _render_match_card(group: dict):
             st.markdown(f"**{b['team_name']}**")
             _render_team_side(b)
     else:
-        # 只有單隊資料
         st.markdown(f"**{a['team_name']}**")
         _render_team_side(a)
 
@@ -151,7 +161,7 @@ def _render_match_card(group: dict):
 
 def render(ctx):
     st.subheader("每周戰報")
-    st.caption("根據比賽數據，透過 Claude AI 自動產生結構化中文戰報。")
+    st.caption("根據比賽數據，透過 Gemini AI 自動產生結構化中文戰報。")
 
     # ── 周次選擇器 ────────────────────────────────────────────
     weeks = get_match_weeks()
@@ -190,7 +200,6 @@ def render(ctx):
         st.info("該周次無符合條件的比賽。")
         st.stop()
 
-    # ── 合併同場比賽 ──────────────────────────────────────────
     grouped = _group_matches(all_matches)
 
     st.markdown(f"該周共有 **{len(grouped)}** 場比賽。")
@@ -200,40 +209,26 @@ def render(ctx):
         _render_match_card(g)
 
     # ── 產生 AI 戰報 ──────────────────────────────────────────
-    api_key = _get_api_key()
+    gemini_key = _get_gemini_key()
 
-    if not api_key:
+    if not gemini_key:
         st.info(
             "如需 AI 戰報功能，請在 `.env` 或 Streamlit Secrets 中設定 "
-            "`ANTHROPIC_API_KEY`。"
+            "`GOOGLE_API_KEY`（從 [Google AI Studio](https://aistudio.google.com/) 免費取得）。"
         )
     elif st.button("產生 AI 戰報", type="primary", key="wr_generate"):
         data_json = json.dumps(weekly_data, ensure_ascii=False, indent=2)
-        with st.spinner("正在透過 Claude API 產生戰報，請稍候..."):
+        user_prompt = (
+            f"以下是 {weekly_data['period']} 的 TVL 企業排球聯賽比賽數據，"
+            f"共 {len(grouped)} 場比賽。\n"
+            f"請根據這些數據撰寫本周戰報。\n\n"
+            f"```json\n{data_json}\n```"
+        )
+        with st.spinner("正在透過 Gemini API 產生戰報，請稍候..."):
             try:
-                import anthropic
-                client = anthropic.Anthropic(api_key=api_key)
-                message = client.messages.create(
-                    model="claude-sonnet-4-6",
-                    max_tokens=16384,
-                    system=REPORT_SYSTEM_PROMPT,
-                    messages=[
-                        {"role": "user", "content": (
-                            f"以下是 {weekly_data['period']} 的 TVL 企業排球聯賽比賽數據，"
-                            f"共 {len(grouped)} 場比賽。\n"
-                            f"請根據這些數據撰寫本周戰報。\n\n"
-                            f"```json\n{data_json}\n```"
-                        )}
-                    ],
-                )
-                report_text = message.content[0].text
+                report_text = _call_gemini(gemini_key, user_prompt)
                 st.session_state["weekly_report_text"] = report_text
                 st.session_state["weekly_report_period"] = weekly_data["period"]
-
-                st.caption(
-                    f"Token 用量：輸入 {message.usage.input_tokens} / "
-                    f"輸出 {message.usage.output_tokens}"
-                )
             except Exception as e:
                 st.error(f"API 呼叫失敗：{e}")
 
