@@ -12,11 +12,9 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from src.app.helpers import fetch_match_index, fetch_set_scores, find_match_id
+from src.etl.weekly_report import gather_weekly_data, get_match_weeks
 
 load_dotenv(Path(__file__).resolve().parents[3] / ".env")
-
-# 延遲匯入 weekly_report 模組（避免循環匯入）
-from src.etl.weekly_report import gather_weekly_data, get_match_weeks
 
 REPORT_SYSTEM_PROMPT = """\
 你是一位專業的排球賽事記者，專門報導台灣企業排球聯賽（TVL）。
@@ -59,60 +57,94 @@ def _attach_set_scores(weekly_data: dict, match_index: list[dict]) -> dict:
     return weekly_data
 
 
-def _render_match_card(m: dict):
-    """渲染單場比賽的視覺化卡片。"""
+def _group_matches(matches: list[dict]) -> list[dict]:
+    """
+    將同一場比賽的兩隊資料合併為一筆。
+    用 (date, frozenset({team_name, opponent})) 作為 key 去重。
+    """
+    seen = {}
+    for m in matches:
+        key = (m["date"], frozenset([m["team_name"], m["opponent"]]))
+        if key not in seen:
+            seen[key] = {"team_a": m, "team_b": None}
+        else:
+            seen[key]["team_b"] = m
+    return list(seen.values())
+
+
+def _build_player_df(players: list[dict]) -> pd.DataFrame:
+    """從球員列表建立顯示用 DataFrame。"""
+    rows = []
+    for p in players[:8]:
+        row = {
+            "球員": p["name"],
+            "位置": p.get("position") or "-",
+            "局數": p["sets_played"],
+            "得分": p["total_points"],
+            "攻擊": f"{p['attack_points']}/{p['attack_total']}",
+            "攔網": p["block_points"],
+            "發球": p["serve_points"],
+        }
+        if "vs_season_ppg" in p:
+            row["vs 賽季均"] = f"{p['vs_season_ppg']:+.1f}"
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def _render_team_side(m: dict):
+    """渲染單隊的 metric + 球員表。"""
     ts = m["team_stats"]
-    set_score = m.get("set_score", "")
-    date_short = m["date"][5:]  # MM-DD
-
-    # 比賽標題列
-    st.markdown(
-        f"#### {date_short}　{m['team_name']} vs {m['opponent']}"
-        + (f"　**{set_score}**" if set_score else "")
-    )
-
-    # 各局比分
-    if "set_details" in m and isinstance(m["set_details"], list) and len(m["set_details"]) == 2:
-        d_a, d_b = m["set_details"][0], m["set_details"][1]
-        set_str = "　".join(
-            f"**{a}**:{b}" if a > b else f"{a}:**{b}**"
-            for a, b in zip(d_a.get("set_points", []), d_b.get("set_points", []))
-        )
-        if set_str:
-            st.caption(f"{d_a['team']} vs {d_b['team']}　｜　{set_str}")
-
-    # 團隊數據指標（3 欄）
-    c1, c2, c3 = st.columns(3)
-    c1.metric("團隊總得分", ts["total_points"])
     atk_rate = ts.get("attack_rate")
-    c2.metric(
-        "攻擊",
-        f"{ts['attack_points']}/{ts['attack_total']}",
-        delta=f"ASR {atk_rate}%" if atk_rate else None,
-    )
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("總得分", ts["total_points"])
+    c2.metric("攻擊", f"{ts['attack_points']}/{ts['attack_total']}",
+              delta=f"ASR {atk_rate}%" if atk_rate else None)
     c3.metric("攔網 / 發球", f"{ts['block_points']} / {ts['serve_points']}")
 
-    # 上場球員表格
     if m["players"]:
-        rows = []
-        for p in m["players"][:8]:  # 最多顯示前 8 名
-            row = {
-                "球員": p["name"],
-                "位置": p.get("position") or "-",
-                "局數": p["sets_played"],
-                "得分": p["total_points"],
-                "攻擊": f"{p['attack_points']}/{p['attack_total']}",
-                "攔網": p["block_points"],
-                "發球": p["serve_points"],
-            }
-            # 賽季對比
-            if "vs_season_ppg" in p:
-                diff = p["vs_season_ppg"]
-                row["vs 賽季均"] = f"{diff:+.1f}"
-            rows.append(row)
+        df = _build_player_df(m["players"])
+        st.dataframe(df, use_container_width=True, hide_index=True,
+                     height=min(36 * len(df) + 38, 320))
 
-        df = pd.DataFrame(rows)
-        st.dataframe(df, use_container_width=True, hide_index=True, height=min(40 * len(rows) + 38, 350))
+
+def _render_match_card(group: dict):
+    """渲染單場比賽的視覺化卡片（雙方並列）。"""
+    a = group["team_a"]
+    b = group["team_b"]  # 可能為 None
+    date_short = a["date"][5:]
+
+    # 局比分（從 team_a 的 set_details 取）
+    set_score = a.get("set_score", "")
+    set_str = ""
+    if "set_details" in a and isinstance(a["set_details"], list) and len(a["set_details"]) == 2:
+        d_a, d_b = a["set_details"][0], a["set_details"][1]
+        set_str = "　".join(
+            f"**{sa}**:{sb}" if sa > sb else f"{sa}:**{sb}**"
+            for sa, sb in zip(d_a.get("set_points", []), d_b.get("set_points", []))
+        )
+
+    # 標題
+    st.markdown(
+        f"#### {a['gender']}　{date_short}　{a['team_name']} vs {a['opponent']}"
+        + (f"　**{set_score}**" if set_score else "")
+    )
+    if set_str:
+        st.caption(set_str)
+
+    if b:
+        # 雙方並列
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown(f"**{a['team_name']}**")
+            _render_team_side(a)
+        with col_b:
+            st.markdown(f"**{b['team_name']}**")
+            _render_team_side(b)
+    else:
+        # 只有單隊資料
+        st.markdown(f"**{a['team_name']}**")
+        _render_team_side(a)
 
     st.markdown("---")
 
@@ -153,18 +185,19 @@ def render(ctx):
     if match_index:
         weekly_data = _attach_set_scores(weekly_data, match_index)
 
-    n_matches = len(weekly_data.get("matches", []))
-
-    if n_matches == 0:
+    all_matches = weekly_data.get("matches", [])
+    if not all_matches:
         st.info("該周次無符合條件的比賽。")
         st.stop()
 
-    st.markdown(f"該周共有 **{n_matches}** 場比賽紀錄。")
+    # ── 合併同場比賽 ──────────────────────────────────────────
+    grouped = _group_matches(all_matches)
+
+    st.markdown(f"該周共有 **{len(grouped)}** 場比賽。")
     st.markdown("---")
 
-    # ── 比賽卡片視覺化預覽 ────────────────────────────────────
-    for m in weekly_data["matches"]:
-        _render_match_card(m)
+    for g in grouped:
+        _render_match_card(g)
 
     # ── 產生 AI 戰報 ──────────────────────────────────────────
     api_key = _get_api_key()
@@ -187,7 +220,7 @@ def render(ctx):
                     messages=[
                         {"role": "user", "content": (
                             f"以下是 {weekly_data['period']} 的 TVL 企業排球聯賽比賽數據，"
-                            f"共 {n_matches} 場比賽。\n"
+                            f"共 {len(grouped)} 場比賽。\n"
                             f"請根據這些數據撰寫本周戰報。\n\n"
                             f"```json\n{data_json}\n```"
                         )}
