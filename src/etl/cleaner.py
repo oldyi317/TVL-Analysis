@@ -9,7 +9,12 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from src.utils.logger import get_logger
+try:
+    from src.utils.logger import get_logger
+except ModuleNotFoundError:
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    get_logger = logging.getLogger
 
 logger = get_logger(__name__)
 

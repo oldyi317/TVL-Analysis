@@ -8,7 +8,14 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from src.utils.db_config import get_connection
+from pathlib import Path
+
+try:
+    from src.utils.db_config import get_connection
+except ModuleNotFoundError:
+    def get_connection(foreign_keys=True):
+        _db = Path(__file__).resolve().parents[2] / "data" / "db" / "tvl_database.db"
+        return sqlite3.connect(_db)
 
 
 def _conn():

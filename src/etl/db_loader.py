@@ -8,9 +8,25 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from src.etl.cleaner import load_raw, clean, quality_report
-from src.utils.db_config import PROJECT_ROOT, DB_PATH, get_connection
-from src.utils.logger import get_logger
+try:
+    from src.etl.cleaner import load_raw, clean, quality_report
+    from src.utils.db_config import PROJECT_ROOT, DB_PATH, get_connection
+    from src.utils.logger import get_logger
+except ModuleNotFoundError:
+    from cleaner import load_raw, clean, quality_report
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    get_logger = logging.getLogger
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    DB_PATH = PROJECT_ROOT / "data" / "db" / "tvl_database.db"
+
+    def get_connection(foreign_keys=True):
+        import sqlite3
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(DB_PATH)
+        if foreign_keys:
+            conn.execute("PRAGMA foreign_keys = ON")
+        return conn
 
 logger = get_logger(__name__)
 

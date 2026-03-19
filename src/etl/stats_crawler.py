@@ -11,8 +11,23 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 
-from src.utils.db_config import DB_PATH, get_connection
-from src.utils.logger import get_logger
+from pathlib import Path
+
+try:
+    from src.utils.db_config import DB_PATH, get_connection
+    from src.utils.logger import get_logger
+except ModuleNotFoundError:
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    get_logger = logging.getLogger
+    DB_PATH = Path(__file__).resolve().parents[2] / "data" / "db" / "tvl_database.db"
+
+    def get_connection(foreign_keys=True):
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(DB_PATH)
+        if foreign_keys:
+            conn.execute("PRAGMA foreign_keys = ON")
+        return conn
 
 logger = get_logger(__name__)
 
