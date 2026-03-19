@@ -4,6 +4,14 @@ TVL 企業排球聯賽進階數據分析儀表板
 包含：個人深度分析 + 聯盟分佈與同位置 PR 值比較。
 """
 
+import sys
+from pathlib import Path
+
+# 確保專案根目錄在 sys.path 中（Streamlit Cloud 需要）
+_PROJECT_ROOT = str(Path(__file__).resolve().parents[2])
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
 import pandas as pd
 import streamlit as st
 
