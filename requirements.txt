@@ -1,7 +1,9 @@
 beautifulsoup4
+joblib
 matplotlib
 numpy
 pandas
 plotly
 requests
+shap
 streamlit>=1.45.0
