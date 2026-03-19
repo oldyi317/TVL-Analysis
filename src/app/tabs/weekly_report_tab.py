@@ -38,7 +38,7 @@ def _get_gemini_key() -> str | None:
         return os.getenv("GOOGLE_API_KEY")
 
 
-GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"]
+GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite"]
 
 
 def _call_gemini(api_key: str, user_prompt: str) -> str:
