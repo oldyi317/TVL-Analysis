@@ -11,20 +11,19 @@ from pathlib import Path
 
 try:
     from src.utils.logger import get_logger
+    from src.utils.constants import VALID_POSITIONS, VALID_GENDERS
 except ModuleNotFoundError:
     import logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     get_logger = logging.getLogger
+    VALID_POSITIONS = {"OH", "MB", "OP", "S", "L"}
+    VALID_GENDERS = {"M", "F"}
 
 logger = get_logger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW_CSV = PROJECT_ROOT / "data" / "raw" / "all_teams_roster.csv"
 CLEANED_CSV = PROJECT_ROOT / "data" / "processed" / "all_teams_roster_cleaned.csv"
-
-# 合法位置代碼（依 CLAUDE.md 第 5 節）
-VALID_POSITIONS = {"OH", "MB", "OP", "S", "L"}
-VALID_GENDERS = {"M", "F"}
 
 # 身高體重合理範圍（用於異常值警告，不會刪除或修改資料）
 HEIGHT_RANGE = (140.0, 220.0)

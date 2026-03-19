@@ -12,29 +12,18 @@ from pathlib import Path
 
 try:
     from src.utils.logger import get_logger
+    from src.utils.constants import POSITION_MAP, EXT_HEADERS as HEADERS, TEAM_NAME_SHORT
 except ModuleNotFoundError:
     import logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     get_logger = logging.getLogger
+    POSITION_MAP = {"主攻手": "OH", "中間手": "MB", "副攻手": "OP", "舉球員": "S", "自由球員": "L"}
+    HEADERS = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+    TEAM_NAME_SHORT = None  # will be defined below as local fallback
 
 logger = get_logger(__name__)
-
-# 位置中英對照表（依 CLAUDE.md 第 5 節定義）
-POSITION_MAP = {
-    "主攻手": "OH",
-    "中間手": "MB",
-    "副攻手": "OP",
-    "舉球員": "S",
-    "自由球員": "L",
-}
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
-}
 
 BASE_URL = "https://tvl.ctvba.org.tw"
 
@@ -159,16 +148,17 @@ def extract_team_name(soup: BeautifulSoup) -> str | None:
 
 GENDER_MAP = {"team": "M", "wteam": "F"}
 
-# 官網全名 → 簡寫對應（依 CLAUDE.md 第 7 節）
-TEAM_NAME_SHORT = {
-    "臺北鯨華女子排球隊": "臺北鯨華",
-    "新北中國人纖企業女子排球隊": "新北中纖",
-    "台灣電力公司女子排球隊": "高雄台電",
-    "義力營造女子排球隊": "義力營造",
-    "台灣電力公司男子排球隊": "屏東台電",
-    "美津濃男子排球隊": "雲林美津濃",
-    "桃園臺產隼鷹排球隊": "桃園臺產",
-}
+# 官網全名 → 簡寫對應（fallback：constants.py import 失敗時使用）
+if TEAM_NAME_SHORT is None:
+    TEAM_NAME_SHORT = {
+        "臺北鯨華女子排球隊": "臺北鯨華",
+        "新北中國人纖企業女子排球隊": "新北中纖",
+        "台灣電力公司女子排球隊": "高雄台電",
+        "義力營造女子排球隊": "義力營造",
+        "台灣電力公司男子排球隊": "屏東台電",
+        "美津濃男子排球隊": "雲林美津濃",
+        "桃園臺產隼鷹排球隊": "桃園臺產",
+    }
 
 
 def scrape_team_roster(
@@ -221,7 +211,7 @@ def scrape_team_roster(
 
 
 def scrape_all_teams(
-    prefixes: list[str] = None,
+    prefixes: list[str] | None = None,
     id_range: range = range(1, 31),
     delay: float = 1.0,
 ) -> pd.DataFrame:

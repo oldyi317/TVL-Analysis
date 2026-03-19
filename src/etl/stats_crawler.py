@@ -16,6 +16,10 @@ from pathlib import Path
 try:
     from src.utils.db_config import DB_PATH, get_connection
     from src.utils.logger import get_logger
+    from src.utils.constants import (
+        EXT_BASE, EXT_CUP_ID as CUP_ID, EXT_HEADERS as HEADERS,
+        SEASON_YEAR_MAP, DEFAULT_YEAR, EXT_TEAM_MAP,
+    )
 except ModuleNotFoundError:
     import logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -29,35 +33,19 @@ except ModuleNotFoundError:
             conn.execute("PRAGMA foreign_keys = ON")
         return conn
 
+    EXT_BASE = "http://114.35.229.141"
+    CUP_ID = 21
+    SEASON_YEAR_MAP = {11: 2025, 12: 2025}
+    DEFAULT_YEAR = 2026
+    HEADERS = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+    EXT_TEAM_MAP = {
+        1: (1, "M"), 2: (2, "M"), 3: (7, "M"), 4: (4, "M"), 5: (5, "M"),
+        6: (4, "F"), 7: (3, "F"), 8: (5, "F"), 9: (7, "F"),
+    }
+
 logger = get_logger(__name__)
-
-EXT_BASE = "http://114.35.229.141"
-CUP_ID = 21
-# 賽季跨年：11、12 月屬 2025 年，1~6 月屬 2026 年
-SEASON_YEAR_MAP = {11: 2025, 12: 2025}
-DEFAULT_YEAR = 2026
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
-}
-
-
-# 外部系統 TeamID -> 本地 DB (team_id, gender) 對照表
-EXT_TEAM_MAP = {
-    1: (1, "M"),   # 屏東台電(男)
-    2: (2, "M"),   # 雲林美津濃(男)
-    3: (7, "M"),   # 獅子王(男)
-    4: (4, "M"),   # 臺北國北獅(男)
-    5: (5, "M"),   # 桃園臺產(男)
-    6: (4, "F"),   # 高雄台電(女)
-    7: (3, "F"),   # 臺北鯨華(女)
-    8: (5, "F"),   # 新北中纖(女)
-    9: (7, "F"),   # 義力營造(女)
-}
 
 
 def normalize_name(name: str) -> str:
@@ -112,6 +100,12 @@ def init_stats_table(conn: sqlite3.Connection) -> None:
             FOREIGN KEY (player_id) REFERENCES players (player_id)
         )
     """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pms_player_id ON player_match_stats(player_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pms_match_date ON player_match_stats(match_date)"
+    )
     conn.commit()
     logger.info("player_match_stats 表已建立")
 
@@ -201,13 +195,36 @@ def fetch_player_stats(team_id: int, ext_player_id: int) -> list[dict]:
     return records
 
 
-def main():
+def get_existing_dates(conn: sqlite3.Connection, player_id: int) -> set[str]:
+    """取得某球員已存在的比賽日期集合（用於增量比對）。"""
+    rows = conn.execute(
+        "SELECT DISTINCT match_date FROM player_match_stats WHERE player_id = ?",
+        (player_id,),
+    ).fetchall()
+    return {r[0] for r in rows}
+
+
+def main(incremental: bool = False):
+    """
+    主流程：抓取所有球員逐場數據並寫入 DB。
+
+    Parameters
+    ----------
+    incremental : bool
+        True = 增量模式，只新增尚未存在的比賽紀錄（不清除既有資料）。
+        False = 全量模式，DROP + CREATE 事實表後重新抓取。
+    """
     conn = get_connection()
 
-    init_stats_table(conn)
+    if not incremental:
+        init_stats_table(conn)
+    else:
+        logger.info("增量模式：保留既有資料，僅新增缺少的比賽紀錄")
+
     name_map = build_name_to_pid(conn)
 
     total_inserted = 0
+    total_skipped = 0
     total_new_players = 0
 
     for ext_team_id in range(1, 10):
@@ -252,6 +269,15 @@ def main():
             if not records:
                 continue
 
+            # 增量模式：過濾已存在的日期
+            if incremental:
+                existing = get_existing_dates(conn, player_id)
+                new_records = [r for r in records if r["match_date"] not in existing]
+                total_skipped += len(records) - len(new_records)
+                records = new_records
+                if not records:
+                    continue
+
             # 批次寫入
             conn.executemany(
                 """INSERT INTO player_match_stats
@@ -290,8 +316,12 @@ def main():
         "SELECT COUNT(*) FROM players"
     ).fetchone()[0]
 
-    print(f"\n===== 寫入完成 =====")
+    mode_label = "增量" if incremental else "全量"
+    print(f"\n===== {mode_label}寫入完成 =====")
     print(f"player_match_stats 總筆數：{total_rows}")
+    print(f"本次新增：{total_inserted} 筆")
+    if incremental:
+        print(f"跳過（已存在）：{total_skipped} 筆")
     print(f"動態新增球員數：{total_new_players}")
     print(f"players 表總人數：{total_players}")
 
@@ -312,4 +342,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description="TVL 球員逐場數據爬蟲")
+    parser.add_argument(
+        "--incremental", "-i", action="store_true",
+        help="增量模式：僅新增尚未存在的比賽紀錄，不清除既有資料",
+    )
+    args = parser.parse_args()
+    main(incremental=args.incremental)
