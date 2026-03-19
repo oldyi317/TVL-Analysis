@@ -9,6 +9,18 @@ from pathlib import Path
 
 import re as _re
 
+# ── 在 matplotlib 匯入前清除舊字型快取，避免抓到缺少 CJK 字型的舊快取 ──
+def _purge_mpl_font_cache():
+    import os, glob
+    cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "matplotlib")
+    if os.path.isdir(cache_dir):
+        for f in glob.glob(os.path.join(cache_dir, "fontlist-*")):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+_purge_mpl_font_cache()
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,34 +38,33 @@ st.set_page_config(
 )
 
 # ── 全域中文字型設定（matplotlib） ────────────────────────────
-CJK_FONT_STACK = ["Noto Sans CJK TC", "Microsoft JhengHei", "SimHei", "DejaVu Sans"]
-
 @st.cache_resource
 def _init_matplotlib_fonts():
-    """掃描系統字型目錄，將 Noto CJK 字型檔明確註冊進 matplotlib。"""
+    """找到系統 Noto CJK 字型檔，註冊並回傳 (字型家族名稱, 字型檔路徑)。"""
     import matplotlib.font_manager as fm
-    from pathlib import Path as _P
-    font_dirs = [
-        _P("/usr/share/fonts"),
-        _P("/usr/local/share/fonts"),
-    ]
-    font_exts = {".ttf", ".otf", ".ttc"}
-    added = 0
-    for d in font_dirs:
-        if not d.exists():
-            continue
-        for f in d.rglob("*"):
-            if f.suffix.lower() in font_exts and "noto" in f.name.lower():
-                try:
-                    fm.fontManager.addfont(str(f))
-                    added += 1
-                except Exception:
-                    pass
-    # 清除 matplotlib 字型比對快取，使新字型立即生效
-    if hasattr(fm.fontManager, '_findfont_cache'):
-        fm.fontManager._findfont_cache.clear()
+    import os
 
-_init_matplotlib_fonts()
+    # 搜尋系統已安裝的 Noto CJK 字型檔
+    font_path = None
+    for root, _dirs, files in os.walk("/usr/share/fonts"):
+        for f in files:
+            low = f.lower()
+            if "notosanscjk" in low.replace("-", "").replace("_", ""):
+                font_path = os.path.join(root, f)
+                break
+        if font_path:
+            break
+
+    if font_path:
+        fm.fontManager.addfont(font_path)
+        prop = fm.FontProperties(fname=font_path)
+        return prop.get_name(), font_path
+    return None, None
+
+_CJK_FONT_NAME, _CJK_FONT_PATH = _init_matplotlib_fonts()
+CJK_FONT_STACK = (
+    [_CJK_FONT_NAME] if _CJK_FONT_NAME else []
+) + ["Noto Sans CJK TC", "Microsoft JhengHei", "SimHei", "DejaVu Sans"]
 matplotlib.rcParams["font.sans-serif"] = CJK_FONT_STACK
 matplotlib.rcParams["axes.unicode_minus"] = False
 
@@ -1576,7 +1587,8 @@ with tab5:
 
         # 強制所有文字元素使用中文字型（SHAP 內部不走 rcParams）
         from matplotlib.font_manager import FontProperties
-        _cjk_fp = FontProperties(family=CJK_FONT_STACK)
+        _cjk_fp = (FontProperties(fname=_CJK_FONT_PATH)
+                    if _CJK_FONT_PATH else FontProperties(family=CJK_FONT_STACK))
         for text_obj in fig_shap.findobj(matplotlib.text.Text):
             text_obj.set_fontproperties(_cjk_fp)
 
