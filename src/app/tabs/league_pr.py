@@ -152,6 +152,12 @@ def render(ctx: dict) -> None:
         "is_selected": False,
     }
 
+    # 高對比色盤（適合淺色背景）
+    TEAM_COLORS = [
+        "#E63946", "#1D3557", "#2A9D8F", "#E9C46A", "#F4A261",
+        "#264653", "#A8DADC", "#457B9D", "#6A0572", "#D62828",
+    ]
+
     fig_scatter = px.scatter(
         pos_df,
         x=x_col,
@@ -167,26 +173,44 @@ def render(ctx: dict) -> None:
             "team_name": "球隊",
             "n_games": "出賽場次",
         },
-        size_max=35,
+        size_max=40,
+        color_discrete_sequence=TEAM_COLORS,
     )
+
+    # 氣泡加深邊框，更容易辨識
+    fig_scatter.update_traces(
+        marker=dict(opacity=0.85, line=dict(width=1.5, color="white")),
+    )
+
+    # 在每個氣泡旁邊顯示球員名稱
+    fig_scatter.update_traces(
+        textposition="top center",
+        textfont=dict(size=11),
+    )
+    for trace in fig_scatter.data:
+        trace.text = pos_df.loc[pos_df["team_name"] == trace.name, "name"].tolist()
+        trace.textposition = "top center"
+        trace.mode = "markers+text"
 
     fig_scatter.add_hline(
         y=med_y,
         line_dash="dash",
-        line_color="gray",
-        line_width=1,
+        line_color="rgba(0,0,0,0.3)",
+        line_width=1.5,
         annotation_text=f"中位數 {med_y:.1f}",
         annotation_position="top left",
-        annotation_font_size=11,
+        annotation_font_size=12,
+        annotation_font_color="#555",
     )
     fig_scatter.add_vline(
         x=med_x,
         line_dash="dash",
-        line_color="gray",
-        line_width=1,
+        line_color="rgba(0,0,0,0.3)",
+        line_width=1.5,
         annotation_text=f"中位數 {med_x:.1f}",
         annotation_position="top right",
-        annotation_font_size=11,
+        annotation_font_size=12,
+        annotation_font_color="#555",
     )
 
     x_range = pos_df[x_col].max() - pos_df[x_col].min()
@@ -202,10 +226,10 @@ def render(ctx: dict) -> None:
             fig_scatter.add_annotation(
                 x=qx,
                 y=qy,
-                text=text,
+                text=f"<b>{text}</b>",
                 showarrow=False,
-                font=dict(size=11, color=color),
-                opacity=0.6,
+                font=dict(size=14, color=color),
+                opacity=0.8,
             )
 
     if not me.empty and me.iloc[0]["position"] == selected_pos:
@@ -213,16 +237,24 @@ def render(ctx: dict) -> None:
         fig_scatter.add_annotation(
             x=me_r[x_col],
             y=me_r[y_col],
-            text=f"\u3000★ {player_name}",
-            showarrow=False,
-            font=dict(size=13, color="#FF6B35", family="Arial Black"),
+            text=f"  ★ {player_name}",
+            showarrow=True,
+            arrowhead=2,
+            arrowsize=1,
+            arrowcolor="#FF6B35",
+            font=dict(size=14, color="#FF6B35", family="Arial Black"),
             xanchor="left",
+            ax=30,
+            ay=-25,
         )
 
     fig_scatter.update_layout(
-        height=560,
+        height=620,
         margin=dict(l=50, r=50, t=30, b=50),
-        legend=dict(title="球隊"),
+        legend=dict(title="球隊", font=dict(size=13)),
+        xaxis=dict(title=dict(font=dict(size=14)), tickfont=dict(size=12)),
+        yaxis=dict(title=dict(font=dict(size=14)), tickfont=dict(size=12)),
+        plot_bgcolor="rgba(248,249,250,1)",
     )
     st.plotly_chart(fig_scatter, use_container_width=True)
 
