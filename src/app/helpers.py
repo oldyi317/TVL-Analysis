@@ -137,15 +137,20 @@ def find_match_id(match_index: list[dict], date: str, opponent: str) -> str | No
 AXIS_OPTIONS = {
     "總攻擊次數":          ("atk_tot",      "總攻擊次數"),
     "攻擊成功率 (ASR)":    ("asr",          "攻擊成功率 (%)"),
+    "攔網得分":            ("blk_pts",      "攔網得分"),
+    "局均攔網得分 (BLK/Set)": ("blk_per_set", "局均攔網得分"),
     "接發球總數":          ("rcv_tot",      "接發球總數"),
     "接發球到位率 (GP%)":  ("gp_pct",       "接發球到位率 (%)"),
     "防守起球總數":        ("dig_tot",      "防守起球總數"),
     "防守起球率 (DIG%)":   ("dig_pct",      "防守起球率 (%)"),
     "總防守負擔":          ("def_load",     "總防守負擔 (接發+防守)"),
     "綜合防守到位率 (DEF%)": ("def_pct",    "綜合防守到位率 (%)"),
+    "發球得分":            ("srv_pts",      "發球得分"),
+    "發球破壞率 (ACE%)":   ("ace_pct",      "發球破壞率 (%)"),
     "總舉球次數":          ("set_tot",      "總舉球次數"),
     "舉球到位率 (SET%)":   ("set_pct",      "舉球到位率 (%)"),
-    "局均攔網得分 (BLK/Set)": ("blk_per_set", "局均攔網得分"),
+    "總得分":              ("total_points", "總得分"),
+    "場均得分 (PPG)":      ("ppg",          "場均得分"),
 }
 AXIS_NAMES = list(AXIS_OPTIONS.keys())
 
