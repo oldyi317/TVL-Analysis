@@ -26,11 +26,16 @@ st.set_page_config(
 )
 
 # ── 全域中文字型設定（matplotlib） ────────────────────────────
-import matplotlib.font_manager as _fm
-_fm._load_fontmanager(try_read_cache=False)  # 重建字型快取，確保新安裝的字型被偵測
-matplotlib.rcParams["font.sans-serif"] = [
-    "Noto Sans CJK TC", "Microsoft JhengHei", "SimHei", "DejaVu Sans",
-]
+CJK_FONT_STACK = ["Noto Sans CJK TC", "Microsoft JhengHei", "SimHei", "DejaVu Sans"]
+
+@st.cache_resource
+def _init_matplotlib_fonts():
+    """重建字型快取（僅執行一次），確保系統新安裝的中文字型被偵測。"""
+    import matplotlib.font_manager as fm
+    fm._load_fontmanager(try_read_cache=False)
+
+_init_matplotlib_fonts()
+matplotlib.rcParams["font.sans-serif"] = CJK_FONT_STACK
 matplotlib.rcParams["axes.unicode_minus"] = False
 
 DB_PATH = Path(__file__).resolve().parents[2] / "data" / "db" / "tvl_database.db"
@@ -1511,12 +1516,6 @@ with tab5:
     # ── SHAP 戰術診斷 ────────────────────────────────────────
     if st.button("產生戰術診斷圖 (SHAP Waterfall)", type="primary"):
         import shap as _shap
-
-        # 中文字型設定，避免 SHAP matplotlib 圖表亂碼
-        matplotlib.rcParams["font.sans-serif"] = [
-            "Noto Sans CJK TC", "Microsoft JhengHei", "SimHei", "DejaVu Sans",
-        ]
-        matplotlib.rcParams["axes.unicode_minus"] = False
 
         # 特徵中文名稱
         FEAT_LABELS_MAP = {
