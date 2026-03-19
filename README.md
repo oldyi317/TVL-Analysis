@@ -12,7 +12,7 @@
 - **AI 戰報**：透過 Claude API 自動產生每周結構化中文戰報
 
 ## 儀表板分頁
-
+> 🔗 **Live Demo**: [點此查看互動儀表板](https://tvl-analysis-jggmoeky3gnjrdbcc4kzrc.streamlit.app/) 
 | 分頁 | 功能 |
 |------|------|
 | 球員個人深度 | KPI 卡片、雷達圖、逐場趨勢（依位置自動調整） |
