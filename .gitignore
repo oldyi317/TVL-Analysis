@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.env
+data/raw/*
+data/processed/*
+data/db/*
+!data/**/.gitkeep
+.DS_Store
+.claude/
+.history/
