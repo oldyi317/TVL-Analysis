@@ -1726,7 +1726,7 @@ with tab6:
                 client = anthropic.Anthropic(api_key=_api_key)
                 message = client.messages.create(
                     model="claude-sonnet-4-6",
-                    max_tokens=4096,
+                    max_tokens=16384,
                     system=REPORT_SYSTEM_PROMPT,
                     messages=[
                         {"role": "user", "content": _build_user_prompt(weekly_data)}
