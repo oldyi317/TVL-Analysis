@@ -1,9 +1,11 @@
+anthropic
 beautifulsoup4
 joblib
 matplotlib
 numpy
 pandas
 plotly
+python-dotenv
 requests
 scikit-learn
 shap
