@@ -189,87 +189,62 @@ def render(ctx: dict) -> None:
             "team_name": "球隊",
             "n_games": "出賽場次",
         },
-        size_max=40,
+        size_max=30,
         color_discrete_sequence=TEAM_COLORS,
     )
 
-    # 氣泡加深邊框，更容易辨識
+    # 氣泡加深邊框，更容易辨識；預設只顯示 hover，不加文字標籤
     fig_scatter.update_traces(
         marker=dict(opacity=0.85, line=dict(width=1.5, color="white")),
+        mode="markers",  # 不在每個氣泡上加文字，避免手機重疊
     )
 
-    # 在每個氣泡旁邊顯示球員名稱
-    fig_scatter.update_traces(
-        textposition="top center",
-        textfont=dict(size=11),
-    )
-    for trace in fig_scatter.data:
-        trace.text = pos_df.loc[pos_df["team_name"] == trace.name, "name"].tolist()
-        trace.textposition = "top center"
-        trace.mode = "markers+text"
-
+    # 中位線（不加 annotation 文字，改用 layout annotation 避免遮擋）
     fig_scatter.add_hline(
-        y=med_y,
-        line_dash="dash",
-        line_color="rgba(0,0,0,0.3)",
-        line_width=1.5,
-        annotation_text=f"中位數 {med_y:.1f}",
-        annotation_position="top left",
-        annotation_font_size=12,
-        annotation_font_color="#555",
+        y=med_y, line_dash="dash", line_color="rgba(0,0,0,0.25)", line_width=1,
     )
     fig_scatter.add_vline(
-        x=med_x,
-        line_dash="dash",
-        line_color="rgba(0,0,0,0.3)",
-        line_width=1.5,
-        annotation_text=f"中位數 {med_x:.1f}",
-        annotation_position="top right",
-        annotation_font_size=12,
-        annotation_font_color="#555",
+        x=med_x, line_dash="dash", line_color="rgba(0,0,0,0.25)", line_width=1,
     )
 
+    # 象限標籤（縮小字體，使用 paper 座標避免被氣泡遮住）
     x_range = pos_df[x_col].max() - pos_df[x_col].min()
     y_range = pos_df[y_col].max() - pos_df[y_col].min()
     if x_range > 0 and y_range > 0:
         quadrant_labels = [
             ("低量高質", med_x - x_range * 0.3, med_y + y_range * 0.3, "#2ECC71"),
-            ("★ 頂尖球員", med_x + x_range * 0.3, med_y + y_range * 0.3, "#E74C3C"),
+            ("★ 頂尖", med_x + x_range * 0.3, med_y + y_range * 0.3, "#E74C3C"),
             ("低量低質", med_x - x_range * 0.3, med_y - y_range * 0.3, "#95A5A6"),
             ("高量低質", med_x + x_range * 0.3, med_y - y_range * 0.3, "#F39C12"),
         ]
         for text, qx, qy, color in quadrant_labels:
             fig_scatter.add_annotation(
-                x=qx,
-                y=qy,
-                text=f"<b>{text}</b>",
-                showarrow=False,
-                font=dict(size=14, color=color),
-                opacity=0.8,
+                x=qx, y=qy,
+                text=f"<b>{text}</b>", showarrow=False,
+                font=dict(size=11, color=color), opacity=0.6,
             )
 
+    # 只標記選中球員（避免全部文字擠在一起）
     if not me.empty and me.iloc[0]["position"] == selected_pos:
         me_r = me.iloc[0]
         fig_scatter.add_annotation(
-            x=me_r[x_col],
-            y=me_r[y_col],
-            text=f"  ★ {player_name}",
-            showarrow=True,
-            arrowhead=2,
-            arrowsize=1,
-            arrowcolor="#FF6B35",
-            font=dict(size=14, color="#FF6B35", family="Arial Black"),
-            xanchor="left",
-            ax=30,
-            ay=-25,
+            x=me_r[x_col], y=me_r[y_col],
+            text=f"★ {player_name}",
+            showarrow=True, arrowhead=2, arrowsize=1, arrowcolor="#FF6B35",
+            font=dict(size=12, color="#FF6B35", family="Arial Black"),
+            xanchor="left", ax=20, ay=-20,
         )
 
     fig_scatter.update_layout(
-        height=550,
-        margin=compact_margin(l=30, r=30, t=30, b=40),
-        legend=dict(title="球隊", font=dict(size=13)),
-        xaxis=dict(title=dict(font=dict(size=14)), tickfont=dict(size=12)),
-        yaxis=dict(title=dict(font=dict(size=14)), tickfont=dict(size=12)),
+        height=500,
+        margin=compact_margin(l=40, r=10, t=30, b=60),
+        # 圖例移到底部水平排列，不佔右側空間
+        legend=dict(
+            title="", font=dict(size=11),
+            orientation="h", yanchor="top", y=-0.12, xanchor="center", x=0.5,
+        ),
+        xaxis=dict(title=dict(font=dict(size=12)), tickfont=dict(size=10)),
+        yaxis=dict(title=dict(font=dict(size=12)), tickfont=dict(size=10)),
         plot_bgcolor="rgba(248,249,250,1)",
     )
     st.plotly_chart(fig_scatter, use_container_width=True, config=responsive_chart_config())
