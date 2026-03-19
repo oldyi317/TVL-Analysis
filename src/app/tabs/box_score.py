@@ -13,7 +13,7 @@ import streamlit as st
 from src.app.helpers import (
     load_data, enrich_box_score, vec_pct,
     fetch_match_index, fetch_set_scores, find_match_id,
-    OPP_SHORT_TO_TEAM,
+    OPP_SHORT_TO_TEAM, responsive_chart_config, compact_margin,
 )
 
 
@@ -210,7 +210,7 @@ def render(ctx: dict):
             a_display = _format_box_score(a_enriched)
             st.dataframe(
                 _style_box_score(a_display),
-                use_container_width=True, hide_index=True, height=450,
+                use_container_width=True, hide_index=True, height=380,
             )
             st.caption(f"團隊總得分：**{int(team_a_df['total_points'].sum())}**")
             st.download_button(
@@ -229,7 +229,7 @@ def render(ctx: dict):
             b_display = _format_box_score(b_enriched)
             st.dataframe(
                 _style_box_score(b_display),
-                use_container_width=True, hide_index=True, height=450,
+                use_container_width=True, hide_index=True, height=380,
             )
             st.caption(f"團隊總得分：**{int(team_b_df['total_points'].sum())}**")
             st.download_button(
@@ -306,8 +306,8 @@ def render(ctx: dict):
             fig_rank.update_layout(
                 barmode="group",
                 height=max(350, len(top_n) * 35 + 100),
-                margin=dict(l=100, r=50, t=30, b=50),
+                margin=compact_margin(l=80, r=20, t=30, b=40),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
                 xaxis_title=rank_label, yaxis_title="",
             )
-            st.plotly_chart(fig_rank, use_container_width=True)
+            st.plotly_chart(fig_rank, use_container_width=True, config=responsive_chart_config())

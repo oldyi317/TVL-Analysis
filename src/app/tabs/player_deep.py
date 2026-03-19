@@ -5,7 +5,7 @@ Tab 1：球員個人深度分析（KPI + 雷達圖 + 逐場趨勢）
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.app.helpers import load_data, safe_pct, vec_pct
+from src.app.helpers import load_data, safe_pct, vec_pct, responsive_chart_config, compact_margin
 
 # 樣本數門檻：比率型指標分母 < 10 → N/A
 MIN_DENOM = 10
@@ -234,9 +234,9 @@ def render(ctx: dict):
             polar=dict(radialaxis=dict(visible=True, range=[0, 105], showticklabels=False)),
             showlegend=True,
             legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5),
-            height=480, margin=dict(l=60, r=60, t=40, b=60),
+            height=420, margin=compact_margin(l=30, r=30, t=30, b=50),
         )
-        st.plotly_chart(fig_radar, use_container_width=True)
+        st.plotly_chart(fig_radar, use_container_width=True, config=responsive_chart_config())
 
     # ── 逐場趨勢圖 ────────────────────────────────────────────
     POS_TREND_MAP = {
@@ -286,9 +286,9 @@ def render(ctx: dict):
             yaxis=dict(title=trend_label, side="left", rangemode="tozero"),
             yaxis2=dict(title=bar_label, side="right", overlaying="y", rangemode="tozero"),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
-            height=480, margin=dict(l=50, r=50, t=50, b=80), bargap=0.3,
+            height=420, margin=compact_margin(l=40, r=40, t=40, b=70), bargap=0.3,
         )
-        st.plotly_chart(fig_trend, use_container_width=True)
+        st.plotly_chart(fig_trend, use_container_width=True, config=responsive_chart_config())
 
     with st.expander("📊 完整比賽紀錄", expanded=False):
         display_cols = {

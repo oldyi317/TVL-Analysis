@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from src.app.helpers import load_data, safe_pct, vec_pct
+from src.app.helpers import load_data, safe_pct, vec_pct, responsive_chart_config, compact_margin
 
 
 def render(ctx: dict):
@@ -81,7 +81,7 @@ def render(ctx: dict):
     if valid_gradient:
         styled = styled.background_gradient(cmap="YlGnBu", subset=valid_gradient)
 
-    st.dataframe(styled, use_container_width=True, hide_index=True, height=450)
+    st.dataframe(styled, use_container_width=True, hide_index=True, height=400)
 
     st.download_button(
         label="📥 下載逐場數據 CSV",
@@ -142,8 +142,8 @@ def render(ctx: dict):
     )
     fig_box.update_layout(
         showlegend=False,
-        height=480,
-        margin=dict(l=50, r=50, t=30, b=50),
+        height=420,
+        margin=compact_margin(l=30, r=30, t=30, b=40),
         xaxis_title="對手",
         yaxis_title=selected_metric,
     )
@@ -152,7 +152,7 @@ def render(ctx: dict):
             f"對手: %{{x}}<br>{selected_metric}: %{{y:.1f}}<extra></extra>"
         ),
     )
-    st.plotly_chart(fig_box, use_container_width=True)
+    st.plotly_chart(fig_box, use_container_width=True, config=responsive_chart_config())
 
     # ── 對手績效摘要表 ───────────────────────────────────────
     with st.expander("📊 對戰對手績效摘要", expanded=False):

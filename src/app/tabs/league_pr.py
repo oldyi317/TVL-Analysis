@@ -10,6 +10,8 @@ from src.app.helpers import (
     AXIS_OPTIONS,
     AXIS_NAMES,
     POS_DEFAULTS,
+    responsive_chart_config,
+    compact_margin,
 )
 
 
@@ -263,14 +265,14 @@ def render(ctx: dict) -> None:
         )
 
     fig_scatter.update_layout(
-        height=620,
-        margin=dict(l=50, r=50, t=30, b=50),
+        height=550,
+        margin=compact_margin(l=30, r=30, t=30, b=40),
         legend=dict(title="球隊", font=dict(size=13)),
         xaxis=dict(title=dict(font=dict(size=14)), tickfont=dict(size=12)),
         yaxis=dict(title=dict(font=dict(size=14)), tickfont=dict(size=12)),
         plot_bgcolor="rgba(248,249,250,1)",
     )
-    st.plotly_chart(fig_scatter, use_container_width=True)
+    st.plotly_chart(fig_scatter, use_container_width=True, config=responsive_chart_config())
 
     with st.expander(f"\U0001f4cb {selected_pos} 完整排行數據", expanded=False):
         rank_cols = {

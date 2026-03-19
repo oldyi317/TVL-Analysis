@@ -13,6 +13,57 @@ import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 
+
+# ── 手機 RWD 支援 ────────────────────────────────────────────
+
+MOBILE_CSS = """
+<style>
+@media (max-width: 768px) {
+    /* st.columns 在手機上堆疊為單欄 */
+    [data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+    }
+    [data-testid="stHorizontalBlock"] > div {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+    /* 減少左右 padding */
+    .main .block-container {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    /* tab 文字縮小，避免換行 */
+    button[data-baseweb="tab"] {
+        font-size: 0.75rem !important;
+        padding-left: 0.4rem !important;
+        padding-right: 0.4rem !important;
+    }
+    /* metric 卡片文字縮小 */
+    [data-testid="stMetric"] label {
+        font-size: 0.7rem !important;
+    }
+    [data-testid="stMetric"] [data-testid="stMetricValue"] {
+        font-size: 1.2rem !important;
+    }
+}
+</style>
+"""
+
+
+def inject_mobile_css():
+    """注入手機 RWD CSS，只需在 main.py 呼叫一次。"""
+    st.markdown(MOBILE_CSS, unsafe_allow_html=True)
+
+
+def responsive_chart_config() -> dict:
+    """Plotly 圖表共用 config，啟用 responsive 模式。"""
+    return {"responsive": True, "displayModeBar": False}
+
+
+def compact_margin(l=20, r=20, t=30, b=40) -> dict:
+    """回傳較緊湊的 Plotly margin，適合手機。"""
+    return dict(l=l, r=r, t=t, b=b)
+
 try:
     from src.utils.constants import (
         EXT_BASE, EXT_CUP_ID, EXT_HEADERS, SEASON_YEAR_MAP, OPP_SHORT_TO_TEAM,

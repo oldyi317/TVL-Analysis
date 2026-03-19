@@ -66,7 +66,10 @@ matplotlib.rcParams["font.sans-serif"] = CJK_FONT_STACK
 matplotlib.rcParams["axes.unicode_minus"] = False
 
 # ── 共用函式（從 helpers 匯入） ──────────────────────────────
-from src.app.helpers import load_data
+from src.app.helpers import load_data, inject_mobile_css
+
+# ── 注入手機 RWD CSS ─────────────────────────────────────────
+inject_mobile_css()
 
 # ── Tab 模組（延遲匯入各分頁） ───────────────────────────────
 from src.app.tabs import player_deep, league_pr, match_trend, box_score, prediction, weekly_report_tab
