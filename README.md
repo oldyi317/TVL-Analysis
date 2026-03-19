@@ -104,7 +104,7 @@ streamlit run src/app/main.py
 
 ### AI 戰報（選用）
 
-在 `.env` 中設定 `GOOGLE_API_KEY=...`（從 [Google AI Studio](https://aistudio.google.com/) 免費取得），即可在儀表板「每周戰報」分頁使用 Gemini 2.0 Flash 自動產生戰報。
+在 `.env` 中設定 `GEMINI_API_KEY=...`（從 [Google AI Studio](https://aistudio.google.com/) 免費取得），即可在儀表板「每周戰報」分頁使用 Gemini 2.0 Flash 自動產生戰報。
 
 ## 位置代號對照
 
