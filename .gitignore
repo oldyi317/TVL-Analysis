@@ -5,6 +5,7 @@ __pycache__/
 data/raw/*
 data/processed/*
 data/db/*
+!data/db/*.db
 !data/**/.gitkeep
 .DS_Store
 .claude/
