@@ -132,3 +132,7 @@ streamlit run src/app/main.py
 - 日期統一為 `YYYY-MM-DD` 格式
 - 數值欄位去除單位字串，轉為 Float/Integer
 - 比率型指標分母 < 10 時顯示 N/A（避免小樣本偏差）
+
+## 開發者
+
+**小易** — 數據工程與儀表板開發
