@@ -149,7 +149,13 @@ def render(ctx, cjk_font_path=None, cjk_font_stack=None):
             d_min, d_max = _data_ranges[key]
             min_v = min(min_v, d_min)
             max_v = max(max_v, d_max)
-            default_v = max(min_v, min(default_v, max_v))
+        # 對齊 step 並確保 default 在範圍內
+        import math
+        min_v = round(math.floor(min_v / step) * step, 4)
+        max_v = round(math.ceil(max_v / step) * step, 4)
+        default_v = round(round(default_v / step) * step, 4)
+        default_v = float(max(min_v, min(default_v, max_v)))
+        min_v, max_v, step = float(min_v), float(max_v), float(step)
         with cols[idx % 2]:
             input_values[key] = st.slider(
                 label, min_value=min_v, max_value=max_v,
