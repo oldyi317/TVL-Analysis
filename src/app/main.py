@@ -77,7 +77,7 @@ from src.app.tabs import player_deep, league_pr, match_trend, box_score, predict
 
 # ── 側邊欄篩選器（三層連動） ──────────────────────────────────
 
-st.sidebar.title("🏐 TVL 進階數據儀表板")
+st.sidebar.title("TVL 進階數據儀表板")
 st.sidebar.markdown("---")
 
 gender = st.sidebar.selectbox("選擇組別", ["男子組", "女子組"])
@@ -117,7 +117,7 @@ player_position = players_df.iloc[selected_idx].get("position", None)
 # ── 頁面標題 ──────────────────────────────────────────────────
 
 pos_display = f"（{player_position}）" if player_position else ""
-st.title(f"🏐 {player_name}{pos_display}　{gender}・{team_name}")
+st.title(f"{player_name}{pos_display}　{gender}・{team_name}")
 st.markdown("---")
 
 # ── 共用 Context（傳遞給各 Tab 模組） ────────────────────────

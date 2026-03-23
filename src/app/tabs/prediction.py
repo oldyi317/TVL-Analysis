@@ -9,7 +9,50 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 
-from src.app.helpers import MODEL_PATH
+from src.app.helpers import MODEL_PATH, load_data, vec_pct
+
+
+# ---------------------------------------------------------------------------
+# 從資料庫取得各指標的實際範圍
+# ---------------------------------------------------------------------------
+@st.cache_data
+def _get_data_ranges(gender_code: str) -> dict[str, tuple[float, float]]:
+    """從聯盟聚合數據計算各滑桿指標的實際 (min, max)，加 10% 緩衝。"""
+    try:
+        from src.app.helpers import get_league_aggregated_stats
+        df = get_league_aggregated_stats(gender_code)
+        if df.empty:
+            return {}
+
+        def _range(col):
+            lo, hi = float(df[col].min()), float(df[col].max())
+            buf = (hi - lo) * 0.1 if hi > lo else 1.0
+            return (round(max(0, lo - buf), 1), round(hi + buf, 1))
+
+        ranges = {}
+        if "asr" in df.columns:
+            ranges["ASR"] = _range("asr")
+            ranges["ASR_roll3"] = _range("asr")
+            ranges["ASR_roll5"] = _range("asr")
+        if "gp_pct" in df.columns:
+            ranges["GP_pct"] = _range("gp_pct")
+            ranges["GP_pct_roll3"] = _range("gp_pct")
+            ranges["GP_pct_roll5"] = _range("gp_pct")
+        if "dig_pct" in df.columns:
+            ranges["DIG_pct"] = _range("dig_pct")
+            ranges["DIG_pct_roll3"] = _range("dig_pct")
+            ranges["DIG_pct_roll5"] = _range("dig_pct")
+        if "blk_per_set" in df.columns:
+            ranges["BLK_per_set"] = _range("blk_per_set")
+            ranges["BLK_per_set_roll3"] = _range("blk_per_set")
+            ranges["BLK_per_set_roll5"] = _range("blk_per_set")
+        if "ace_pct" in df.columns:
+            ranges["ACE_pct"] = _range("ace_pct")
+            ranges["ACE_pct_roll3"] = _range("ace_pct")
+            ranges["ACE_pct_roll5"] = _range("ace_pct")
+        return ranges
+    except Exception:
+        return {}
 
 
 # ---------------------------------------------------------------------------
@@ -92,11 +135,21 @@ def render(ctx, cjk_font_path=None, cjk_font_stack=None):
 
     st.caption(f"模型版本：{version_label}｜特徵數：{n_features}")
 
-    # ------ 動態 Slider UI ------
+    # ------ 動態 Slider UI（從實際資料取得範圍） ------
     st.subheader("調整比賽指標")
+
+    # 嘗試從資料庫取得各指標的實際範圍，給予 10% 緩衝
+    _data_ranges = _get_data_ranges(ctx.get("gender_code", "M"))
+
     input_values = {}
     cols = st.columns(2)
     for idx, (key, label, min_v, max_v, default_v, step) in enumerate(slider_cfg):
+        # 若有實際資料範圍，使用資料驅動的範圍
+        if key in _data_ranges:
+            d_min, d_max = _data_ranges[key]
+            min_v = min(min_v, d_min)
+            max_v = max(max_v, d_max)
+            default_v = max(min_v, min(default_v, max_v))
         with cols[idx % 2]:
             input_values[key] = st.slider(
                 label, min_value=min_v, max_value=max_v,
@@ -113,18 +166,18 @@ def render(ctx, cjk_font_path=None, cjk_font_stack=None):
     st.subheader("預測結果")
 
     if win_prob >= 60:
-        color, verdict = "green", "勝面較大"
+        color, icon, verdict = "green", "▲", "勝面較大"
     elif win_prob >= 40:
-        color, verdict = "orange", "勝負五五開"
+        color, icon, verdict = "orange", "●", "勝負五五開"
     else:
-        color, verdict = "red", "勝面較小"
+        color, icon, verdict = "red", "▼", "勝面較小"
 
     col_left, col_right = st.columns([1, 2])
     with col_left:
         st.metric("預測勝率", f"{win_prob:.1f}%")
     with col_right:
         st.markdown(
-            f"<h3 style='color:{color};'>{verdict}</h3>",
+            f"<h3 style='color:{color};'>{icon} {verdict}</h3>",
             unsafe_allow_html=True,
         )
 

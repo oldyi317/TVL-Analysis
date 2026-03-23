@@ -39,7 +39,7 @@ def render(ctx: dict):
     )
 
     # ── 熱力資料表 ────────────────────────────────────────────
-    st.subheader("📋 逐場數據明細（條件格式化）")
+    st.subheader("逐場數據明細（條件格式化）")
 
     heat_cols = {
         "match_date": "日期",
@@ -84,7 +84,7 @@ def render(ctx: dict):
     st.dataframe(styled, use_container_width=True, hide_index=True, height=400)
 
     st.download_button(
-        label="📥 下載逐場數據 CSV",
+        label="下載逐場數據 CSV",
         data=heat_df.to_csv(index=False).encode("utf-8-sig"),
         file_name=f"{player_name}_逐場數據.csv",
         mime="text/csv",
@@ -93,7 +93,7 @@ def render(ctx: dict):
     st.markdown("---")
 
     # ── 對戰對手分佈圖 ───────────────────────────────────────
-    st.subheader("🥊 對戰對手績效分佈")
+    st.subheader("對戰對手績效分佈")
 
     # 依位置提供不同的預設指標選項
     metric_options = {
@@ -155,7 +155,7 @@ def render(ctx: dict):
     st.plotly_chart(fig_box, use_container_width=True, config=responsive_chart_config())
 
     # ── 對手績效摘要表 ───────────────────────────────────────
-    with st.expander("📊 對戰對手績效摘要", expanded=False):
+    with st.expander("對戰對手績效摘要", expanded=False):
         opp_summary = (
             md.groupby("opponent")
             .agg(

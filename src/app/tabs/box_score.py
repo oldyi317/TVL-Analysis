@@ -197,7 +197,7 @@ def render(ctx: dict):
         )
 
     # ── 雙方 Box Score 並排 ───────────────────────────────────
-    st.subheader(f"📊 {sel_date}　{bs_team_name} vs {sel_opponent}")
+    st.subheader(f"{sel_date}　{bs_team_name} vs {sel_opponent}")
 
     col_a, col_b = st.columns(2)
 
@@ -214,7 +214,7 @@ def render(ctx: dict):
             )
             st.caption(f"團隊總得分：**{int(team_a_df['total_points'].sum())}**")
             st.download_button(
-                label="📥 下載 CSV",
+                label="下載 CSV",
                 data=a_display.to_csv(index=False).encode("utf-8-sig"),
                 file_name=f"{bs_team_name}_{sel_date}_box_score.csv",
                 mime="text/csv", key="dl_team_a",
@@ -233,7 +233,7 @@ def render(ctx: dict):
             )
             st.caption(f"團隊總得分：**{int(team_b_df['total_points'].sum())}**")
             st.download_button(
-                label="📥 下載 CSV",
+                label="下載 CSV",
                 data=b_display.to_csv(index=False).encode("utf-8-sig"),
                 file_name=f"{sel_opponent}_{sel_date}_box_score.csv",
                 mime="text/csv", key="dl_team_b",
@@ -277,7 +277,7 @@ def render(ctx: dict):
             top_n = combined.nlargest(10, rank_col).sort_values(rank_col, ascending=True)
 
             title_suffix = "（雙方 Top 10）" if has_both else f"（{parts[0].iloc[0]['team']}）"
-            st.subheader(f"🏆 {rank_label}排行 {title_suffix}")
+            st.subheader(f"{rank_label}排行 {title_suffix}")
 
             fig_rank = go.Figure()
             team_colors = {bs_team_name: "#636EFA", sel_opponent: "#EF553B"}

@@ -52,7 +52,10 @@ def _call_gemini(api_key: str, user_prompt: str) -> str:
 
     client = genai.Client(api_key=api_key)
 
+    status_placeholder = st.empty()
+
     for model in GEMINI_MODELS:
+        status_placeholder.caption(f"嘗試模型：{model}...")
         for attempt in range(2):  # 每個模型最多試 2 次
             try:
                 response = client.models.generate_content(
@@ -64,15 +67,19 @@ def _call_gemini(api_key: str, user_prompt: str) -> str:
                         "temperature": 0.7,
                     },
                 )
+                status_placeholder.caption(f"使用模型：{model}")
                 return response.text
             except Exception as e:
                 if "429" in str(e) and attempt == 0:
-                    time.sleep(30)  # 速率限制，等 30 秒重試
+                    status_placeholder.caption(f"模型 {model} 速率限制，30 秒後重試...")
+                    time.sleep(30)
                     continue
                 if "429" in str(e):
+                    status_placeholder.caption(f"模型 {model} 額度已滿，切換下一個...")
                     break  # 這個模型額度用完，換下一個
                 raise  # 其他錯誤直接拋出
 
+    status_placeholder.empty()
     raise RuntimeError("所有 Gemini 模型額度已用完，請稍後再試。")
 
 

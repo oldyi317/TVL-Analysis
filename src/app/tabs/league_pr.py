@@ -138,7 +138,7 @@ def render(ctx: dict) -> None:
     x_col, x_label = AXIS_OPTIONS[x_choice]
     y_col, y_label = AXIS_OPTIONS[y_choice]
 
-    st.subheader(f"\U0001f525 {selected_pos} 象限分析：{x_choice} vs {y_choice}")
+    st.subheader(f"{selected_pos} 象限分析：{x_choice} vs {y_choice}")
 
     pos_df["is_selected"] = pos_df["player_id"] == player_id
 
@@ -168,10 +168,10 @@ def render(ctx: dict) -> None:
         "is_selected": False,
     }
 
-    # 高對比色盤（適合淺色背景）
+    # 色盲友善色盤（基於 Wong 2011 / Plotly Safe）
     TEAM_COLORS = [
-        "#E63946", "#1D3557", "#2A9D8F", "#E9C46A", "#F4A261",
-        "#264653", "#A8DADC", "#457B9D", "#6A0572", "#D62828",
+        "#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E",
+        "#E6AB02", "#A6761D", "#377EB8", "#984EA3", "#4DAF4A",
     ]
 
     fig_scatter = px.scatter(
@@ -212,16 +212,16 @@ def render(ctx: dict) -> None:
     y_range = pos_df[y_col].max() - pos_df[y_col].min()
     if x_range > 0 and y_range > 0:
         quadrant_labels = [
-            ("低量高質", med_x - x_range * 0.3, med_y + y_range * 0.3, "#2ECC71"),
-            ("★ 頂尖", med_x + x_range * 0.3, med_y + y_range * 0.3, "#E74C3C"),
-            ("低量低質", med_x - x_range * 0.3, med_y - y_range * 0.3, "#95A5A6"),
-            ("高量低質", med_x + x_range * 0.3, med_y - y_range * 0.3, "#F39C12"),
+            ("低量高質", med_x - x_range * 0.3, med_y + y_range * 0.3, "#1A7F37"),
+            ("★ 頂尖", med_x + x_range * 0.3, med_y + y_range * 0.3, "#C62828"),
+            ("低量低質", med_x - x_range * 0.3, med_y - y_range * 0.3, "#5F6368"),
+            ("高量低質", med_x + x_range * 0.3, med_y - y_range * 0.3, "#B45309"),
         ]
         for text, qx, qy, color in quadrant_labels:
             fig_scatter.add_annotation(
                 x=qx, y=qy,
                 text=f"<b>{text}</b>", showarrow=False,
-                font=dict(size=11, color=color), opacity=0.6,
+                font=dict(size=11, color=color), opacity=1.0,
             )
 
     # 只標記選中球員（避免全部文字擠在一起）
@@ -230,8 +230,8 @@ def render(ctx: dict) -> None:
         fig_scatter.add_annotation(
             x=me_r[x_col], y=me_r[y_col],
             text=f"★ {player_name}",
-            showarrow=True, arrowhead=2, arrowsize=1, arrowcolor="#FF6B35",
-            font=dict(size=12, color="#FF6B35", family="Arial Black"),
+            showarrow=True, arrowhead=2, arrowsize=1, arrowcolor="#0D47A1",
+            font=dict(size=12, color="#0D47A1", family="Arial Black"),
             xanchor="left", ax=20, ay=-20,
         )
 
@@ -249,7 +249,7 @@ def render(ctx: dict) -> None:
     )
     st.plotly_chart(fig_scatter, use_container_width=True, config=responsive_chart_config())
 
-    with st.expander(f"\U0001f4cb {selected_pos} 完整排行數據", expanded=False):
+    with st.expander(f"{selected_pos} 完整排行數據", expanded=False):
         rank_cols = {
             "name": "球員",
             "team_name": "球隊",

@@ -290,7 +290,7 @@ def render(ctx: dict):
         )
         st.plotly_chart(fig_trend, use_container_width=True, config=responsive_chart_config())
 
-    with st.expander("📊 完整比賽紀錄", expanded=False):
+    with st.expander("完整比賽紀錄", expanded=False):
         display_cols = {
             "match_date": "日期", "opponent": "對手", "sets_played": "局數",
             "attack_points": "攻擊得分", "attack_total": "攻擊總數",
