@@ -88,7 +88,8 @@ def gather_weekly_data(
                    s.receive_total, s.receive_excellent,
                    s.dig_total, s.dig_excellent,
                    s.set_total, s.set_excellent,
-                   s.total_points
+                   s.total_points,
+                   s.is_golden_set
             FROM player_match_stats s
             JOIN players p ON s.player_id = p.player_id
             JOIN teams   t ON p.team_id = t.team_id AND p.gender = t.gender
@@ -122,7 +123,7 @@ def gather_weekly_data(
             FROM player_match_stats s
             JOIN players p ON s.player_id = p.player_id
             JOIN teams   t ON p.team_id = t.team_id AND p.gender = t.gender
-            WHERE s.match_date <= ?
+            WHERE s.match_date <= ? AND s.is_golden_set = 0
             {gender_clause}
             GROUP BY p.player_id
             HAVING COUNT(*) >= 2
@@ -153,9 +154,42 @@ def gather_weekly_data(
     def _safe_pct(num, den):
         return round(num / den * 100, 1) if den and den > 0 else None
 
-    # 逐場比賽彙整
+    # 分離正規賽與黃金決勝局
+    raw_regular = raw[raw["is_golden_set"] == 0]
+    raw_golden = raw[raw["is_golden_set"] == 1]
+
+    # 建立黃金局 lookup: (date, team_name, opponent) -> golden set data
+    golden_lookup: dict[tuple, dict] = {}
+    for (date, team_name, opponent), grp in raw_golden.groupby(
+        ["match_date", "team_name", "opponent"]
+    ):
+        gs_team_stats = {
+            "total_points": int(grp["total_points"].sum()),
+            "attack_points": int(grp["attack_points"].sum()),
+            "attack_total": int(grp["attack_total"].sum()),
+            "block_points": int(grp["block_points"].sum()),
+            "serve_points": int(grp["serve_points"].sum()),
+        }
+        gs_players = []
+        for _, p in grp.sort_values("total_points", ascending=False).iterrows():
+            if p["total_points"] == 0:
+                continue
+            gs_players.append({
+                "name": p["name"],
+                "position": p["position"],
+                "total_points": int(p["total_points"]),
+                "attack_points": int(p["attack_points"]),
+                "block_points": int(p["block_points"]),
+                "serve_points": int(p["serve_points"]),
+            })
+        golden_lookup[(date, team_name, opponent)] = {
+            "team_stats": gs_team_stats,
+            "players": gs_players,
+        }
+
+    # 逐場比賽彙整（僅正規賽）
     matches = []
-    for (date, team_name, opponent), grp in raw.groupby(
+    for (date, team_name, opponent), grp in raw_regular.groupby(
         ["match_date", "team_name", "opponent"]
     ):
         gender = grp.iloc[0]["gender"]
@@ -204,14 +238,21 @@ def gather_weekly_data(
                 )
             players.append(pdata)
 
-        matches.append({
+        match_entry = {
             "date": date,
             "gender": gender_label,
             "team_name": team_name,
             "opponent": opponent,
             "team_stats": team_stats,
             "players": players,
-        })
+        }
+
+        # 附加黃金決勝局資料
+        gs_key = (date, team_name, opponent)
+        if gs_key in golden_lookup:
+            match_entry["golden_set"] = golden_lookup[gs_key]
+
+        matches.append(match_entry)
 
     return {
         "period": f"{date_from} ~ {date_to}",
