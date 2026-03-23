@@ -44,6 +44,7 @@ CREATE TABLE player_match_stats (
     set_total         INTEGER,
     set_excellent     INTEGER,
     total_points      INTEGER,
+    is_golden_set     INTEGER NOT NULL DEFAULT 0 CHECK (is_golden_set IN (0, 1)),
     FOREIGN KEY (player_id) REFERENCES players (player_id)
 );
 

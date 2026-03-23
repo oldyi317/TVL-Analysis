@@ -97,6 +97,7 @@ def init_stats_table(conn: sqlite3.Connection) -> None:
             set_total         INTEGER,
             set_excellent     INTEGER,
             total_points      INTEGER,
+            is_golden_set     INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY (player_id) REFERENCES players (player_id)
         )
     """)
@@ -192,16 +193,33 @@ def fetch_player_stats(team_id: int, ext_player_id: int) -> list[dict]:
         }
         records.append(record)
 
+    # 偵測黃金決勝局：同日期同對手出現兩筆時，局數較少的為黃金局
+    seen: dict[tuple, int] = {}  # (match_date, opponent) -> index
+    for i, r in enumerate(records):
+        key = (r["match_date"], r["opponent"])
+        if key in seen:
+            prev_i = seen[key]
+            # 局數較少的標記為黃金局
+            if (records[prev_i]["sets_played"] or 0) <= (r["sets_played"] or 0):
+                records[prev_i]["is_golden_set"] = 1
+            else:
+                r["is_golden_set"] = 1
+        else:
+            seen[key] = i
+
+    for r in records:
+        r.setdefault("is_golden_set", 0)
+
     return records
 
 
-def get_existing_dates(conn: sqlite3.Connection, player_id: int) -> set[str]:
-    """取得某球員已存在的比賽日期集合（用於增量比對）。"""
+def get_existing_keys(conn: sqlite3.Connection, player_id: int) -> set[tuple]:
+    """取得某球員已存在的 (match_date, is_golden_set) 集合（用於增量比對）。"""
     rows = conn.execute(
-        "SELECT DISTINCT match_date FROM player_match_stats WHERE player_id = ?",
+        "SELECT match_date, is_golden_set FROM player_match_stats WHERE player_id = ?",
         (player_id,),
     ).fetchall()
-    return {r[0] for r in rows}
+    return {(r[0], r[1]) for r in rows}
 
 
 def main(incremental: bool = False):
@@ -269,10 +287,13 @@ def main(incremental: bool = False):
             if not records:
                 continue
 
-            # 增量模式：過濾已存在的日期
+            # 增量模式：過濾已存在的紀錄（含黃金局區分）
             if incremental:
-                existing = get_existing_dates(conn, player_id)
-                new_records = [r for r in records if r["match_date"] not in existing]
+                existing = get_existing_keys(conn, player_id)
+                new_records = [
+                    r for r in records
+                    if (r["match_date"], r["is_golden_set"]) not in existing
+                ]
                 total_skipped += len(records) - len(new_records)
                 records = new_records
                 if not records:
@@ -286,8 +307,9 @@ def main(incremental: bool = False):
                     serve_total, serve_points,
                     receive_total, receive_excellent,
                     dig_total, dig_excellent,
-                    set_total, set_excellent, total_points)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    set_total, set_excellent, total_points,
+                    is_golden_set)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 [
                     (
                         player_id,
@@ -297,6 +319,7 @@ def main(incremental: bool = False):
                         r["receive_total"], r["receive_excellent"],
                         r["dig_total"], r["dig_excellent"],
                         r["set_total"], r["set_excellent"], r["total_points"],
+                        r["is_golden_set"],
                     )
                     for r in records
                 ],
