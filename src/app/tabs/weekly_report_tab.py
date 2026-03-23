@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
-from src.app.helpers import fetch_match_index, fetch_set_scores, find_match_id
+from src.app.helpers import load_data
 from src.etl.weekly_report import gather_weekly_data, get_match_weeks
 
 load_dotenv(Path(__file__).resolve().parents[3] / ".env")
@@ -76,22 +76,82 @@ def _call_gemini(api_key: str, user_prompt: str) -> str:
     raise RuntimeError("所有 Gemini 模型額度已用完，請稍後再試。")
 
 
-def _attach_set_scores(weekly_data: dict, match_index: list[dict]) -> dict:
+def _attach_set_scores(weekly_data: dict) -> dict:
+    """
+    從本地 matches 表附加各局比分與黃金決勝局比分。
+    """
+    dates = list({m["date"] for m in weekly_data.get("matches", [])})
+    if not dates:
+        return weekly_data
+
+    placeholders = ",".join(["?"] * len(dates))
+    matches_db = load_data(
+        f"""SELECT match_date, home_team, away_team,
+                   home_set1, home_set2, home_set3, home_set4, home_set5,
+                   away_set1, away_set2, away_set3, away_set4, away_set5,
+                   home_total, away_total,
+                   home_sets_won, away_sets_won, is_golden_set
+            FROM matches
+            WHERE match_date IN ({placeholders})""",
+        tuple(dates),
+    )
+    if matches_db.empty:
+        return weekly_data
+
+    # 建立 lookup: (date, frozenset(teams)) -> list of rows
+    from collections import defaultdict
+    lookup: dict[tuple, list] = defaultdict(list)
+    for _, row in matches_db.iterrows():
+        key = (row["match_date"], frozenset([row["home_team"], row["away_team"]]))
+        lookup[key].append(row)
+
     for match in weekly_data.get("matches", []):
-        mid = find_match_id(match_index, match.get("date", ""), match.get("opponent", ""))
-        if not mid:
-            continue
-        scores = fetch_set_scores(mid)
-        if not scores or len(scores) < 2:
-            continue
-        t_a, t_b = scores[0], scores[1]
-        match["set_score"] = f"{t_a['sets_won']}:{t_b['sets_won']}"
-        match["set_details"] = [
-            {"team": t_a["team"], "sets_won": t_a["sets_won"],
-             "set_points": [s for s in t_a["sets"] if s is not None]},
-            {"team": t_b["team"], "sets_won": t_b["sets_won"],
-             "set_points": [s for s in t_b["sets"] if s is not None]},
-        ]
+        team_name = match.get("team_name", "")
+        opponent = match.get("opponent", "")
+        key = (match["date"], frozenset([team_name, opponent]))
+        rows = lookup.get(key, [])
+
+        for row in rows:
+            home = row["home_team"]
+            away = row["away_team"]
+
+            if row["is_golden_set"] == 1:
+                # 黃金決勝局實際比分
+                h_score = int(row["home_set1"]) if pd.notna(row["home_set1"]) else None
+                a_score = int(row["away_set1"]) if pd.notna(row["away_set1"]) else None
+                if h_score is None or a_score is None:
+                    continue
+                if "golden_set" not in match:
+                    match["golden_set"] = {}
+                # 對齊隊名方向（match 的 team_name 對應 home 或 away）
+                if team_name == home or home in team_name or team_name in home:
+                    match["golden_set"]["score"] = f"{h_score}:{a_score}"
+                else:
+                    match["golden_set"]["score"] = f"{a_score}:{h_score}"
+                match["golden_set"]["score_detail"] = {home: h_score, away: a_score}
+            else:
+                # 正規賽局比分
+                set_cols = ["home_set1", "home_set2", "home_set3", "home_set4", "home_set5"]
+                home_pts = [int(row[c]) for c in set_cols if pd.notna(row[c])]
+                away_pts = [int(row[c.replace("home_", "away_")]) for c in set_cols if pd.notna(row[c])]
+
+                h_won = int(row["home_sets_won"])
+                a_won = int(row["away_sets_won"])
+
+                # 對齊隊名方向
+                if team_name == home or home in team_name or team_name in home:
+                    match["set_score"] = f"{h_won}:{a_won}"
+                    match["set_details"] = [
+                        {"team": home, "sets_won": h_won, "set_points": home_pts},
+                        {"team": away, "sets_won": a_won, "set_points": away_pts},
+                    ]
+                else:
+                    match["set_score"] = f"{a_won}:{h_won}"
+                    match["set_details"] = [
+                        {"team": away, "sets_won": a_won, "set_points": away_pts},
+                        {"team": home, "sets_won": h_won, "set_points": home_pts},
+                    ]
+
     return weekly_data
 
 
@@ -144,6 +204,64 @@ def _render_team_side(m: dict):
                      height=min(36 * len(df) + 38, 320))
 
 
+def _render_golden_set(a: dict, b: dict | None):
+    """渲染黃金決勝局區塊。"""
+    gs_a = a.get("golden_set")
+    gs_b = b.get("golden_set") if b else None
+    if not gs_a and not gs_b:
+        return
+
+    # 顯示實際比分（優先從外部系統取得）
+    score_text = ""
+    if gs_a and "score" in gs_a:
+        score_text = f"**{a['team_name']}** {gs_a['score']} **{a['opponent']}**"
+    elif gs_b and "score" in gs_b:
+        score_text = f"**{b['team_name']}** {gs_b['score']} **{b['opponent']}**"
+
+    if score_text:
+        st.markdown(f"##### Golden Set 黃金決勝局　{score_text}")
+    else:
+        st.markdown("##### Golden Set 黃金決勝局")
+
+    col_a, col_b = st.columns(2)
+
+    for col, side, team_name in [
+        (col_a, gs_a, a["team_name"]),
+        (col_b, gs_b, b["team_name"] if b else None),
+    ]:
+        if not side or not team_name:
+            continue
+        with col:
+            # 顯示實際局分（從外部系統）或球員得分加總（fallback）
+            score_detail = side.get("score_detail", {})
+            actual_score = None
+            for ext_name, pts in score_detail.items():
+                if ext_name in team_name or team_name in ext_name:
+                    actual_score = pts
+                    break
+            if actual_score is not None:
+                st.metric(f"{team_name}", f"{actual_score} 分")
+            else:
+                ts = side.get("team_stats", {})
+                st.metric(f"{team_name}", f'{ts.get("total_points", "?")} 分*')
+
+            if side.get("players"):
+                rows = []
+                for p in side["players"]:
+                    rows.append({
+                        "球員": p["name"],
+                        "得分": p["total_points"],
+                        "攻擊": p["attack_points"],
+                        "攔網": p["block_points"],
+                        "發球": p["serve_points"],
+                    })
+                st.dataframe(
+                    pd.DataFrame(rows),
+                    use_container_width=True, hide_index=True,
+                    height=min(36 * len(rows) + 38, 200),
+                )
+
+
 def _render_match_card(group: dict):
     a = group["team_a"]
     b = group["team_b"]
@@ -158,9 +276,12 @@ def _render_match_card(group: dict):
             for sa, sb in zip(d_a.get("set_points", []), d_b.get("set_points", []))
         )
 
+    has_golden = a.get("golden_set") or (b and b.get("golden_set"))
+
     st.markdown(
         f"#### {a['gender']}　{date_short}　{a['team_name']} vs {a['opponent']}"
         + (f"　**{set_score}**" if set_score else "")
+        + ("　:trophy: Golden Set" if has_golden else "")
     )
     if set_str:
         st.caption(set_str)
@@ -176,6 +297,9 @@ def _render_match_card(group: dict):
     else:
         st.markdown(f"**{a['team_name']}**")
         _render_team_side(a)
+
+    if has_golden:
+        _render_golden_set(a, b)
 
     st.markdown("---")
 
@@ -212,9 +336,7 @@ def render(ctx):
     # ── 撈取資料 ──────────────────────────────────────────────
     weekly_data = gather_weekly_data(date_from, date_to, wr_gender_code)
 
-    match_index = fetch_match_index()
-    if match_index:
-        weekly_data = _attach_set_scores(weekly_data, match_index)
+    weekly_data = _attach_set_scores(weekly_data)
 
     all_matches = weekly_data.get("matches", [])
     if not all_matches:
