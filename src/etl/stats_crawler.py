@@ -139,13 +139,29 @@ def fetch_player_stats(team_id: int, ext_player_id: int) -> list[dict]:
 
 
 def upsert_stats(engine: Engine, player_id: int, records: list[dict], season: str) -> None:
-    """將單一球員的逐場數據 upsert 至 player_match_stats（唯一鍵含 season，永不觸碰其他賽季）。"""
-    rows = [
-        {
+    """
+    將單一球員的逐場數據 upsert 至 player_match_stats（唯一鍵含 season，永不觸碰其他賽季）。
+
+    Normalizes NULL keys for idempotency:
+    - Skips records with match_date=None (無法判定比賽日期，無用於下游分析)
+    - Coalesces opponent=None to "" (確保 UNIQUE 鍵冪等碰撞)
+    """
+    skipped = 0
+    rows = []
+    for r in records:
+        if r["match_date"] is None:
+            logger.warning(
+                "跳過無法解析日期的統計紀錄 (player_id=%d, opponent=%s)",
+                player_id, r.get("opponent"),
+            )
+            skipped += 1
+            continue
+
+        rows.append({
             "player_id": player_id,
             "season": season,
             "match_date": r["match_date"],
-            "opponent": r["opponent"],
+            "opponent": r["opponent"] or "",  # Coalesce NULL to "" for unique key idempotency
             "sets_played": r["sets_played"],
             "attack_total": r["attack_total"],
             "attack_points": r["attack_points"],
@@ -160,9 +176,14 @@ def upsert_stats(engine: Engine, player_id: int, records: list[dict], season: st
             "set_excellent": r["set_excellent"],
             "total_points": r["total_points"],
             "is_golden_set": r["is_golden_set"],
-        }
-        for r in records
-    ]
+        })
+
+    if skipped > 0:
+        logger.info("player_id=%d: 跳過 %d 筆無效日期紀錄", player_id, skipped)
+
+    if not rows:
+        return
+
     with engine.begin() as conn:
         conn.execute(text("""
             INSERT INTO player_match_stats
@@ -194,6 +215,38 @@ def upsert_stats(engine: Engine, player_id: int, records: list[dict], season: st
                 set_excellent     = excluded.set_excellent,
                 total_points      = excluded.total_points
         """), rows)
+
+
+def get_or_create_player(
+    engine: Engine, name: str, ext_team_id: int, season: str = SEASON
+) -> int | None:
+    """
+    取得或動態建立球員。
+
+    若球員已在本賽季名單中，返回既有 player_id。
+    若查無此人，檢查 ext_team_id 是否已知；若已知則動態建立並返回新 player_id。
+    若 ext_team_id 未知則返回 None。
+    """
+    norm_name = normalize_name(name)
+    name_map = build_name_to_pid(engine, season)
+    if norm_name in name_map:
+        return name_map[norm_name]
+
+    if ext_team_id not in EXT_TEAM_MAP:
+        logger.error("ext_team_id=%d 未知，無法建立球員 %s", ext_team_id, name)
+        return None
+
+    db_team_id, gender = EXT_TEAM_MAP[ext_team_id]
+    logger.info("[動態新增] 發現新球員: %s，自動寫入 players 表。", name)
+    with engine.begin() as conn:
+        player_id = conn.execute(
+            text(
+                "INSERT INTO players (name, team_id, gender, season) "
+                "VALUES (:name, :team_id, :gender, :season) RETURNING player_id"
+            ),
+            {"name": name, "team_id": db_team_id, "gender": gender, "season": season},
+        ).scalar_one()
+    return player_id
 
 
 def _scalar(engine: Engine, sql: str):
@@ -229,22 +282,15 @@ def main(incremental: bool = False):
         for p in players:
             ext_pid = p["ext_player_id"]
             name = p["name"]
-            norm_name = normalize_name(name)
 
-            player_id = name_map.get(norm_name)
-
-            # Late Arriving Dimension：查無此人（本賽季）則動態新增
+            player_id = get_or_create_player(engine, name, ext_team_id, SEASON)
             if player_id is None:
-                db_team_id, gender = EXT_TEAM_MAP[ext_team_id]
-                logger.info("[動態新增] 發現新球員: %s，自動寫入 players 表。", name)
-                with engine.begin() as conn:
-                    player_id = conn.execute(
-                        text(
-                            "INSERT INTO players (name, team_id, gender, season) "
-                            "VALUES (:name, :team_id, :gender, :season) RETURNING player_id"
-                        ),
-                        {"name": name, "team_id": db_team_id, "gender": gender, "season": SEASON},
-                    ).scalar_one()
+                logger.warning("無法取得/建立球員 %s (ext_team_id=%d)，略過", name, ext_team_id)
+                continue
+
+            # 重新初始化 name_map 以包含新增的球員
+            norm_name = normalize_name(name)
+            if norm_name not in name_map:
                 name_map[norm_name] = player_id
                 total_new_players += 1
 

@@ -1,7 +1,7 @@
 from sqlalchemy import text
 
 from src.etl.db_loader import insert_players, insert_teams
-from src.etl.stats_crawler import build_name_to_pid, parse_match_date, upsert_stats
+from src.etl.stats_crawler import build_name_to_pid, parse_match_date, upsert_stats, get_or_create_player
 import pandas as pd
 
 
@@ -85,3 +85,58 @@ def test_upsert_stats_does_not_touch_other_season_rows(sqlite_engine):
         ).scalar_one()
     assert total == 2
     assert old_pts == 7
+
+
+def test_upsert_stats_skips_unparseable_date(sqlite_engine):
+    """記錄含無法解析的日期應被跳過，不插入資料庫。"""
+    pid = _seed_player(sqlite_engine)
+    row = _sample_stat_row(match_date=None)
+
+    upsert_stats(sqlite_engine, pid, [row], "2025-26")
+
+    with sqlite_engine.begin() as conn:
+        n = conn.execute(text("SELECT COUNT(*) FROM player_match_stats")).scalar_one()
+    assert n == 0, "無效日期的紀錄應被跳過"
+
+
+def test_upsert_stats_normalizes_none_opponent(sqlite_engine):
+    """opponent=None 應被正規化為空字符串，確保 UNIQUE 鍵冪等碰撞。"""
+    pid = _seed_player(sqlite_engine)
+    row = _sample_stat_row(opponent=None)
+
+    upsert_stats(sqlite_engine, pid, [row], "2025-26")
+    upsert_stats(sqlite_engine, pid, [row], "2025-26")
+
+    with sqlite_engine.begin() as conn:
+        n = conn.execute(text("SELECT COUNT(*) FROM player_match_stats")).scalar_one()
+        opponent = conn.execute(
+            text("SELECT opponent FROM player_match_stats")
+        ).scalar_one()
+    assert n == 1, f"opponent=None 重跑應仍是 1 筆，實際為 {n}"
+    assert opponent == "", f"opponent 應被正規化為空字符串，實際為 {repr(opponent)}"
+
+
+def test_get_or_create_player_idempotent(sqlite_engine):
+    """呼叫 get_or_create_player 兩次應返回同一 player_id，且只建立一筆記錄。"""
+    # 準備基礎資料
+    df = pd.DataFrame([{
+        "team_id": 1, "team_name": "屏東台電", "gender": "M",
+        "jersey_number": 4, "name": "ignored", "position": "OH",
+        "dob": None, "height_cm": None, "weight_kg": None,
+    }])
+    insert_teams(sqlite_engine, df)
+
+    # 第一次呼叫：建立新球員
+    pid1 = get_or_create_player(sqlite_engine, "王小明", ext_team_id=1, season="2025-26")
+    assert pid1 is not None
+
+    # 第二次呼叫：應返回相同 player_id（不建立新紀錄）
+    pid2 = get_or_create_player(sqlite_engine, "王小明", ext_team_id=1, season="2025-26")
+    assert pid2 == pid1, f"相同球員應返回同一 player_id，但 {pid1} != {pid2}"
+
+    # 驗證資料庫只有 1 筆球員記錄
+    with sqlite_engine.begin() as conn:
+        count = conn.execute(
+            text("SELECT COUNT(*) FROM players WHERE name = '王小明' AND season = '2025-26'")
+        ).scalar_one()
+    assert count == 1, f"應只有 1 筆球員記錄，實際為 {count}"
