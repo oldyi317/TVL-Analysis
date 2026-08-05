@@ -27,7 +27,7 @@ def get_engine() -> Engine:
     """
     global _engine
     if _engine is None:
-        database_url = os.environ.get("DATABASE_URL", _default_sqlite_url())
+        database_url = os.environ.get("DATABASE_URL") or _default_sqlite_url()
         _engine = create_engine(database_url, future=True)
         if _engine.dialect.name == "sqlite":
             @event.listens_for(_engine, "connect")

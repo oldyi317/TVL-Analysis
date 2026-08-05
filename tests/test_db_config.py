@@ -1,8 +1,9 @@
 import src.utils.db_config as db_config
 
 
-def test_get_engine_defaults_to_sqlite_when_database_url_unset(monkeypatch):
+def test_get_engine_defaults_to_sqlite_when_database_url_unset(monkeypatch, tmp_path):
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setattr(db_config, "DB_PATH", tmp_path / "default.db")
     db_config.reset_engine()
     engine = db_config.get_engine()
     assert engine.dialect.name == "sqlite"
@@ -27,8 +28,6 @@ def test_get_engine_enables_sqlite_foreign_keys(monkeypatch, tmp_path):
     db_config.reset_engine()
     engine = db_config.get_engine()
     with engine.connect() as conn:
-        from sqlalchemy import text
-
         fk_status = conn.exec_driver_sql("PRAGMA foreign_keys").scalar()
     assert fk_status == 1
     db_config.reset_engine()
