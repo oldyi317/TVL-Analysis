@@ -3,8 +3,10 @@ TVL 共用常數模組
 統一管理外部系統連線資訊與隊伍對照表，避免各模組重複定義。
 """
 
+import os
+
 # ── 外部數據系統 (114.35.229.141) ──────────────────────────────
-EXT_BASE = "http://114.35.229.141"
+EXT_BASE = os.environ.get("EXT_BASE", "http://114.35.229.141")
 EXT_CUP_ID = 21
 
 EXT_HEADERS = {
@@ -15,9 +17,22 @@ EXT_HEADERS = {
     )
 }
 
-# 賽季跨年：11、12 月屬 2025 年，1~6 月屬 2026 年
-SEASON_YEAR_MAP = {11: 2025, 12: 2025}
-DEFAULT_YEAR = 2026
+# ── 賽季設定 ────────────────────────────────────────────────────
+# SEASON 格式："起始年-結束年後兩碼"，例如 "2025-26" 代表 2025 年 11 月～2026 年 6 月的賽季。
+# 11、12 月屬賽季起始年；其餘月份屬賽季結束年（沿用官網賽程跨年慣例）。
+SEASON = os.environ.get("SEASON", "2025-26")
+SEASON_CROSSOVER_MONTHS = {11, 12}
+
+
+def season_year_for_month(month: int, season: str = SEASON) -> int:
+    """依賽季字串（如 '2025-26'）與月份，回推對應西元年。"""
+    start_str, end_suffix = season.split("-")
+    start_year = int(start_str)
+    end_year = (
+        int(start_str[:2] + end_suffix) if len(end_suffix) == 2 else int(end_suffix)
+    )
+    return start_year if month in SEASON_CROSSOVER_MONTHS else end_year
+
 
 # ── 外部系統 TeamID → 本地 DB (team_id, gender) 對照表 ─────────
 EXT_TEAM_MAP = {
@@ -45,7 +60,7 @@ OPP_SHORT_TO_TEAM: dict[str, tuple[int, str]] = {
     "義力營造":   (7, "F"),
 }
 
-# ── 官網全名 → 簡寫對應（依 CLAUDE.md 第 7 節）─────────────────
+# ── 官網名單頁全名 → 簡寫對應 ───────────────────────────────────
 TEAM_NAME_SHORT = {
     "臺北鯨華女子排球隊": "臺北鯨華",
     "新北中國人纖企業女子排球隊": "新北中纖",
@@ -54,6 +69,19 @@ TEAM_NAME_SHORT = {
     "台灣電力公司男子排球隊": "屏東台電",
     "美津濃男子排球隊": "雲林美津濃",
     "桃園臺產隼鷹排球隊": "桃園臺產",
+}
+
+# ── 官網賽事頁隊名 → 簡寫對應（賽事頁與名單頁隊名拼寫不同）─────
+TEAM_ALIAS = {
+    "臺北鯨華": "臺北鯨華",
+    "新北中纖": "新北中纖",
+    "高雄台電": "高雄台電",
+    "義力營造": "義力營造",
+    "屏東台電": "屏東台電",
+    "雲林美津濃": "雲林美津濃",
+    "臺北國北獅": "臺北國北獅",
+    "桃園臺灣產險": "桃園臺產",
+    "臺中獅子王": "獅子王",
 }
 
 # ── 位置相關 ──────────────────────────────────────────────────
