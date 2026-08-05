@@ -4,7 +4,6 @@ TVL 儀表板共用函式
 """
 
 import re
-import sqlite3
 from pathlib import Path
 
 import numpy as np
@@ -64,20 +63,11 @@ def compact_margin(l=20, r=20, t=30, b=40) -> dict:
     """回傳較緊湊的 Plotly margin，適合手機。"""
     return dict(l=l, r=r, t=t, b=b)
 
-try:
-    from src.utils.constants import (
-        EXT_BASE, EXT_CUP_ID, EXT_HEADERS, SEASON_YEAR_MAP, OPP_SHORT_TO_TEAM,
-    )
-except ModuleNotFoundError:
-    EXT_BASE = "http://114.35.229.141"
-    EXT_CUP_ID = 21
-    EXT_HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    }
-    SEASON_YEAR_MAP = {11: 2025, 12: 2025}
-    OPP_SHORT_TO_TEAM = {}
+from src.utils.constants import (
+    EXT_BASE, EXT_CUP_ID, EXT_HEADERS, OPP_SHORT_TO_TEAM, season_year_for_month,
+)
+from src.utils.db_config import get_engine
 
-DB_PATH = Path(__file__).resolve().parents[2] / "data" / "db" / "tvl_database.db"
 MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "match_predictor.pkl"
 
 
@@ -85,12 +75,9 @@ MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "match_predictor.p
 
 @st.cache_data
 def load_data(query: str, params: tuple = ()) -> pd.DataFrame:
-    """連線 SQLite，執行查詢並回傳 DataFrame。連線使用後立即關閉。"""
-    conn = sqlite3.connect(DB_PATH)
-    try:
-        return pd.read_sql_query(query, conn, params=params)
-    finally:
-        conn.close()
+    """透過 db_config 的 engine 執行查詢並回傳 DataFrame。"""
+    engine = get_engine()
+    return pd.read_sql_query(query, engine, params=params)
 
 
 # ── 數值工具 ─────────────────────────────────────────────────
@@ -127,7 +114,7 @@ def fetch_match_index() -> list[dict]:
             if not m:
                 continue
             month, day = int(m.group(3)), int(m.group(4))
-            year = SEASON_YEAR_MAP.get(month, 2026)
+            year = season_year_for_month(month)
             matches.append({
                 "match_id": opt["value"],
                 "date": f"{year}-{month:02d}-{day:02d}",
