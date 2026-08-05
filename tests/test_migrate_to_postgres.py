@@ -87,3 +87,41 @@ def test_migrate_is_idempotent_on_rerun(tmp_path, sqlite_engine):
     with sqlite_engine.begin() as conn:
         n_players = conn.execute(text("SELECT COUNT(*) FROM players")).scalar_one()
     assert n_players == 1
+
+
+def test_migrate_handles_null_arbiter_columns(tmp_path, sqlite_engine):
+    """Test that NULL values in former arbiter columns (name, match_date, opponent) don't break rerun idempotency."""
+    source_path = tmp_path / "old_source_with_nulls.db"
+    conn = sqlite3.connect(source_path)
+    conn.executescript(OLD_SCHEMA)
+    conn.execute("INSERT INTO teams VALUES (2, '新竹台元', 'F')")
+    # Insert player with NULL name
+    conn.execute(
+        "INSERT INTO players (player_id, team_id, gender, jersey_number, name, position, dob, height_cm, weight_kg) "
+        "VALUES (100, 2, 'F', 10, NULL, 'S', '1998-05-15', 175.0, 65.0)"
+    )
+    # Insert stats with NULL match_date and NULL opponent
+    conn.execute(
+        "INSERT INTO player_match_stats "
+        "(stat_id, player_id, match_date, opponent, sets_played, attack_total, attack_points, block_points, "
+        "serve_total, serve_points, receive_total, receive_excellent, dig_total, dig_excellent, "
+        "set_total, set_excellent, total_points, is_golden_set) "
+        "VALUES (200, 100, NULL, NULL, 2, 8, 4, 0, 4, 1, 4, 2, 4, 1, 0, 0, 5, 0)"
+    )
+    conn.commit()
+    conn.close()
+
+    # First migration
+    counts1 = migrate(source_path, season="2025-26")
+    assert counts1 == {"teams": 1, "players": 1, "player_match_stats": 1, "matches": 0}
+
+    # Second migration (rerun) should succeed without IntegrityError and return same counts
+    counts2 = migrate(source_path, season="2025-26")
+    assert counts2 == {"teams": 1, "players": 1, "player_match_stats": 1, "matches": 0}
+
+    # Verify no duplicates
+    with sqlite_engine.begin() as c:
+        n_players = c.execute(text("SELECT COUNT(*) FROM players WHERE player_id = 100")).scalar_one()
+        assert n_players == 1
+        n_stats = c.execute(text("SELECT COUNT(*) FROM player_match_stats WHERE stat_id = 200")).scalar_one()
+        assert n_stats == 1

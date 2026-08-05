@@ -23,7 +23,7 @@ SOURCE_DB_PATH = PROJECT_ROOT / "data" / "db" / "tvl_database.db"
 
 def _read_source_tables(sqlite_path: Path) -> dict:
     """讀取舊 SQLite DB 的四張表，回傳 {table_name: [dict, ...]}。"""
-    conn = sqlite3.connect(sqlite_path)
+    conn = sqlite3.connect(f"file:{sqlite_path}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     try:
         tables = {}
@@ -35,7 +35,7 @@ def _read_source_tables(sqlite_path: Path) -> dict:
         conn.close()
 
 
-def migrate(sqlite_path: Path = SOURCE_DB_PATH, season: str = SEASON) -> dict:
+def migrate(sqlite_path: Path = SOURCE_DB_PATH, season: str = SEASON) -> dict[str, int]:
     """執行一次性遷移，回傳各表搬移筆數統計。"""
     if not sqlite_path.exists():
         raise FileNotFoundError(f"來源 SQLite 檔案不存在：{sqlite_path}")
@@ -60,7 +60,7 @@ def migrate(sqlite_path: Path = SOURCE_DB_PATH, season: str = SEASON) -> dict:
                     (player_id, team_id, gender, season, jersey_number, name, position, dob, height_cm, weight_kg)
                 VALUES
                     (:player_id, :team_id, :gender, :season, :jersey_number, :name, :position, :dob, :height_cm, :weight_kg)
-                ON CONFLICT (team_id, gender, season, name) DO UPDATE SET
+                ON CONFLICT (player_id) DO UPDATE SET
                     jersey_number = excluded.jersey_number,
                     position      = excluded.position,
                     dob           = excluded.dob,
@@ -85,7 +85,7 @@ def migrate(sqlite_path: Path = SOURCE_DB_PATH, season: str = SEASON) -> dict:
                      :receive_total, :receive_excellent,
                      :dig_total, :dig_excellent,
                      :set_total, :set_excellent, :total_points, :is_golden_set)
-                ON CONFLICT (player_id, season, match_date, opponent, is_golden_set) DO UPDATE SET
+                ON CONFLICT (stat_id) DO UPDATE SET
                     sets_played       = excluded.sets_played,
                     attack_total      = excluded.attack_total,
                     attack_points     = excluded.attack_points,
