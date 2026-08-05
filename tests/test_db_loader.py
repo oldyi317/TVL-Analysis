@@ -1,7 +1,8 @@
 import pandas as pd
-from sqlalchemy import text
+import pytest
+from sqlalchemy import create_engine, text
 
-from src.etl.db_loader import insert_players, insert_teams
+from src.etl.db_loader import init_db, insert_players, insert_teams
 
 
 def _sample_roster() -> pd.DataFrame:
@@ -64,3 +65,26 @@ def test_insert_players_does_not_touch_other_season_rows(sqlite_engine):
         ).scalar_one()
     assert total == 4, "兩個賽季各 2 筆，應合計 4 筆"
     assert old_height == 190.0, "舊賽季的列不應被新賽季的 upsert 觸碰"
+
+
+def test_init_db_raises_on_old_schema_without_season(tmp_path):
+    """舊 schema（players 無 season 欄位）應阻擋並提示執行升級遷移，而非靜默略過。"""
+    db_path = tmp_path / "old_schema.db"
+    engine = create_engine(f"sqlite:///{db_path}", future=True)
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE players (
+                player_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                team_id INTEGER NOT NULL,
+                gender TEXT NOT NULL,
+                jersey_number INTEGER,
+                name TEXT,
+                position TEXT,
+                dob DATE,
+                height_cm REAL,
+                weight_kg REAL
+            )
+        """))
+
+    with pytest.raises(RuntimeError, match="migrate_to_postgres"):
+        init_db(engine)

@@ -4,7 +4,7 @@ TVL 資料庫載入模組
 """
 
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 
 from src.etl.cleaner import load_raw, clean, quality_report
@@ -18,6 +18,14 @@ CSV_PATH = PROJECT_ROOT / "data" / "raw" / "all_teams_roster.csv"
 SCHEMA_PATH = PROJECT_ROOT / "sql" / "schema.sql"
 SCHEMA_PATH_POSTGRES = PROJECT_ROOT / "sql" / "schema_postgres.sql"
 
+OLD_SCHEMA_ERROR = (
+    "偵測到舊版 schema 的 players 表（缺少 season 欄位），"
+    "無法直接使用，請先執行一次性升級遷移：\n"
+    "    DATABASE_URL=sqlite:///data/db/tvl_v2.db python -m src.etl.migrate_to_postgres\n"
+    "（或將 DATABASE_URL 指向新的 PostgreSQL 資料庫），"
+    "遷移完成後再將 DATABASE_URL 指向新資料庫使用。"
+)
+
 
 def init_db(engine: Engine) -> None:
     """依 engine 方言選擇對應 schema 檔並逐句執行（CREATE TABLE IF NOT EXISTS，冪等）。"""
@@ -27,6 +35,13 @@ def init_db(engine: Engine) -> None:
     with engine.begin() as conn:
         for stmt in statements:
             conn.execute(text(stmt))
+
+    inspector = inspect(engine)
+    if "players" in inspector.get_table_names():
+        columns = {col["name"] for col in inspector.get_columns("players")}
+        if "season" not in columns:
+            raise RuntimeError(OLD_SCHEMA_ERROR)
+
     logger.info("資料庫 Schema 建立完成（%s）", path.name)
 
 

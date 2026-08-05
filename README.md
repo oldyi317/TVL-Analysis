@@ -67,6 +67,25 @@ TVL-Analysis/
 | `players` | 球員基本資料（背號、位置、身高、體重等） |
 | `player_match_stats` | 逐場技術統計（攻擊、攔網、發球、接發、防守、舉球） |
 
+## 資料庫升級（v2 schema）
+
+v2 schema 為 `players`/`player_match_stats`/`matches` 加入 `season` 賽季欄位，upsert 唯一鍵皆含 season，換季時不會覆蓋舊賽季資料。
+
+- `DATABASE_URL`：連線目標，未設定時 fallback 至本地 `data/db/tvl_database.db`（SQLite）；指向 PostgreSQL 時使用 `postgresql+psycopg://...` 格式。
+- `SEASON`：目前賽季字串（如 `2025-26`），未設定時預設 `2025-26`，ETL 寫入資料時以此標記賽季。
+
+若本地仍是舊版 `data/db/tvl_database.db`（無 `season` 欄位），直接使用會被 `init_db()` 擋下並提示錯誤，需先執行一次性升級遷移（目標不可與來源檔案相同）：
+
+```bash
+# 遷移至新的本地 SQLite 檔案
+DATABASE_URL=sqlite:///data/db/tvl_v2.db python -m src.etl.migrate_to_postgres
+
+# 或直接指向新的 PostgreSQL
+DATABASE_URL=postgresql+psycopg://user:pass@host:5432/tvl python -m src.etl.migrate_to_postgres
+```
+
+遷移完成後，將 `DATABASE_URL` 指向新資料庫（或以新檔案取代舊檔案）即可。
+
 ## 安裝與使用
 
 ### 環境建置

@@ -40,8 +40,17 @@ def migrate(sqlite_path: Path = SOURCE_DB_PATH, season: str = SEASON) -> dict[st
     if not sqlite_path.exists():
         raise FileNotFoundError(f"來源 SQLite 檔案不存在：{sqlite_path}")
 
-    source = _read_source_tables(sqlite_path)
     engine = get_engine()
+    if engine.dialect.name == "sqlite":
+        target_db = engine.url.database
+        if target_db and target_db != ":memory:":
+            if Path(target_db).resolve() == sqlite_path.resolve():
+                raise RuntimeError(
+                    "目標不可與來源相同，請設定 DATABASE_URL 指向新資料庫"
+                    f"（例如 sqlite:///data/db/tvl_v2.db）。來源檔案：{sqlite_path}"
+                )
+
+    source = _read_source_tables(sqlite_path)
     init_db(engine)  # 於目標 DB 建立新 schema（含 season 欄位），冪等
 
     counts = {}

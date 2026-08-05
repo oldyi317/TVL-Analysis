@@ -117,6 +117,7 @@ def test_database_url_switch_between_sqlite_and_postgresql(monkeypatch, tmp_path
 
     # Test 1: Dialect detection via DATABASE_URL
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setattr(db_config, "DB_PATH", tmp_path / "default.db")
     db_config.reset_engine()
     sqlite_eng = db_config.get_engine()
     assert sqlite_eng.dialect.name == "sqlite"

@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 
+import pytest
 from sqlalchemy import text
 
 from src.etl.migrate_to_postgres import migrate
@@ -125,3 +126,20 @@ def test_migrate_handles_null_arbiter_columns(tmp_path, sqlite_engine):
         assert n_players == 1
         n_stats = c.execute(text("SELECT COUNT(*) FROM player_match_stats WHERE stat_id = 200")).scalar_one()
         assert n_stats == 1
+
+
+def test_migrate_raises_when_target_equals_source(tmp_path, monkeypatch):
+    """目標 DATABASE_URL 指向與來源相同的 sqlite 檔案時應拒絕執行，避免讀寫同一檔案。"""
+    import src.utils.db_config as db_config
+
+    source_path = tmp_path / "same_file.db"
+    _build_old_source_db(source_path)
+
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{source_path}")
+    db_config.reset_engine()
+    try:
+        with pytest.raises(RuntimeError, match="目標不可與來源相同"):
+            migrate(source_path, season="2025-26")
+    finally:
+        db_config.reset_engine()
+        monkeypatch.delenv("DATABASE_URL", raising=False)

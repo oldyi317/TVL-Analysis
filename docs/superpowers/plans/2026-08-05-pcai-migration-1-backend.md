@@ -618,8 +618,9 @@ git commit -m "refactor: 移除 crawler/cleaner 的 import fallback，統一從 
 import src.utils.db_config as db_config
 
 
-def test_get_engine_defaults_to_sqlite_when_database_url_unset(monkeypatch):
+def test_get_engine_defaults_to_sqlite_when_database_url_unset(monkeypatch, tmp_path):
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setattr(db_config, "DB_PATH", tmp_path / "default.db")
     db_config.reset_engine()
     engine = db_config.get_engine()
     assert engine.dialect.name == "sqlite"
@@ -644,8 +645,6 @@ def test_get_engine_enables_sqlite_foreign_keys(monkeypatch, tmp_path):
     db_config.reset_engine()
     engine = db_config.get_engine()
     with engine.connect() as conn:
-        from sqlalchemy import text
-
         fk_status = conn.exec_driver_sql("PRAGMA foreign_keys").scalar()
     assert fk_status == 1
     db_config.reset_engine()
@@ -690,7 +689,7 @@ def get_engine() -> Engine:
     """
     global _engine
     if _engine is None:
-        database_url = os.environ.get("DATABASE_URL", _default_sqlite_url())
+        database_url = os.environ.get("DATABASE_URL") or _default_sqlite_url()
         _engine = create_engine(database_url, future=True)
         if _engine.dialect.name == "sqlite":
             @event.listens_for(_engine, "connect")
@@ -2692,7 +2691,7 @@ def migrate(sqlite_path: Path = SOURCE_DB_PATH, season: str = SEASON) -> dict:
                     (player_id, team_id, gender, season, jersey_number, name, position, dob, height_cm, weight_kg)
                 VALUES
                     (:player_id, :team_id, :gender, :season, :jersey_number, :name, :position, :dob, :height_cm, :weight_kg)
-                ON CONFLICT (team_id, gender, season, name) DO UPDATE SET
+                ON CONFLICT (player_id) DO UPDATE SET
                     jersey_number = excluded.jersey_number,
                     position      = excluded.position,
                     dob           = excluded.dob,
@@ -2717,7 +2716,7 @@ def migrate(sqlite_path: Path = SOURCE_DB_PATH, season: str = SEASON) -> dict:
                      :receive_total, :receive_excellent,
                      :dig_total, :dig_excellent,
                      :set_total, :set_excellent, :total_points, :is_golden_set)
-                ON CONFLICT (player_id, season, match_date, opponent, is_golden_set) DO UPDATE SET
+                ON CONFLICT (stat_id) DO UPDATE SET
                     sets_played       = excluded.sets_played,
                     attack_total      = excluded.attack_total,
                     attack_points     = excluded.attack_points,
@@ -2997,3 +2996,5 @@ tests/test_etl_pipeline_idempotency.py  [新增]
 3. **`src/app/tabs/prediction.py:125` 的 `artifact.get("feature_names", [])` 讀錯鍵名**：實際 pkl 內容的鍵是 `feature_cols` 不是 `feature_names`，導致 `n_features` 恆為 0、恆定落入 V1（5 特徵）分支。目前恰好與 pkl 實際的 5 特徵吻合，功能上「無症狀」，但若未來訓練出 11 特徵版模型（V2）並更新 pkl，這個既有 bug 會讓 UI 誤判為 V1，需在計畫二處理 `prediction.py` 時一併修正。
 4. **PostgreSQL 相容性未經真實伺服器驗證**：本機環境無 Docker/Postgres 可用，`sql/schema_postgres.sql`、`migrate_to_postgres.py`、各 upsert 語句的 PostgreSQL 相容性僅透過語法檢查與 SQLAlchemy dialect compiler 驗證，未實際對真正的 PostgreSQL 執行。spec §12 已規劃「docker compose 起 Postgres 跑同一套測試」，建議在計畫二/三容器化階段第一時間補跑本計畫全部測試對照一次真實 PostgreSQL。
 5. **`stats_crawler.py` 的 `--incremental` 旗標語意改變**：改造前「全量」會砍表重建、「增量」只新增缺少的紀錄；改造後兩者皆為 upsert（全量的破壞性行為消失，增量的「跳過已存在」邏輯也移除，改為一律更新）。這是本計畫刻意簡化的設計決策（見 Task 8 說明），對外 CLI 介面（`--incremental` 旗標）維持相容，但底層行為語意不同，若計畫三的 Airflow DAG 或既有操作文件對兩種模式有额外假設，需要對照確認。
+6. **跨賽季後聯盟 PR 頁會出現同一人兩筆**：`players` 為賽季獨立列（唯一鍵含 `season`），球員換季後同一人會有多筆 `players` 資料，聯盟 PR 頁若未依賽季篩選會同時列出多筆。由計畫二的賽季選擇器解決。
+7. **舊 schema 本地 DB 需經 `migrate_to_postgres` 升級**：`data/db/tvl_database.db` 等舊版資料庫缺少 `season` 欄位，`init_db()` 會偵測並擋下寫入，需先執行一次性升級遷移，程序見 README「資料庫升級（v2 schema）」章節。
