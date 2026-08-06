@@ -9,7 +9,7 @@
 - **進階統計指標**：攻擊效率、同位置 PR 值、綜合防守到位率等 Proxy Metrics
 - **互動式儀表板**：Streamlit + Plotly 打造的六分頁視覺化分析介面
 - **賽事預測**：基於 XGBoost 的比賽結果預測模型，搭配 SHAP 特徵解釋
-- **AI 戰報**：透過 Gemini API（免費）自動產生每周結構化中文戰報
+- **AI 戰報**：透過 PCAI MLIS（OpenAI 相容 API）自動產生每周結構化中文戰報
 
 ## 儀表板分頁
 > 🔗 **Live Demo**: [點此查看互動儀表板](https://tvl-analysis-jggmoeky3gnjrdbcc4kzrc.streamlit.app/)
@@ -21,7 +21,10 @@
 | 逐場趨勢 | 熱力資料表、對戰對手績效分佈 |
 | 單場 Box Score | 雙方並列 Box Score、局比分、Top-10 排行 |
 | 賽果預測 | ML 滑桿模擬器、SHAP 戰術診斷圖 |
-| 每周戰報 | 視覺化比賽卡片、Gemini AI 自動撰寫戰報 |
+| 每周戰報 | 視覺化比賽卡片、MLIS AI 自動撰寫戰報 |
+| 系統設定 | 設定 MLIS endpoint/model/API key，測試連線 |
+
+sidebar 最上層可選擇賽季（預設最新），下方所有分頁的資料皆依所選賽季過濾。
 
 ## 專案結構
 
@@ -29,15 +32,18 @@
 TVL-Analysis/
 ├── src/
 │   ├── app/
-│   │   ├── main.py            # Streamlit 入口（路由 + sidebar）
+│   │   ├── main.py            # Streamlit 入口（路由 + sidebar，含賽季選擇器）
 │   │   ├── helpers.py         # 共用函式（DB 查詢、指標計算、外部 API）
-│   │   └── tabs/              # 六個分頁模組
+│   │   ├── llm_client.py      # MLIS（OpenAI 相容 API）呼叫層
+│   │   ├── settings_store.py  # app_settings key-value 表存取
+│   │   └── tabs/               # 七個分頁模組
 │   │       ├── player_deep.py
 │   │       ├── league_pr.py
 │   │       ├── match_trend.py
 │   │       ├── box_score.py
 │   │       ├── prediction.py
-│   │       └── weekly_report_tab.py
+│   │       ├── weekly_report_tab.py
+│   │       └── settings_tab.py
 │   ├── etl/                   # ETL 模組
 │   │   ├── crawler.py         # 球員名單爬蟲
 │   │   ├── stats_crawler.py   # 技術統計爬蟲（支援 --incremental）
@@ -73,6 +79,7 @@ v2 schema 為 `players`/`player_match_stats`/`matches` 加入 `season` 賽季欄
 
 - `DATABASE_URL`：連線目標，未設定時 fallback 至本地 `data/db/tvl_database.db`（SQLite）；指向 PostgreSQL 時使用 `postgresql+psycopg://...` 格式。
 - `SEASON`：目前賽季字串（如 `2025-26`），未設定時預設 `2025-26`，ETL 寫入資料時以此標記賽季。
+- `MLIS_BASE_URL` / `MLIS_API_KEY` / `MLIS_MODEL`：PCAI MLIS 的 OpenAI 相容 endpoint 設定，供「每周戰報」分頁產生 AI 戰報。可在「系統設定」分頁的 UI 設定（存於 Postgres/SQLite 的 `app_settings` 表，優先於環境變數），或直接設定環境變數；兩者皆未設定時戰報頁會顯示引導訊息。
 
 若本地仍是舊版 `data/db/tvl_database.db`（無 `season` 欄位），直接使用會被 `init_db()` 擋下並提示錯誤，需先執行一次性升級遷移（目標不可與來源檔案相同）：
 
@@ -123,7 +130,7 @@ streamlit run src/app/main.py
 
 ### AI 戰報（選用）
 
-在 `.env` 中設定 `GEMINI_API_KEY=...`（從 [Google AI Studio](https://aistudio.google.com/) 免費取得），即可在儀表板「每周戰報」分頁使用 Gemini 2.0 Flash 自動產生戰報。
+在環境變數或「系統設定」分頁中設定 `MLIS_BASE_URL`、`MLIS_API_KEY` 與 `MLIS_MODEL`（PCAI MLIS 叢集資訊），即可在儀表板「每周戰報」分頁使用 AI 自動產生戰報。
 
 ## 位置代號對照
 
@@ -143,7 +150,7 @@ streamlit run src/app/main.py
 - **視覺化**：Plotly, Matplotlib
 - **資料庫**：SQLite
 - **ML**：XGBoost, scikit-learn, SHAP
-- **AI 戰報**：Google Gemini 2.0 Flash（免費）
+- **AI 戰報**：PCAI MLIS（OpenAI 相容 API）
 
 ## 資料品質原則
 
