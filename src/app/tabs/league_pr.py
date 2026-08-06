@@ -22,7 +22,7 @@ def render(ctx: dict) -> None:
     ----------
     ctx : dict
         Must contain keys: player_id, player_name, player_position,
-        gender_code, gender, team_name.
+        gender_code, gender, team_name, season.
     """
     player_id = ctx["player_id"]
     player_name = ctx["player_name"]
@@ -30,8 +30,9 @@ def render(ctx: dict) -> None:
     gender_code = ctx["gender_code"]
     gender = ctx["gender"]
     team_name = ctx["team_name"]
+    season = ctx["season"]
 
-    league_all = get_league_aggregated_stats(gender_code)
+    league_all = get_league_aggregated_stats(gender_code, season)
 
     if league_all.empty:
         st.info("目前無足夠的聯盟數據。")

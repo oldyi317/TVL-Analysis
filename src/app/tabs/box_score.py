@@ -55,6 +55,8 @@ RANK_METRICS = {
 
 
 def render(ctx: dict):
+    season = ctx["season"]
+
     # ── 篩選器：性別 → 球隊 → 比賽場次 ──────────────────────
     f1, f2, f3 = st.columns(3)
 
@@ -82,10 +84,10 @@ def render(ctx: dict):
         SELECT DISTINCT s.match_date, s.opponent
         FROM player_match_stats s
         JOIN players p ON s.player_id = p.player_id
-        WHERE p.team_id = :team_id AND p.gender = :gender_code
+        WHERE p.team_id = :team_id AND p.gender = :gender_code AND s.season = :season
         ORDER BY s.match_date
         """,
-        {"team_id": bs_team_id, "gender_code": bs_gender_code},
+        {"team_id": bs_team_id, "gender_code": bs_gender_code, "season": season},
     )
     if matches_df.empty:
         st.info("該球隊尚無比賽紀錄。")
@@ -164,12 +166,12 @@ def render(ctx: dict):
                s.total_points
         FROM player_match_stats s
         JOIN players p ON s.player_id = p.player_id
-        WHERE p.team_id = :team_id AND p.gender = :gender_code
+        WHERE p.team_id = :team_id AND p.gender = :gender_code AND s.season = :season
           AND s.match_date = :match_date AND s.opponent = :opponent
         ORDER BY s.total_points DESC
         """,
         {
-            "team_id": bs_team_id, "gender_code": bs_gender_code,
+            "team_id": bs_team_id, "gender_code": bs_gender_code, "season": season,
             "match_date": sel_date, "opponent": sel_opponent,
         },
     )
@@ -192,11 +194,11 @@ def render(ctx: dict):
                    s.total_points
             FROM player_match_stats s
             JOIN players p ON s.player_id = p.player_id
-            WHERE p.team_id = :team_id AND p.gender = :gender_code
+            WHERE p.team_id = :team_id AND p.gender = :gender_code AND s.season = :season
               AND s.match_date = :match_date
             ORDER BY s.total_points DESC
             """,
-            {"team_id": opp_team_id, "gender_code": opp_gender, "match_date": sel_date},
+            {"team_id": opp_team_id, "gender_code": opp_gender, "season": season, "match_date": sel_date},
         )
 
     # ── 雙方 Box Score 並排 ───────────────────────────────────

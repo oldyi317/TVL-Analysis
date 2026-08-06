@@ -10,17 +10,18 @@ import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 
 from src.app.helpers import MODEL_PATH, load_data, vec_pct
+from src.utils.constants import SEASON
 
 
 # ---------------------------------------------------------------------------
 # 從資料庫取得各指標的實際範圍
 # ---------------------------------------------------------------------------
 @st.cache_data
-def _get_data_ranges(gender_code: str) -> dict[str, tuple[float, float]]:
-    """從聯盟聚合數據計算各滑桿指標的實際 (min, max)，加 10% 緩衝。"""
+def _get_data_ranges(gender_code: str, season: str) -> dict[str, tuple[float, float]]:
+    """從指定賽季的聯盟聚合數據計算各滑桿指標的實際 (min, max)，加 10% 緩衝。"""
     try:
         from src.app.helpers import get_league_aggregated_stats
-        df = get_league_aggregated_stats(gender_code)
+        df = get_league_aggregated_stats(gender_code, season)
         if df.empty:
             return {}
 
@@ -142,7 +143,7 @@ def render(ctx, cjk_font_path=None, cjk_font_stack=None):
     st.subheader("調整比賽指標")
 
     # 嘗試從資料庫取得各指標的實際範圍，給予 10% 緩衝
-    _data_ranges = _get_data_ranges(ctx.get("gender_code", "M"))
+    _data_ranges = _get_data_ranges(ctx.get("gender_code", "M"), ctx.get("season", SEASON))
 
     input_values = {}
     cols = st.columns(2)

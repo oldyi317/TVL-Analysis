@@ -68,6 +68,7 @@ matplotlib.rcParams["axes.unicode_minus"] = False
 
 # ── 共用函式（從 helpers 匯入） ──────────────────────────────
 from src.app.helpers import load_data, inject_mobile_css
+from src.utils.constants import SEASON
 
 # ── 注入手機 RWD CSS ─────────────────────────────────────────
 inject_mobile_css()
@@ -79,10 +80,14 @@ from src.app.tabs import (
 )
 
 
-# ── 側邊欄篩選器（三層連動） ──────────────────────────────────
+# ── 側邊欄篩選器（四層連動） ──────────────────────────────────
 
 st.sidebar.title("TVL 進階數據儀表板")
 st.sidebar.markdown("---")
+
+seasons_df = load_data("SELECT DISTINCT season FROM players ORDER BY season DESC", {})
+season_options = seasons_df["season"].tolist() if not seasons_df.empty else [SEASON]
+selected_season = st.sidebar.selectbox("選擇賽季", season_options, index=0)
 
 gender = st.sidebar.selectbox("選擇組別", ["男子組", "女子組"])
 gender_code = "M" if gender == "男子組" else "F"
@@ -100,8 +105,8 @@ team_id = int(teams_df.loc[teams_df["team_name"] == team_name, "team_id"].iloc[0
 
 players_df = load_data(
     "SELECT player_id, jersey_number, name, position FROM players "
-    "WHERE team_id = :team_id AND gender = :gender_code ORDER BY jersey_number",
-    {"team_id": team_id, "gender_code": gender_code},
+    "WHERE team_id = :team_id AND gender = :gender_code AND season = :season ORDER BY jersey_number",
+    {"team_id": team_id, "gender_code": gender_code, "season": selected_season},
 )
 if players_df.empty:
     st.warning("該球隊目前沒有球員資料。")
@@ -134,6 +139,7 @@ ctx = {
     "gender": gender,
     "team_name": team_name,
     "team_id": team_id,
+    "season": selected_season,
 }
 
 # ── 分頁結構 ──────────────────────────────────────────────────

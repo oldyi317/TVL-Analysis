@@ -204,10 +204,10 @@ POS_DEFAULTS: dict[str, tuple[int, int]] = {
 
 
 @st.cache_data(ttl=3600)
-def get_league_aggregated_stats(gender_code: str) -> pd.DataFrame:
+def get_league_aggregated_stats(gender_code: str, season: str) -> pd.DataFrame:
     """
-    撈取該組別所有球員的聚合統計數據，JOIN players + teams 取得姓名/球隊/位置。
-    僅保留總局數 >= 5 的球員，排除極端值。
+    撈取指定賽季、該組別所有球員的聚合統計數據，JOIN players + teams 取得姓名/球隊/位置。
+    僅保留總局數 >= 5 的球員，排除極端值。season 過濾避免跨季後同一人出現兩筆（不同 player_id）。
     """
     raw = load_data(
         """
@@ -232,11 +232,11 @@ def get_league_aggregated_stats(gender_code: str) -> pd.DataFrame:
         FROM player_match_stats s
         JOIN players p ON s.player_id = p.player_id
         JOIN teams   t ON p.team_id = t.team_id AND p.gender = t.gender
-        WHERE p.gender = :gender_code
+        WHERE p.gender = :gender_code AND p.season = :season
         GROUP BY p.player_id
         HAVING SUM(s.sets_played) >= 5
         """,
-        {"gender_code": gender_code},
+        {"gender_code": gender_code, "season": season},
     )
     # 計算進階比率指標（向量化）
     raw["asr"] = vec_pct(raw["atk_pts"], raw["atk_tot"])

@@ -11,15 +11,16 @@ from sqlalchemy import text
 from src.utils.db_config import get_engine
 
 
-def get_match_weeks() -> list[tuple[str, str]]:
+def get_match_weeks(season: str) -> list[tuple[str, str]]:
     """
-    回傳所有比賽周次的 (week_start, week_end) 列表。
+    回傳指定賽季所有比賽周次的 (week_start, week_end) 列表。
     以 ISO 周次分組，方便使用者選擇。
     """
     engine = get_engine()
     dates = pd.read_sql(
-        "SELECT DISTINCT match_date FROM player_match_stats ORDER BY match_date",
+        text("SELECT DISTINCT match_date FROM player_match_stats WHERE season = :season ORDER BY match_date"),
         engine,
+        params={"season": season},
     )["match_date"].tolist()
 
     if not dates:
@@ -39,15 +40,16 @@ def get_match_weeks() -> list[tuple[str, str]]:
 
 
 def gather_weekly_data(
-    date_from: str, date_to: str, gender_filter: str | None = None
+    date_from: str, date_to: str, season: str, gender_filter: str | None = None
 ) -> dict:
     """
-    彙整指定日期範圍內的所有比賽數據，回傳結構化 dict。
+    彙整指定賽季、指定日期範圍內的所有比賽數據，回傳結構化 dict。
 
     Parameters
     ----------
     date_from : 起始日期 (YYYY-MM-DD)
     date_to : 結束日期 (YYYY-MM-DD)
+    season : 賽季字串（如 "2025-26"），避免跨季後同一人（不同 player_id）混入同一份彙整
     gender_filter : "M", "F", or None (全部)
 
     Returns
@@ -57,7 +59,7 @@ def gather_weekly_data(
     engine = get_engine()
     gender_clause = "AND p.gender = :gender_filter" if gender_filter else ""
 
-    params: dict = {"date_from": date_from, "date_to": date_to}
+    params: dict = {"date_from": date_from, "date_to": date_to, "season": season}
     if gender_filter:
         params["gender_filter"] = gender_filter
 
@@ -79,6 +81,7 @@ def gather_weekly_data(
             JOIN players p ON s.player_id = p.player_id
             JOIN teams   t ON p.team_id = t.team_id AND p.gender = t.gender
             WHERE s.match_date BETWEEN :date_from AND :date_to
+              AND s.season = :season
             {gender_clause}
             ORDER BY s.match_date, t.team_name
         """),
@@ -86,7 +89,7 @@ def gather_weekly_data(
         params=params,
     )
 
-    season_params: dict = {"date_to": date_to}
+    season_params: dict = {"date_to": date_to, "season": season}
     if gender_filter:
         season_params["gender_filter"] = gender_filter
 
@@ -112,6 +115,7 @@ def gather_weekly_data(
             JOIN players p ON s.player_id = p.player_id
             JOIN teams   t ON p.team_id = t.team_id AND p.gender = t.gender
             WHERE s.match_date <= :date_to AND s.is_golden_set = 0
+              AND s.season = :season
             {gender_clause}
             GROUP BY p.player_id
             HAVING COUNT(*) >= 2

@@ -42,7 +42,7 @@ def test_weekly_report_shows_guidance_when_mlis_not_configured(sqlite_engine, mo
         sys.path.insert(0, ".")
         from src.app.tabs import weekly_report_tab
 
-        weekly_report_tab.render({})
+        weekly_report_tab.render({"season": "2025-26"})
 
     at = AppTest.from_function(_harness)
     at.run(timeout=60)
@@ -71,7 +71,7 @@ def test_weekly_report_generate_button_calls_llm_client_when_configured(sqlite_e
         sys.path.insert(0, ".")
         from src.app.tabs import weekly_report_tab
 
-        weekly_report_tab.render({})
+        weekly_report_tab.render({"season": "2025-26"})
 
     at = AppTest.from_function(_harness)
     at.run(timeout=60)

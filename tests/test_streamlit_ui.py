@@ -23,7 +23,7 @@ def test_box_score_empty_teams_returns_without_stopping_script(sqlite_engine):
         import streamlit as st
         from src.app.tabs import box_score
 
-        box_score.render({})
+        box_score.render({"season": "2025-26"})
         st.text("MARKER_AFTER_RENDER")
 
     _assert_returns_without_stopping_script(_harness)
@@ -39,6 +39,7 @@ def test_league_pr_empty_league_returns_without_stopping_script(sqlite_engine):
         ctx = {
             "player_id": 1, "player_name": "測試球員", "player_position": "OH",
             "gender_code": "M", "gender": "男子組", "team_name": "測試隊",
+            "season": "2025-26",
         }
         league_pr.render(ctx)
         st.text("MARKER_AFTER_RENDER")
@@ -72,7 +73,7 @@ def test_player_deep_empty_data_returns_without_stopping_script(sqlite_engine):
 
         ctx = {
             "player_id": 1, "player_name": "測試球員", "player_position": "OH",
-            "gender_code": "M", "gender": "男子組",
+            "gender_code": "M", "gender": "男子組", "season": "2025-26",
         }
         player_deep.render(ctx)
         st.text("MARKER_AFTER_RENDER")
@@ -87,7 +88,7 @@ def test_weekly_report_no_weeks_returns_without_stopping_script(sqlite_engine):
         import streamlit as st
         from src.app.tabs import weekly_report_tab
 
-        weekly_report_tab.render({})
+        weekly_report_tab.render({"season": "2025-26"})
         st.text("MARKER_AFTER_RENDER")
 
     _assert_returns_without_stopping_script(_harness)

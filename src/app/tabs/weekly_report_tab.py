@@ -271,11 +271,13 @@ def _render_match_card(group: dict):
 
 
 def render(ctx):
+    season = ctx["season"]
+
     st.subheader("每周戰報")
     st.caption("根據比賽數據，透過 MLIS AI 自動產生結構化中文戰報。")
 
     # ── 周次選擇器 ────────────────────────────────────────────
-    weeks = get_match_weeks()
+    weeks = get_match_weeks(season)
     if not weeks:
         st.info("資料庫中尚無比賽紀錄。")
         return
@@ -300,7 +302,7 @@ def render(ctx):
     wr_gender_code = {"男子組": "M", "女子組": "F"}.get(wr_gender)
 
     # ── 撈取資料 ──────────────────────────────────────────────
-    weekly_data = gather_weekly_data(date_from, date_to, wr_gender_code)
+    weekly_data = gather_weekly_data(date_from, date_to, season, wr_gender_code)
 
     weekly_data = _attach_set_scores(weekly_data)
 

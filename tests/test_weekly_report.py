@@ -32,13 +32,13 @@ def _seed(engine) -> int:
 
 def test_get_match_weeks_returns_week_ranges(sqlite_engine):
     _seed(sqlite_engine)
-    weeks = get_match_weeks()
+    weeks = get_match_weeks("2025-26")
     assert weeks == [("2026-01-05", "2026-01-05")]
 
 
 def test_gather_weekly_data_filters_by_date_range(sqlite_engine):
     _seed(sqlite_engine)
-    result = gather_weekly_data("2026-01-01", "2026-01-10")
+    result = gather_weekly_data("2026-01-01", "2026-01-10", "2025-26")
     assert result["period"] == "2026-01-01 ~ 2026-01-10"
     assert len(result["matches"]) == 1
     assert result["matches"][0]["team_name"] == "屏東台電"
@@ -47,8 +47,8 @@ def test_gather_weekly_data_filters_by_date_range(sqlite_engine):
 
 def test_gather_weekly_data_filters_by_gender(sqlite_engine):
     _seed(sqlite_engine)
-    result_f = gather_weekly_data("2026-01-01", "2026-01-10", gender_filter="F")
+    result_f = gather_weekly_data("2026-01-01", "2026-01-10", "2025-26", gender_filter="F")
     assert result_f["matches"] == []
 
-    result_m = gather_weekly_data("2026-01-01", "2026-01-10", gender_filter="M")
+    result_m = gather_weekly_data("2026-01-01", "2026-01-10", "2025-26", gender_filter="M")
     assert len(result_m["matches"]) == 1
