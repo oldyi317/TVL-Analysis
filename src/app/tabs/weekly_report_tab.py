@@ -11,7 +11,9 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from src.app.helpers import load_data
+from src.app.llm_client import generate_report, resolve_llm_config
 from src.etl.weekly_report import gather_weekly_data, get_match_weeks
+from src.utils.db_config import get_engine
 
 
 def _load_env_if_present(path: Path) -> None:
@@ -37,56 +39,6 @@ REPORT_SYSTEM_PROMPT = """\
 8. 不要編造任何數據中沒有的資訊。"""
 
 
-def _get_gemini_key() -> str | None:
-    for key_name in ("GOOGLE_API_KEY", "GEMINI_API_KEY"):
-        try:
-            return st.secrets[key_name]
-        except (KeyError, FileNotFoundError):
-            val = os.getenv(key_name)
-            if val:
-                return val
-    return None
-
-
-GEMINI_MODELS = ["gemini-3-flash-preview", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
-
-
-def _call_gemini(api_key: str, user_prompt: str) -> str:
-    """呼叫 Gemini API 產生戰報，自動重試與 fallback 模型。"""
-    import time
-    from google import genai
-
-    client = genai.Client(api_key=api_key)
-
-    status_placeholder = st.empty()
-
-    for model in GEMINI_MODELS:
-        status_placeholder.caption(f"嘗試模型：{model}...")
-        for attempt in range(2):  # 每個模型最多試 2 次
-            try:
-                response = client.models.generate_content(
-                    model=model,
-                    contents=user_prompt,
-                    config={
-                        "system_instruction": REPORT_SYSTEM_PROMPT,
-                        "max_output_tokens": 8192,
-                        "temperature": 0.7,
-                    },
-                )
-                status_placeholder.caption(f"使用模型：{model}")
-                return response.text
-            except Exception as e:
-                if "429" in str(e) and attempt == 0:
-                    status_placeholder.caption(f"模型 {model} 速率限制，30 秒後重試...")
-                    time.sleep(30)
-                    continue
-                if "429" in str(e):
-                    status_placeholder.caption(f"模型 {model} 額度已滿，切換下一個...")
-                    break  # 這個模型額度用完，換下一個
-                raise  # 其他錯誤直接拋出
-
-    status_placeholder.empty()
-    raise RuntimeError("所有 Gemini 模型額度已用完，請稍後再試。")
 
 
 def _attach_set_scores(weekly_data: dict) -> dict:
@@ -320,7 +272,7 @@ def _render_match_card(group: dict):
 
 def render(ctx):
     st.subheader("每周戰報")
-    st.caption("根據比賽數據，透過 Gemini AI 自動產生結構化中文戰報。")
+    st.caption("根據比賽數據，透過 MLIS AI 自動產生結構化中文戰報。")
 
     # ── 周次選擇器 ────────────────────────────────────────────
     weeks = get_match_weeks()
@@ -365,13 +317,14 @@ def render(ctx):
     for g in grouped:
         _render_match_card(g)
 
-    # ── 產生 AI 戰報 ──────────────────────────────────────────
-    gemini_key = _get_gemini_key()
+    # ── 產生 AI 戰報（MLIS） ──────────────────────────────────────────
+    engine = get_engine()
+    llm_config = resolve_llm_config(engine)
 
-    if not gemini_key:
+    if not llm_config:
         st.info(
-            "如需 AI 戰報功能，請在 `.env` 或 Streamlit Secrets 中設定 "
-            "`GOOGLE_API_KEY`（從 [Google AI Studio](https://aistudio.google.com/) 免費取得）。"
+            "如需 AI 戰報功能，請至「系統設定」分頁設定 MLIS Endpoint、Model 與 API Key，"
+            "或設定環境變數 `MLIS_BASE_URL` / `MLIS_API_KEY` / `MLIS_MODEL`。"
         )
     elif st.button("產生 AI 戰報", type="primary", key="wr_generate"):
         data_json = json.dumps(weekly_data, ensure_ascii=False, indent=2)
@@ -381,13 +334,13 @@ def render(ctx):
             f"請根據這些數據撰寫本周戰報。\n\n"
             f"```json\n{data_json}\n```"
         )
-        with st.spinner("正在透過 Gemini API 產生戰報，請稍候..."):
+        with st.spinner("正在透過 MLIS 產生戰報，請稍候..."):
             try:
-                report_text = _call_gemini(gemini_key, user_prompt)
+                report_text = generate_report(llm_config, REPORT_SYSTEM_PROMPT, user_prompt)
                 st.session_state["weekly_report_text"] = report_text
                 st.session_state["weekly_report_period"] = weekly_data["period"]
             except Exception as e:
-                st.error(f"API 呼叫失敗：{e}")
+                st.error(f"AI 戰報產生失敗：{e}")
 
     # ── 顯示已生成的戰報 ──────────────────────────────────────
     if "weekly_report_text" in st.session_state:
