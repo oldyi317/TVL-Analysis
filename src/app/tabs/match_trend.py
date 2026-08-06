@@ -18,6 +18,8 @@ def render(ctx: dict):
     gender = ctx["gender"]
     team_name = ctx["team_name"]
 
+    # player_id 已由 main.py 依 (team_id, gender_code, season) 篩選出的球員決定，
+    # 本身即賽季範圍內唯一，故此處不需再加 season 過濾。
     match_df = load_data(
         "SELECT * FROM player_match_stats WHERE player_id = :player_id ORDER BY match_date",
         {"player_id": player_id},

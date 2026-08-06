@@ -65,8 +65,14 @@ def render(ctx: dict):
     bs_gender_code = "M" if bs_gender == "男子組" else "F"
 
     bs_teams = load_data(
-        "SELECT team_id, team_name FROM teams WHERE gender = :gender_code ORDER BY team_id",
-        {"gender_code": bs_gender_code},
+        """
+        SELECT DISTINCT t.team_id, t.team_name
+        FROM teams t
+        JOIN players p ON p.team_id = t.team_id AND p.gender = t.gender
+        WHERE t.gender = :gender_code AND p.season = :season
+        ORDER BY t.team_id
+        """,
+        {"gender_code": bs_gender_code, "season": season},
     )
     if bs_teams.empty:
         st.warning("該組別無球隊資料。")

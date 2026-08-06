@@ -14,6 +14,9 @@ from src.app.helpers import load_data
 from src.app.llm_client import generate_report, resolve_llm_config
 from src.etl.weekly_report import gather_weekly_data, get_match_weeks
 from src.utils.db_config import get_engine
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def _load_env_if_present(path: Path) -> None:
@@ -37,8 +40,6 @@ REPORT_SYSTEM_PROMPT = """\
 6. 使用 Markdown 格式，包含標題層級和粗體強調。
 7. 攻擊成功率 (ASR) = 攻擊得分 / 攻擊總數 × 100%。
 8. 不要編造任何數據中沒有的資訊。"""
-
-
 
 
 def _attach_set_scores(weekly_data: dict) -> dict:
@@ -300,6 +301,7 @@ def render(ctx):
             "組別", ["全部", "男子組", "女子組"], key="wr_gender"
         )
     wr_gender_code = {"男子組": "M", "女子組": "F"}.get(wr_gender)
+    report_key = (week_idx, wr_gender_code)
 
     # ── 撈取資料 ──────────────────────────────────────────────
     weekly_data = gather_weekly_data(date_from, date_to, season, wr_gender_code)
@@ -339,22 +341,27 @@ def render(ctx):
         with st.spinner("正在透過 MLIS 產生戰報，請稍候..."):
             try:
                 report_text = generate_report(llm_config, REPORT_SYSTEM_PROMPT, user_prompt)
-                st.session_state["weekly_report_text"] = report_text
-                st.session_state["weekly_report_period"] = weekly_data["period"]
+                st.session_state["weekly_report_store"] = {
+                    "key": report_key,
+                    "text": report_text,
+                    "period": weekly_data["period"],
+                }
             except Exception as e:
-                st.error(f"AI 戰報產生失敗：{e}")
+                logger.error("AI 戰報產生失敗：%s", e)
+                st.error(f"AI 戰報產生失敗（{type(e).__name__}），詳細錯誤已寫入 log")
 
     # ── 顯示已生成的戰報 ──────────────────────────────────────
-    if "weekly_report_text" in st.session_state:
+    # 依 (week_idx, gender) 存放，切換周次/組別後不會顯示舊選項殘留的戰報。
+    store = st.session_state.get("weekly_report_store")
+    if store and store["key"] == report_key:
         st.markdown("---")
         st.markdown("### AI 戰報")
-        st.markdown(st.session_state["weekly_report_text"])
+        st.markdown(store["text"])
 
-        period = st.session_state.get("weekly_report_period", "")
-        safe_period = period.replace(" ", "").replace("~", "_")
+        safe_period = store["period"].replace(" ", "").replace("~", "_")
         st.download_button(
             label="下載戰報 (.md)",
-            data=st.session_state["weekly_report_text"].encode("utf-8"),
+            data=store["text"].encode("utf-8"),
             file_name=f"TVL_戰報_{safe_period}.md",
             mime="text/markdown",
             key="wr_download",

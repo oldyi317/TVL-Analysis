@@ -64,7 +64,10 @@ def generate_report(
                 max_tokens=8192,
                 temperature=0.7,
             )
-            return response.choices[0].message.content
+            content = response.choices[0].message.content or ""
+            if not content:
+                raise ValueError("MLIS 回應內容為空")
+            return content
         except Exception as e:  # noqa: BLE001 - 統一轉為友善錯誤，由呼叫端顯示
             last_error = e
             logger.warning("MLIS 呼叫失敗（第 %d/%d 次）：%s", attempt + 1, MAX_RETRIES + 1, e)
@@ -87,4 +90,5 @@ def test_connection(config: LLMConfig) -> tuple[bool, str]:
         )
         return True, "連線成功"
     except Exception as e:  # noqa: BLE001
-        return False, f"連線失敗：{e}"
+        logger.warning("MLIS 連線測試失敗：%s", e)
+        return False, f"連線失敗（{type(e).__name__}），詳細錯誤已寫入 log"

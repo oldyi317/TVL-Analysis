@@ -93,6 +93,8 @@ DATABASE_URL=postgresql+psycopg://user:pass@host:5432/tvl python -m src.etl.migr
 
 遷移完成後，將 `DATABASE_URL` 指向新資料庫（或以新檔案取代舊檔案）即可。
 
+**部署順序**：在全新資料庫上，務必先跑過一次 `init_db`（透過 ETL 腳本或上述 migrate 腳本）建好 schema，才啟動 dashboard；dashboard 本身不會呼叫 `init_db`。唯一例外是 `app_settings` 表——dashboard 啟動與存設定時會自動補建（`CREATE TABLE IF NOT EXISTS`），即使忘了先跑 `init_db` 也不會因此崩潰，但其他表（`teams`/`players`/`player_match_stats`/`matches`）仍需 ETL 先建好。
+
 ## 安裝與使用
 
 ### 環境建置

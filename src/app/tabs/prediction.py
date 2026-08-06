@@ -3,6 +3,8 @@ Tab 5：賽果預測 (ML Match Prediction)
 使用訓練好的模型預測勝率，並以 SHAP 解釋特徵貢獻。
 """
 
+import math
+
 import numpy as np
 import streamlit as st
 import matplotlib
@@ -16,7 +18,7 @@ from src.utils.constants import SEASON
 # ---------------------------------------------------------------------------
 # 從資料庫取得各指標的實際範圍
 # ---------------------------------------------------------------------------
-@st.cache_data
+@st.cache_data(ttl=3600)
 def _get_data_ranges(gender_code: str, season: str) -> dict[str, tuple[float, float]]:
     """從指定賽季的聯盟聚合數據計算各滑桿指標的實際 (min, max)，加 10% 緩衝。"""
     try:
@@ -154,7 +156,6 @@ def render(ctx, cjk_font_path=None, cjk_font_stack=None):
             min_v = min(min_v, d_min)
             max_v = max(max_v, d_max)
         # 對齊 step 並確保 default 在範圍內
-        import math
         min_v = round(math.floor(min_v / step) * step, 4)
         max_v = round(math.ceil(max_v / step) * step, 4)
         default_v = round(round(default_v / step) * step, 4)

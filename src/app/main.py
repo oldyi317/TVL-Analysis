@@ -68,7 +68,12 @@ matplotlib.rcParams["axes.unicode_minus"] = False
 
 # ── 共用函式（從 helpers 匯入） ──────────────────────────────
 from src.app.helpers import load_data, inject_mobile_css
+from src.app.settings_store import ensure_settings_table
 from src.utils.constants import SEASON
+from src.utils.db_config import get_engine
+
+# ── 確保 app_settings 表存在（dashboard 不會呼叫 ETL 的 init_db，於此自癒） ──
+ensure_settings_table(get_engine())
 
 # ── 注入手機 RWD CSS ─────────────────────────────────────────
 inject_mobile_css()
@@ -93,8 +98,14 @@ gender = st.sidebar.selectbox("選擇組別", ["男子組", "女子組"])
 gender_code = "M" if gender == "男子組" else "F"
 
 teams_df = load_data(
-    "SELECT team_id, team_name FROM teams WHERE gender = :gender_code ORDER BY team_id",
-    {"gender_code": gender_code},
+    """
+    SELECT DISTINCT t.team_id, t.team_name
+    FROM teams t
+    JOIN players p ON p.team_id = t.team_id AND p.gender = t.gender
+    WHERE t.gender = :gender_code AND p.season = :season
+    ORDER BY t.team_id
+    """,
+    {"gender_code": gender_code, "season": selected_season},
 )
 if teams_df.empty:
     st.warning("該組別目前沒有球隊資料。")

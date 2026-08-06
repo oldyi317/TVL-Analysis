@@ -25,7 +25,7 @@ def _rate_safe(val: float, denom: float) -> float:
     return val if denom >= MIN_DENOM else 0.0
 
 
-def _load_league_agg(gender_code: str, season: str, pos_filter: str = "", params: dict | None = None):
+def _load_league_agg(gender_code: str, season: str, pos_filter: str, params: dict):
     """撈取指定賽季的聯盟聚合數據（全組別或特定位置）。"""
     return load_data(
         f"""
@@ -40,7 +40,7 @@ def _load_league_agg(gender_code: str, season: str, pos_filter: str = "", params
         JOIN players p ON s.player_id = p.player_id
         WHERE p.gender = :gender_code AND p.season = :season {pos_filter}
         """,
-        params if params is not None else {"gender_code": gender_code, "season": season},
+        params,
     ).iloc[0]
 
 
@@ -107,7 +107,9 @@ def render(ctx: dict):
     ppg = total_points / n_games if n_games > 0 else 0
 
     # ── 全聯盟平均 ─────────────────────────────────────────────
-    la = _parse_agg(_load_league_agg(gender_code, season, params={"gender_code": gender_code, "season": season}))
+    la = _parse_agg(_load_league_agg(
+        gender_code, season, "", {"gender_code": gender_code, "season": season},
+    ))
 
     # ── 依位置動態 KPI 卡片 ────────────────────────────────────
     POS_KPI_MAP = {

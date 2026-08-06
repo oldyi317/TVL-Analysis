@@ -18,12 +18,12 @@ SETTING_KEYS = {
 
 
 def _mask_secret(value: str) -> str:
-    """遮罩顯示：保留最後 4 碼，其餘以 * 取代；長度不足 4 則全部遮罩。"""
+    """固定寬度遮罩，不洩漏金鑰長度：長度 > 8 時保留最後 4 碼，其餘一律 8 個遮罩字元。"""
     if not value:
         return ""
-    if len(value) <= 4:
-        return "*" * len(value)
-    return f"{'*' * (len(value) - 4)}{value[-4:]}"
+    if len(value) > 8:
+        return f"{'•' * 8}{value[-4:]}"
+    return "•" * 8
 
 
 def render(ctx: dict) -> None:
