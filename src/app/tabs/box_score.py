@@ -68,7 +68,7 @@ def render(ctx: dict):
     )
     if bs_teams.empty:
         st.warning("該組別無球隊資料。")
-        st.stop()
+        return
 
     with f2:
         bs_team_name = st.selectbox("選擇球隊 (Team A)", bs_teams["team_name"].tolist(),
@@ -89,7 +89,7 @@ def render(ctx: dict):
     )
     if matches_df.empty:
         st.info("該球隊尚無比賽紀錄。")
-        st.stop()
+        return
 
     match_labels = (matches_df["match_date"] + " vs " + matches_df["opponent"]).tolist()
 

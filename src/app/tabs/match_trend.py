@@ -25,7 +25,7 @@ def render(ctx: dict):
 
     if match_df.empty:
         st.info("該球員目前沒有比賽數據紀錄。")
-        st.stop()
+        return
 
     # ── 計算逐場進階指標（向量化） ────────────────────────────
     md = match_df.copy()

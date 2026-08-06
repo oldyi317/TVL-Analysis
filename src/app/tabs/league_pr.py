@@ -35,7 +35,7 @@ def render(ctx: dict) -> None:
 
     if league_all.empty:
         st.info("目前無足夠的聯盟數據。")
-        st.stop()
+        return
 
     # ── 所選球員的 PR 值卡片 ──────────────────────────────────
     me = league_all[league_all["player_id"] == player_id]
@@ -111,7 +111,7 @@ def render(ctx: dict) -> None:
     positions = sorted(league_all["position"].dropna().unique().tolist())
     if not positions:
         st.warning("球員位置資料不足，無法繪製散佈圖。")
-        st.stop()
+        return
 
     me_pos = (
         me.iloc[0]["position"]
@@ -125,7 +125,7 @@ def render(ctx: dict) -> None:
 
     if len(pos_df) < 2:
         st.info(f"位置 {selected_pos} 僅有 {len(pos_df)} 位球員，資料不足。")
-        st.stop()
+        return
 
     def_x_idx, def_y_idx = POS_DEFAULTS.get(selected_pos, (0, 1))
 

@@ -16,6 +16,7 @@ import pandas as pd
 import streamlit as st
 
 # ── 在 matplotlib 匯入前清除舊字型快取，避免抓到缺少 CJK 字型的舊快取 ──
+@st.cache_resource
 def _purge_mpl_font_cache():
     import os, glob
     cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "matplotlib")

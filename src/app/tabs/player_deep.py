@@ -77,7 +77,7 @@ def render(ctx: dict):
 
     if stats_df.empty:
         st.info("該球員目前沒有比賽數據紀錄。")
-        st.stop()
+        return
 
     # ── 聚合計算 ──────────────────────────────────────────────
     s = stats_df

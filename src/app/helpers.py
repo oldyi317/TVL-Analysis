@@ -11,6 +11,14 @@ import pandas as pd
 import requests
 import streamlit as st
 from bs4 import BeautifulSoup
+from sqlalchemy import text
+
+from src.utils.constants import (
+    EXT_BASE, EXT_CUP_ID, EXT_HEADERS, OPP_SHORT_TO_TEAM, season_year_for_month,
+)
+from src.utils.db_config import get_engine
+
+MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "match_predictor.pkl"
 
 
 # ── 手機 RWD 支援 ────────────────────────────────────────────
@@ -62,14 +70,6 @@ def responsive_chart_config() -> dict:
 def compact_margin(l=20, r=20, t=30, b=40) -> dict:
     """回傳較緊湊的 Plotly margin，適合手機。"""
     return dict(l=l, r=r, t=t, b=b)
-
-from src.utils.constants import (
-    EXT_BASE, EXT_CUP_ID, EXT_HEADERS, OPP_SHORT_TO_TEAM, season_year_for_month,
-)
-from src.utils.db_config import get_engine
-from sqlalchemy import text
-
-MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "match_predictor.pkl"
 
 
 # ── DB 查詢 ──────────────────────────────────────────────────

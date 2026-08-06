@@ -1,10 +1,9 @@
 """
-Tab 6：每周戰報（Gemini AI 生成）
-提供周次選擇、性別篩選，以視覺化卡片呈現該周比賽摘要，並透過 Gemini API 產生專業戰報。
+Tab 6：每周戰報（MLIS AI 生成）
+提供周次選擇、性別篩選，以視覺化卡片呈現該周比賽摘要，並透過 MLIS 產生專業戰報。
 """
 
 import json
-import os
 from pathlib import Path
 
 import pandas as pd
@@ -14,7 +13,14 @@ from dotenv import load_dotenv
 from src.app.helpers import load_data
 from src.etl.weekly_report import gather_weekly_data, get_match_weeks
 
-load_dotenv(Path(__file__).resolve().parents[3] / ".env")
+
+def _load_env_if_present(path: Path) -> None:
+    """僅在 .env 檔案存在時載入，避免正式環境（無 .env）產生不必要的行為。"""
+    if path.exists():
+        load_dotenv(path)
+
+
+_load_env_if_present(Path(__file__).resolve().parents[3] / ".env")
 
 REPORT_SYSTEM_PROMPT = """\
 你是一位專業的排球賽事記者，專門報導台灣企業排球聯賽（TVL）。
@@ -320,7 +326,7 @@ def render(ctx):
     weeks = get_match_weeks()
     if not weeks:
         st.info("資料庫中尚無比賽紀錄。")
-        st.stop()
+        return
 
     week_labels = [
         f"第 {i+1} 周：{w[0]} ~ {w[1]}" for i, w in enumerate(weeks)
@@ -349,7 +355,7 @@ def render(ctx):
     all_matches = weekly_data.get("matches", [])
     if not all_matches:
         st.info("該周次無符合條件的比賽。")
-        st.stop()
+        return
 
     grouped = _group_matches(all_matches)
 
