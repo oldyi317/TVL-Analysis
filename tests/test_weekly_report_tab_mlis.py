@@ -45,7 +45,7 @@ def test_weekly_report_shows_guidance_when_mlis_not_configured(sqlite_engine, mo
         weekly_report_tab.render({})
 
     at = AppTest.from_function(_harness)
-    at.run(timeout=30)
+    at.run(timeout=60)
 
     assert not at.exception
     info_texts = [i.value for i in at.info]
@@ -74,12 +74,12 @@ def test_weekly_report_generate_button_calls_llm_client_when_configured(sqlite_e
         weekly_report_tab.render({})
 
     at = AppTest.from_function(_harness)
-    at.run(timeout=30)
+    at.run(timeout=60)
     assert not at.exception
 
     buttons = [b for b in at.button if b.label == "產生 AI 戰報"]
     assert buttons, "已設定 MLIS 時應顯示「產生 AI 戰報」按鈕"
-    buttons[0].click().run(timeout=30)
+    buttons[0].click().run(timeout=60)
 
     markdown_texts = [m.value for m in at.markdown]
     assert any("模擬產生的戰報內容" in t for t in markdown_texts)

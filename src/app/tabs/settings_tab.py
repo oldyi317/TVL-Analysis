@@ -55,9 +55,11 @@ def render(ctx: dict) -> None:
         submitted = st.form_submit_button("儲存設定")
 
     if submitted:
-        set_setting(engine, SETTING_KEYS["base_url"], base_url.strip())
-        set_setting(engine, SETTING_KEYS["model"], model.strip())
-        if api_key:
+        if base_url.strip():
+            set_setting(engine, SETTING_KEYS["base_url"], base_url.strip())
+        if model.strip():
+            set_setting(engine, SETTING_KEYS["model"], model.strip())
+        if api_key.strip():
             set_setting(engine, SETTING_KEYS["api_key"], api_key.strip())
         st.success("設定已儲存。")
         # 重新讀取：若不重新讀取，儲存當下這次 rerun 仍會用表單提交「前」讀到的舊

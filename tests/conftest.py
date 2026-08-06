@@ -3,6 +3,15 @@
 import pytest
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _warm_heavy_imports():
+    """暖機重型 imports，避免第一個 AppTest 觸發冷啟動 (~8s+)。"""
+    import openai  # noqa: F401
+    import httpx  # noqa: F401
+    import streamlit  # noqa: F401
+    yield
+
+
 @pytest.fixture
 def sqlite_engine(tmp_path, monkeypatch):
     """建立套用最新 schema 的暫存 SQLite engine，測試結束後釋放。"""

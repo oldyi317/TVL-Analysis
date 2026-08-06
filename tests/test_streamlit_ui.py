@@ -10,7 +10,7 @@ from streamlit.testing.v1 import AppTest
 
 def _assert_returns_without_stopping_script(harness) -> None:
     at = AppTest.from_function(harness)
-    at.run(timeout=30)
+    at.run(timeout=60)
     assert not at.exception, f"渲染時發生例外：{at.exception}"
     markers = [t.value for t in at.text if t.value == "MARKER_AFTER_RENDER"]
     assert markers, "render() 應以 return 結束當前 tab，其後的程式碼仍應正常執行"
