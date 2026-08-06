@@ -38,3 +38,15 @@ def test_select_slider_config_defaults_to_v1_when_feature_cols_missing():
     assert n == 0
     assert cfg == V1_SLIDER_CFG
     assert "V1" in label
+
+
+def test_real_pkl_resolves_to_v1_slider_config():
+    """驗證真實模型 pkl 的 feature_cols 鍵名與數量，捕捉未來的模型漂移。"""
+    import joblib
+    from src.app.helpers import MODEL_PATH
+
+    artifact = joblib.load(MODEL_PATH)
+    cfg, version, n_features = _select_slider_config(artifact)
+    assert n_features == 5
+    assert cfg is V1_SLIDER_CFG
+    assert "V1" in version
