@@ -67,17 +67,18 @@ from src.utils.constants import (
     EXT_BASE, EXT_CUP_ID, EXT_HEADERS, OPP_SHORT_TO_TEAM, season_year_for_month,
 )
 from src.utils.db_config import get_engine
+from sqlalchemy import text
 
 MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "match_predictor.pkl"
 
 
 # ── DB 查詢 ──────────────────────────────────────────────────
 
-@st.cache_data
-def load_data(query: str, params: tuple = ()) -> pd.DataFrame:
-    """透過 db_config 的 engine 執行查詢並回傳 DataFrame。"""
+@st.cache_data(ttl=3600)
+def load_data(query: str, params: dict | None = None) -> pd.DataFrame:
+    """透過 db_config 的 engine 執行具名參數化查詢並回傳 DataFrame（ttl=3600 配合每日 ETL）。"""
     engine = get_engine()
-    return pd.read_sql_query(query, engine, params=params)
+    return pd.read_sql_query(text(query), engine, params=params or {})
 
 
 # ── 數值工具 ─────────────────────────────────────────────────
@@ -202,7 +203,7 @@ POS_DEFAULTS: dict[str, tuple[int, int]] = {
 }
 
 
-@st.cache_data
+@st.cache_data(ttl=3600)
 def get_league_aggregated_stats(gender_code: str) -> pd.DataFrame:
     """
     撈取該組別所有球員的聚合統計數據，JOIN players + teams 取得姓名/球隊/位置。
@@ -231,11 +232,11 @@ def get_league_aggregated_stats(gender_code: str) -> pd.DataFrame:
         FROM player_match_stats s
         JOIN players p ON s.player_id = p.player_id
         JOIN teams   t ON p.team_id = t.team_id AND p.gender = t.gender
-        WHERE p.gender = ?
+        WHERE p.gender = :gender_code
         GROUP BY p.player_id
         HAVING SUM(s.sets_played) >= 5
         """,
-        (gender_code,),
+        {"gender_code": gender_code},
     )
     # 計算進階比率指標（向量化）
     raw["asr"] = vec_pct(raw["atk_pts"], raw["atk_tot"])

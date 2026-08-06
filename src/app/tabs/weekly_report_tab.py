@@ -91,7 +91,8 @@ def _attach_set_scores(weekly_data: dict) -> dict:
     if not dates:
         return weekly_data
 
-    placeholders = ",".join(["?"] * len(dates))
+    date_params = {f"d{i}": d for i, d in enumerate(dates)}
+    placeholders = ",".join(f":{k}" for k in date_params)
     matches_db = load_data(
         f"""SELECT match_date, home_team, away_team,
                    home_set1, home_set2, home_set3, home_set4, home_set5,
@@ -100,7 +101,7 @@ def _attach_set_scores(weekly_data: dict) -> dict:
                    home_sets_won, away_sets_won, is_golden_set
             FROM matches
             WHERE match_date IN ({placeholders})""",
-        tuple(dates),
+        date_params,
     )
     if matches_db.empty:
         return weekly_data

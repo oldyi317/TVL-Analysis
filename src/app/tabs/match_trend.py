@@ -19,8 +19,8 @@ def render(ctx: dict):
     team_name = ctx["team_name"]
 
     match_df = load_data(
-        "SELECT * FROM player_match_stats WHERE player_id = ? ORDER BY match_date",
-        (player_id,),
+        "SELECT * FROM player_match_stats WHERE player_id = :player_id ORDER BY match_date",
+        {"player_id": player_id},
     )
 
     if match_df.empty:

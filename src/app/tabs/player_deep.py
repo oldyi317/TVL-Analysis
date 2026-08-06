@@ -25,7 +25,7 @@ def _rate_safe(val: float, denom: float) -> float:
     return val if denom >= MIN_DENOM else 0.0
 
 
-def _load_league_agg(gender_code: str, pos_filter: str = "", params: tuple = ()):
+def _load_league_agg(gender_code: str, pos_filter: str = "", params: dict | None = None):
     """撈取聯盟聚合數據（全組別或特定位置）。"""
     return load_data(
         f"""
@@ -38,9 +38,9 @@ def _load_league_agg(gender_code: str, pos_filter: str = "", params: tuple = ())
                SUM(s.total_points) AS tot_pts, COUNT(*) AS n_games
         FROM player_match_stats s
         JOIN players p ON s.player_id = p.player_id
-        WHERE p.gender = ? {pos_filter}
+        WHERE p.gender = :gender_code {pos_filter}
         """,
-        params,
+        params if params is not None else {"gender_code": gender_code},
     ).iloc[0]
 
 
@@ -71,8 +71,8 @@ def render(ctx: dict):
     gender = ctx["gender"]
 
     stats_df = load_data(
-        "SELECT * FROM player_match_stats WHERE player_id = ? ORDER BY match_date",
-        (player_id,),
+        "SELECT * FROM player_match_stats WHERE player_id = :player_id ORDER BY match_date",
+        {"player_id": player_id},
     )
 
     if stats_df.empty:
@@ -106,7 +106,7 @@ def render(ctx: dict):
     ppg = total_points / n_games if n_games > 0 else 0
 
     # ── 全聯盟平均 ─────────────────────────────────────────────
-    la = _parse_agg(_load_league_agg(gender_code, params=(gender_code,)))
+    la = _parse_agg(_load_league_agg(gender_code, params={"gender_code": gender_code}))
 
     # ── 依位置動態 KPI 卡片 ────────────────────────────────────
     POS_KPI_MAP = {
@@ -162,8 +162,11 @@ def render(ctx: dict):
     st.markdown("---")
 
     # ── 同位置平均（供雷達圖對照） ─────────────────────────────
-    pos_filter = "AND p.position = ?" if player_position else ""
-    pos_params = (gender_code, player_position) if player_position else (gender_code,)
+    pos_filter = "AND p.position = :position" if player_position else ""
+    pos_params = (
+        {"gender_code": gender_code, "position": player_position}
+        if player_position else {"gender_code": gender_code}
+    )
     lg = _parse_agg(_load_league_agg(gender_code, pos_filter, pos_params))
 
     # ── 雷達圖 ─────────────────────────────────────────────────

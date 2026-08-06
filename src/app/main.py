@@ -84,8 +84,8 @@ gender = st.sidebar.selectbox("選擇組別", ["男子組", "女子組"])
 gender_code = "M" if gender == "男子組" else "F"
 
 teams_df = load_data(
-    "SELECT team_id, team_name FROM teams WHERE gender = ? ORDER BY team_id",
-    (gender_code,),
+    "SELECT team_id, team_name FROM teams WHERE gender = :gender_code ORDER BY team_id",
+    {"gender_code": gender_code},
 )
 if teams_df.empty:
     st.warning("該組別目前沒有球隊資料。")
@@ -96,8 +96,8 @@ team_id = int(teams_df.loc[teams_df["team_name"] == team_name, "team_id"].iloc[0
 
 players_df = load_data(
     "SELECT player_id, jersey_number, name, position FROM players "
-    "WHERE team_id = ? AND gender = ? ORDER BY jersey_number",
-    (team_id, gender_code),
+    "WHERE team_id = :team_id AND gender = :gender_code ORDER BY jersey_number",
+    {"team_id": team_id, "gender_code": gender_code},
 )
 if players_df.empty:
     st.warning("該球隊目前沒有球員資料。")

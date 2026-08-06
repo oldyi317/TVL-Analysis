@@ -63,8 +63,8 @@ def render(ctx: dict):
     bs_gender_code = "M" if bs_gender == "男子組" else "F"
 
     bs_teams = load_data(
-        "SELECT team_id, team_name FROM teams WHERE gender = ? ORDER BY team_id",
-        (bs_gender_code,),
+        "SELECT team_id, team_name FROM teams WHERE gender = :gender_code ORDER BY team_id",
+        {"gender_code": bs_gender_code},
     )
     if bs_teams.empty:
         st.warning("該組別無球隊資料。")
@@ -82,10 +82,10 @@ def render(ctx: dict):
         SELECT DISTINCT s.match_date, s.opponent
         FROM player_match_stats s
         JOIN players p ON s.player_id = p.player_id
-        WHERE p.team_id = ? AND p.gender = ?
+        WHERE p.team_id = :team_id AND p.gender = :gender_code
         ORDER BY s.match_date
         """,
-        (bs_team_id, bs_gender_code),
+        {"team_id": bs_team_id, "gender_code": bs_gender_code},
     )
     if matches_df.empty:
         st.info("該球隊尚無比賽紀錄。")
@@ -164,11 +164,14 @@ def render(ctx: dict):
                s.total_points
         FROM player_match_stats s
         JOIN players p ON s.player_id = p.player_id
-        WHERE p.team_id = ? AND p.gender = ?
-          AND s.match_date = ? AND s.opponent = ?
+        WHERE p.team_id = :team_id AND p.gender = :gender_code
+          AND s.match_date = :match_date AND s.opponent = :opponent
         ORDER BY s.total_points DESC
         """,
-        (bs_team_id, bs_gender_code, sel_date, sel_opponent),
+        {
+            "team_id": bs_team_id, "gender_code": bs_gender_code,
+            "match_date": sel_date, "opponent": sel_opponent,
+        },
     )
 
     # ── 撈取 Team B 單場數據 ─────────────────────────────────
@@ -189,11 +192,11 @@ def render(ctx: dict):
                    s.total_points
             FROM player_match_stats s
             JOIN players p ON s.player_id = p.player_id
-            WHERE p.team_id = ? AND p.gender = ?
-              AND s.match_date = ?
+            WHERE p.team_id = :team_id AND p.gender = :gender_code
+              AND s.match_date = :match_date
             ORDER BY s.total_points DESC
             """,
-            (opp_team_id, opp_gender, sel_date),
+            {"team_id": opp_team_id, "gender_code": opp_gender, "match_date": sel_date},
         )
 
     # ── 雙方 Box Score 並排 ───────────────────────────────────
