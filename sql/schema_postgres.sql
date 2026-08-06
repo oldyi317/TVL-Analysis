@@ -79,6 +79,11 @@ CREATE TABLE IF NOT EXISTS matches (
     UNIQUE (game_id, gender, season)
 );
 
+CREATE TABLE IF NOT EXISTS app_settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_pms_player_id  ON player_match_stats(player_id);
 CREATE INDEX IF NOT EXISTS idx_pms_match_date ON player_match_stats(match_date);
 CREATE INDEX IF NOT EXISTS idx_players_team_gender ON players(team_id, gender);
