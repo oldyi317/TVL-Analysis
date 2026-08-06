@@ -73,7 +73,10 @@ from src.app.helpers import load_data, inject_mobile_css
 inject_mobile_css()
 
 # ── Tab 模組（延遲匯入各分頁） ───────────────────────────────
-from src.app.tabs import player_deep, league_pr, match_trend, box_score, prediction, weekly_report_tab
+from src.app.tabs import (
+    player_deep, league_pr, match_trend, box_score, prediction,
+    weekly_report_tab, settings_tab,
+)
 
 
 # ── 側邊欄篩選器（三層連動） ──────────────────────────────────
@@ -135,9 +138,9 @@ ctx = {
 
 # ── 分頁結構 ──────────────────────────────────────────────────
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "球員個人深度", "聯盟 PR 值與分佈", "逐場趨勢", "單場 Box Score", "賽果預測",
-    "每周戰報",
+    "每周戰報", "系統設定",
 ])
 
 with tab1:
@@ -157,3 +160,6 @@ with tab5:
 
 with tab6:
     weekly_report_tab.render(ctx)
+
+with tab7:
+    settings_tab.render(ctx)
