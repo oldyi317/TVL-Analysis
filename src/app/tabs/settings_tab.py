@@ -6,7 +6,7 @@ Tab 7：系統設定
 
 import streamlit as st
 
-from src.app.llm_client import LLMConfig, test_connection
+from src.app.llm_client import LLMConfig, _parse_bool, test_connection
 from src.app.settings_store import get_setting, set_setting
 from src.utils.db_config import get_engine
 
@@ -16,10 +16,6 @@ SETTING_KEYS = {
     "api_key": "mlis_api_key",
     "verify_ssl": "mlis_verify_ssl",
 }
-
-
-def _parse_bool(raw: str) -> bool:
-    return raw.strip().lower() not in ("false", "0", "no")
 
 
 def _mask_secret(value: str) -> str:

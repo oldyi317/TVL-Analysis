@@ -200,3 +200,24 @@ def test_build_client_uses_ca_bundle_when_set(monkeypatch):
     llm_client._build_client(config)
 
     assert captured["verify"] == "/etc/ssl/custom-ca.pem"
+
+
+def test_build_client_ca_bundle_ignored_when_verify_ssl_false(monkeypatch):
+    """verify_ssl=False 明確表示不驗證，即使 MLIS_CA_BUNDLE 有設也不該改用該路徑。"""
+    import src.app.llm_client as llm_client
+
+    monkeypatch.setenv("MLIS_CA_BUNDLE", "/etc/ssl/custom-ca.pem")
+    captured = {}
+
+    class _FakeHttpxClient:
+        timeout = None
+
+        def __init__(self, *args, **kwargs):
+            captured["verify"] = kwargs.get("verify")
+
+    monkeypatch.setattr(llm_client.httpx, "Client", _FakeHttpxClient)
+
+    config = LLMConfig(base_url="http://fake-mlis.local/v1", api_key="test-key", model="qwen-test", verify_ssl=False)
+    llm_client._build_client(config)
+
+    assert captured["verify"] is False

@@ -89,6 +89,23 @@ def test_settings_tab_blank_submission_keeps_prior_values(sqlite_engine):
     assert get_setting(engine, "mlis_api_key") == "initial-key"
 
 
+def test_settings_tab_verify_ssl_checkbox_defaults_checked_when_no_db_row(sqlite_engine):
+    """安全性關鍵路徑迴歸測試：DB 尚未存過 mlis_verify_ssl 時，checkbox 必須預設勾選
+    （亦即預設仍要求驗證 TLS 憑證，不能悄悄變成不驗證）。"""
+    def _harness():
+        import sys
+        sys.path.insert(0, ".")
+        from src.app.tabs import settings_tab
+
+        settings_tab.render({})
+
+    at = AppTest.from_function(_harness)
+    at.run(timeout=60)
+
+    assert not at.exception
+    assert at.checkbox(key="settings_verify_ssl").value is True
+
+
 def test_settings_tab_uncheck_verify_ssl_then_save_persists_false(sqlite_engine):
     def _harness():
         import sys
