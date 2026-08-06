@@ -14,7 +14,12 @@ SETTING_KEYS = {
     "base_url": "mlis_base_url",
     "model": "mlis_model",
     "api_key": "mlis_api_key",
+    "verify_ssl": "mlis_verify_ssl",
 }
+
+
+def _parse_bool(raw: str) -> bool:
+    return raw.strip().lower() not in ("false", "0", "no")
 
 
 def _mask_secret(value: str) -> str:
@@ -35,6 +40,8 @@ def render(ctx: dict) -> None:
     current_base_url = get_setting(engine, SETTING_KEYS["base_url"]) or ""
     current_model = get_setting(engine, SETTING_KEYS["model"]) or ""
     current_api_key = get_setting(engine, SETTING_KEYS["api_key"]) or ""
+    current_verify_ssl_raw = get_setting(engine, SETTING_KEYS["verify_ssl"])
+    current_verify_ssl = _parse_bool(current_verify_ssl_raw) if current_verify_ssl_raw is not None else True
 
     with st.form("mlis_settings_form"):
         base_url = st.text_input(
@@ -52,6 +59,11 @@ def render(ctx: dict) -> None:
             placeholder=_mask_secret(current_api_key) or "尚未設定",
             key="settings_api_key",
         )
+        verify_ssl = st.checkbox(
+            "驗證 TLS 憑證（內部自簽憑證環境可取消勾選）",
+            value=current_verify_ssl,
+            key="settings_verify_ssl",
+        )
         submitted = st.form_submit_button("儲存設定")
 
     if submitted:
@@ -61,6 +73,7 @@ def render(ctx: dict) -> None:
             set_setting(engine, SETTING_KEYS["model"], model.strip())
         if api_key.strip():
             set_setting(engine, SETTING_KEYS["api_key"], api_key.strip())
+        set_setting(engine, SETTING_KEYS["verify_ssl"], "true" if verify_ssl else "false")
         st.success("設定已儲存。")
         # 重新讀取：若不重新讀取，儲存當下這次 rerun 仍會用表單提交「前」讀到的舊
         # current_api_key 渲染下方的遮罩提示，導致剛存完金鑰卻仍顯示「尚未設定」。

@@ -89,6 +89,29 @@ def test_settings_tab_blank_submission_keeps_prior_values(sqlite_engine):
     assert get_setting(engine, "mlis_api_key") == "initial-key"
 
 
+def test_settings_tab_uncheck_verify_ssl_then_save_persists_false(sqlite_engine):
+    def _harness():
+        import sys
+        sys.path.insert(0, ".")
+        from src.app.tabs import settings_tab
+
+        settings_tab.render({})
+
+    at = AppTest.from_function(_harness)
+    at.run(timeout=60)
+
+    at.checkbox(key="settings_verify_ssl").set_value(False).run()
+    at.button(key="FormSubmitter:mlis_settings_form-儲存設定").click().run(timeout=60)
+
+    assert not at.exception
+
+    from src.app.settings_store import get_setting
+    from src.utils.db_config import get_engine
+
+    engine = get_engine()
+    assert get_setting(engine, "mlis_verify_ssl") == "false"
+
+
 def test_settings_tab_test_connection_shows_success(sqlite_engine, monkeypatch):
     from src.app.settings_store import set_setting
 

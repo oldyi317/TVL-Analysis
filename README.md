@@ -134,6 +134,8 @@ streamlit run src/app/main.py
 
 在環境變數或「系統設定」分頁中設定 `MLIS_BASE_URL`、`MLIS_API_KEY` 與 `MLIS_MODEL`（PCAI MLIS 叢集資訊），即可在儀表板「每周戰報」分頁使用 AI 自動產生戰報。
 
+若 endpoint 憑證由內部自簽 CA 簽發導致連線測試失敗（`unable to get local issuer certificate`），可在「系統設定」分頁取消勾選「驗證 TLS 憑證」，或設定環境變數 `MLIS_CA_BUNDLE` 指向該 CA 憑證檔（正式環境建議採用後者）。
+
 ## 位置代號對照
 
 | 中文 | 英文縮寫 |

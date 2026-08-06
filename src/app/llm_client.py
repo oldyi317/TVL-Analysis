@@ -7,6 +7,7 @@ import os
 import time
 from dataclasses import dataclass
 
+import httpx
 from openai import OpenAI
 from sqlalchemy.engine import Engine
 
@@ -24,6 +25,11 @@ class LLMConfig:
     base_url: str
     api_key: str
     model: str
+    verify_ssl: bool = True
+
+
+def _parse_bool(raw: str) -> bool:
+    return raw.strip().lower() not in ("false", "0", "no")
 
 
 def resolve_llm_config(engine: Engine) -> LLMConfig | None:
@@ -33,13 +39,24 @@ def resolve_llm_config(engine: Engine) -> LLMConfig | None:
     model = get_setting(engine, "mlis_model") or os.environ.get("MLIS_MODEL")
     if not (base_url and api_key and model):
         return None
-    return LLMConfig(base_url=base_url, api_key=api_key, model=model)
+
+    verify_ssl_raw = get_setting(engine, "mlis_verify_ssl") or os.environ.get("MLIS_VERIFY_SSL")
+    verify_ssl = _parse_bool(verify_ssl_raw) if verify_ssl_raw is not None else True
+
+    return LLMConfig(base_url=base_url, api_key=api_key, model=model, verify_ssl=verify_ssl)
 
 
 def _build_client(config: LLMConfig) -> OpenAI:
     """建立 OpenAI 相容 client。max_retries=0：openai SDK 預設會自己重試 2 次，
-    若不關閉，會與下方 generate_report 的重試邏輯疊加，讓一次失敗變成多達 9 次實際請求。"""
-    return OpenAI(base_url=config.base_url, api_key=config.api_key, max_retries=0)
+    若不關閉，會與下方 generate_report 的重試邏輯疊加，讓一次失敗變成多達 9 次實際請求。
+
+    verify：MLIS_CA_BUNDLE 有設且 verify_ssl 為 True 時信任該自訂 CA（正式環境正解）；
+    否則直接用 verify_ssl 布林值（內部自簽憑證環境可關閉驗證）。
+    """
+    ca_bundle = os.environ.get("MLIS_CA_BUNDLE")
+    verify: bool | str = ca_bundle if (config.verify_ssl and ca_bundle) else config.verify_ssl
+    http_client = httpx.Client(verify=verify)
+    return OpenAI(base_url=config.base_url, api_key=config.api_key, http_client=http_client, max_retries=0)
 
 
 def generate_report(
@@ -70,7 +87,10 @@ def generate_report(
             return content
         except Exception as e:  # noqa: BLE001 - 統一轉為友善錯誤，由呼叫端顯示
             last_error = e
-            logger.warning("MLIS 呼叫失敗（第 %d/%d 次）：%s", attempt + 1, MAX_RETRIES + 1, e)
+            logger.warning(
+                "MLIS 呼叫失敗（第 %d/%d 次）：%s（底層：%r）",
+                attempt + 1, MAX_RETRIES + 1, e, e.__cause__,
+            )
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY_SECONDS)
 
@@ -90,5 +110,5 @@ def test_connection(config: LLMConfig) -> tuple[bool, str]:
         )
         return True, "連線成功"
     except Exception as e:  # noqa: BLE001
-        logger.warning("MLIS 連線測試失敗：%s", e)
+        logger.warning("MLIS 連線測試失敗：%s（底層：%r）", e, e.__cause__)
         return False, f"連線失敗（{type(e).__name__}），詳細錯誤已寫入 log"

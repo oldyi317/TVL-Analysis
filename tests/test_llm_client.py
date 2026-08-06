@@ -122,3 +122,81 @@ def test_resolve_llm_config_returns_none_when_nothing_set(sqlite_engine, monkeyp
         monkeypatch.delenv(key, raising=False)
 
     assert resolve_llm_config(sqlite_engine) is None
+
+
+def _set_required_settings(engine):
+    from src.app.settings_store import set_setting
+
+    set_setting(engine, "mlis_base_url", "http://db-endpoint/v1")
+    set_setting(engine, "mlis_api_key", "db-key")
+    set_setting(engine, "mlis_model", "db-model")
+
+
+def test_resolve_llm_config_verify_ssl_defaults_true(sqlite_engine, monkeypatch):
+    monkeypatch.delenv("MLIS_VERIFY_SSL", raising=False)
+    _set_required_settings(sqlite_engine)
+
+    config = resolve_llm_config(sqlite_engine)
+
+    assert config.verify_ssl is True
+
+
+def test_resolve_llm_config_verify_ssl_false_from_db(sqlite_engine, monkeypatch):
+    from src.app.settings_store import set_setting
+
+    monkeypatch.delenv("MLIS_VERIFY_SSL", raising=False)
+    _set_required_settings(sqlite_engine)
+    set_setting(sqlite_engine, "mlis_verify_ssl", "false")
+
+    config = resolve_llm_config(sqlite_engine)
+
+    assert config.verify_ssl is False
+
+
+def test_resolve_llm_config_verify_ssl_false_from_env(sqlite_engine, monkeypatch):
+    monkeypatch.setenv("MLIS_VERIFY_SSL", "FALSE")
+    _set_required_settings(sqlite_engine)
+
+    config = resolve_llm_config(sqlite_engine)
+
+    assert config.verify_ssl is False
+
+
+def test_build_client_passes_verify_false_to_httpx_client(monkeypatch):
+    import src.app.llm_client as llm_client
+
+    monkeypatch.delenv("MLIS_CA_BUNDLE", raising=False)
+    captured = {}
+
+    class _FakeHttpxClient:
+        timeout = None
+
+        def __init__(self, *args, **kwargs):
+            captured["verify"] = kwargs.get("verify")
+
+    monkeypatch.setattr(llm_client.httpx, "Client", _FakeHttpxClient)
+
+    config = LLMConfig(base_url="http://fake-mlis.local/v1", api_key="test-key", model="qwen-test", verify_ssl=False)
+    llm_client._build_client(config)
+
+    assert captured["verify"] is False
+
+
+def test_build_client_uses_ca_bundle_when_set(monkeypatch):
+    import src.app.llm_client as llm_client
+
+    monkeypatch.setenv("MLIS_CA_BUNDLE", "/etc/ssl/custom-ca.pem")
+    captured = {}
+
+    class _FakeHttpxClient:
+        timeout = None
+
+        def __init__(self, *args, **kwargs):
+            captured["verify"] = kwargs.get("verify")
+
+    monkeypatch.setattr(llm_client.httpx, "Client", _FakeHttpxClient)
+
+    config = LLMConfig(base_url="http://fake-mlis.local/v1", api_key="test-key", model="qwen-test", verify_ssl=True)
+    llm_client._build_client(config)
+
+    assert captured["verify"] == "/etc/ssl/custom-ca.pem"
