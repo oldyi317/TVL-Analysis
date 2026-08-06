@@ -108,6 +108,18 @@ def _load_model_and_explainer():
 
 
 # ---------------------------------------------------------------------------
+# Slider 配置選擇邏輯
+# ---------------------------------------------------------------------------
+def _select_slider_config(artifact: dict) -> tuple[list[tuple], str, int]:
+    """依模型 artifact 的 feature_cols 數量決定使用哪組 Slider 設定。"""
+    feature_cols = artifact.get("feature_cols", [])
+    n_features = len(feature_cols)
+    if n_features == 11:
+        return V2_SLIDER_CFG, "V2（滑動窗口 + 連勝）", n_features
+    return V1_SLIDER_CFG, "V1（基本五指標）", n_features
+
+
+# ---------------------------------------------------------------------------
 # 主渲染函數
 # ---------------------------------------------------------------------------
 def render(ctx, cjk_font_path=None, cjk_font_stack=None):
@@ -122,16 +134,7 @@ def render(ctx, cjk_font_path=None, cjk_font_stack=None):
 
     # ------ 載入模型與 SHAP 解釋器 ------
     artifact, model, explainer = _load_model_and_explainer()
-    feature_names = artifact.get("feature_names", [])
-    n_features = len(feature_names)
-
-    # 根據特徵數量決定使用哪組 Slider
-    if n_features == 11:
-        slider_cfg = V2_SLIDER_CFG
-        version_label = "V2（滑動窗口 + 連勝）"
-    else:
-        slider_cfg = V1_SLIDER_CFG
-        version_label = "V1（基本五指標）"
+    slider_cfg, version_label, n_features = _select_slider_config(artifact)
 
     st.caption(f"模型版本：{version_label}｜特徵數：{n_features}")
 
