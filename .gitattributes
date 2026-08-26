@@ -1,0 +1,6 @@
+# repo 在 WSL 的 /mnt/d 上，Windows 工具會把行尾轉成 CRLF；一律強制 LF
+* text=auto eol=lf
+
+# 刻意 commit 的二進位檔（Streamlit Cloud 依賴），嚴禁行尾轉換
+*.db binary
+*.pkl binary
