@@ -221,16 +221,36 @@ POS_DEFAULTS: dict[str, tuple[int, int]] = {
 
 
 @st.cache_data
+def get_current_roster(team_id: int, gender_code: str) -> pd.DataFrame:
+    """回傳指定隊伍最新一週（week_start_date 最大）的登錄名單。"""
+    return load_data(
+        """
+        SELECT r.player_id, r.jersey_number, p.name, r.position
+        FROM roster_registrations r
+        JOIN players p ON r.player_id = p.player_id
+        WHERE r.team_id = ? AND r.gender = ?
+          AND r.week_start_date = (
+              SELECT MAX(week_start_date) FROM roster_registrations
+              WHERE team_id = r.team_id AND gender = r.gender
+          )
+        ORDER BY r.jersey_number
+        """,
+        (team_id, gender_code),
+    )
+
+
+@st.cache_data
 def get_league_aggregated_stats(gender_code: str) -> pd.DataFrame:
     """
-    撈取該組別所有球員的聚合統計數據，JOIN players + teams 取得姓名/球隊/位置。
-    僅保留總局數 >= 5 的球員，排除極端值。
+    撈取該組別所有球員的聚合統計數據。position/team_name 取自該球員
+    week_start_date 最大的那筆登錄（每位球員一個代表性值，避免換隊/換位置
+    造成 GROUP BY 產生重複列）。僅保留總局數 >= 5 的球員，排除極端值。
     """
     raw = load_data(
         """
         SELECT p.player_id,
                p.name,
-               p.position,
+               latest.position AS position,
                t.team_name,
                SUM(s.sets_played)       AS total_sets,
                SUM(s.attack_points)     AS atk_pts,
@@ -247,15 +267,24 @@ def get_league_aggregated_stats(gender_code: str) -> pd.DataFrame:
                SUM(s.total_points)      AS total_points,
                COUNT(*)                 AS n_games
         FROM player_match_stats s
-        JOIN players p ON s.player_id = p.player_id
-        JOIN teams   t ON p.team_id = t.team_id AND p.gender = t.gender
-        WHERE p.gender = ?
+        JOIN roster_registrations r ON s.registration_id = r.registration_id
+        JOIN players p ON r.player_id = p.player_id
+        JOIN (
+            SELECT rr.player_id, rr.position, rr.team_id, rr.gender
+            FROM roster_registrations rr
+            WHERE rr.week_start_date = (
+                SELECT MAX(week_start_date) FROM roster_registrations rr2
+                WHERE rr2.player_id = rr.player_id
+            )
+        ) latest ON latest.player_id = p.player_id
+        JOIN teams t ON t.team_id = latest.team_id AND t.gender = latest.gender
+        WHERE latest.gender = ?
         GROUP BY p.player_id
         HAVING SUM(s.sets_played) >= 5
         """,
         (gender_code,),
     )
-    # 計算進階比率指標（向量化）
+    # 計算進階比率指標（向量化）—— 以下邏輯完全不變
     raw["asr"] = vec_pct(raw["atk_pts"], raw["atk_tot"])
     raw["gp_pct"] = vec_pct(raw["rcv_exc"], raw["rcv_tot"])
     raw["ace_pct"] = vec_pct(raw["srv_pts"], raw["srv_tot"])
@@ -266,7 +295,6 @@ def get_league_aggregated_stats(gender_code: str) -> pd.DataFrame:
     raw["def_load"] = raw["rcv_tot"] + raw["dig_tot"]
     raw["def_pct"] = vec_pct(raw["rcv_exc"] + raw["dig_exc"], raw["rcv_tot"] + raw["dig_tot"])
 
-    # 同位置 PR 值（百分位排名 0~100）
     pr_cols = ["asr", "gp_pct", "ace_pct", "dig_pct", "set_pct", "blk_per_set", "def_pct"]
     for col in pr_cols:
         raw[f"{col}_pr"] = (
