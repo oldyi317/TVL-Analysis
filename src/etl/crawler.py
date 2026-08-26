@@ -1,6 +1,12 @@
 """
 TVL 球員名單爬蟲模組
 從企業排球聯賽官網抓取球隊球員資料並匯出為 CSV。
+
+Phase 2 起：本模組只負責維護球員「身分層」（name/gender/dob/height_cm/weight_kg）。
+輸出的 CSV 仍含 team_id/jersey_number/position 欄位，但這些欄位在 Phase 2 之後
+僅供人工參考——db_loader.upsert_player_identity() 不會把它們寫入資料庫。
+team_id/jersey_number/position 的唯一權威來源是 roster_registrations
+（見 src/etl/stats_crawler.py 的 crawl_all_rosters()）。
 """
 
 import re
@@ -235,6 +241,11 @@ def main():
     output_path = output_dir / "all_teams_roster.csv"
     df.to_csv(output_path, index=False, encoding="utf-8-sig")
     logger.info("已儲存至 %s", output_path)
+    logger.info(
+        "提醒：team_id/jersey_number/position 僅供參考，"
+        "Phase 2 之後由 roster_registrations 權威維護，"
+        "db_loader 不會把這些欄位寫入資料庫。"
+    )
 
     # 分性別統計摘要
     print("\n===== 爬取完成 =====")
