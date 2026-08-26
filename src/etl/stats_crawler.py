@@ -13,37 +13,12 @@ from bs4 import BeautifulSoup
 
 from pathlib import Path
 
-try:
-    from src.utils.db_config import DB_PATH, get_connection
-    from src.utils.logger import get_logger
-    from src.utils.constants import (
-        EXT_BASE, EXT_CUP_ID as CUP_ID, EXT_HEADERS as HEADERS,
-        SEASON_YEAR_MAP, DEFAULT_YEAR, EXT_TEAM_MAP,
-    )
-except ModuleNotFoundError:
-    import logging
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-    get_logger = logging.getLogger
-    DB_PATH = Path(__file__).resolve().parents[2] / "data" / "db" / "tvl_database.db"
-
-    def get_connection(foreign_keys=True):
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(DB_PATH)
-        if foreign_keys:
-            conn.execute("PRAGMA foreign_keys = ON")
-        return conn
-
-    EXT_BASE = "http://114.35.229.141"
-    CUP_ID = 21
-    SEASON_YEAR_MAP = {11: 2025, 12: 2025}
-    DEFAULT_YEAR = 2026
-    HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    }
-    EXT_TEAM_MAP = {
-        1: (1, "M"), 2: (2, "M"), 3: (7, "M"), 4: (4, "M"), 5: (5, "M"),
-        6: (4, "F"), 7: (3, "F"), 8: (5, "F"), 9: (7, "F"),
-    }
+from src.utils.db_config import DB_PATH, get_connection
+from src.utils.logger import get_logger
+from src.utils.constants import (
+    EXT_BASE, EXT_CUP_ID as CUP_ID, EXT_HEADERS as HEADERS,
+    SEASON_YEAR_MAP, DEFAULT_YEAR, EXT_TEAM_MAP,
+)
 
 logger = get_logger(__name__)
 

@@ -12,30 +12,9 @@ import requests
 from bs4 import BeautifulSoup
 from pathlib import Path
 
-try:
-    from src.utils.db_config import DB_PATH, get_connection
-    from src.utils.logger import get_logger
-    from src.utils.constants import EXT_HEADERS as HEADERS
-except ModuleNotFoundError:
-    import logging
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-    get_logger = logging.getLogger
-    DB_PATH = Path(__file__).resolve().parents[2] / "data" / "db" / "tvl_database.db"
-
-    def get_connection(foreign_keys=True):
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(DB_PATH)
-        if foreign_keys:
-            conn.execute("PRAGMA foreign_keys = ON")
-        return conn
-
-    HEADERS = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36"
-        )
-    }
+from src.utils.db_config import DB_PATH, get_connection
+from src.utils.logger import get_logger
+from src.utils.constants import EXT_HEADERS as HEADERS
 
 logger = get_logger(__name__)
 

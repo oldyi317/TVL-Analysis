@@ -13,6 +13,10 @@ import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 
+from src.utils.constants import (
+    EXT_BASE, EXT_CUP_ID, EXT_HEADERS, SEASON_YEAR_MAP, OPP_SHORT_TO_TEAM,
+)
+
 
 # ── 手機 RWD 支援 ────────────────────────────────────────────
 
@@ -64,18 +68,6 @@ def compact_margin(l=20, r=20, t=30, b=40) -> dict:
     """回傳較緊湊的 Plotly margin，適合手機。"""
     return dict(l=l, r=r, t=t, b=b)
 
-try:
-    from src.utils.constants import (
-        EXT_BASE, EXT_CUP_ID, EXT_HEADERS, SEASON_YEAR_MAP, OPP_SHORT_TO_TEAM,
-    )
-except ModuleNotFoundError:
-    EXT_BASE = "http://114.35.229.141"
-    EXT_CUP_ID = 21
-    EXT_HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    }
-    SEASON_YEAR_MAP = {11: 2025, 12: 2025}
-    OPP_SHORT_TO_TEAM = {}
 
 DB_PATH = Path(__file__).resolve().parents[2] / "data" / "db" / "tvl_database.db"
 MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "match_predictor.pkl"

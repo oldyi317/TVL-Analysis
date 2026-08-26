@@ -9,15 +9,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-try:
-    from src.utils.logger import get_logger
-    from src.utils.constants import VALID_POSITIONS, VALID_GENDERS
-except ModuleNotFoundError:
-    import logging
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-    get_logger = logging.getLogger
-    VALID_POSITIONS = {"OH", "MB", "OP", "S", "L"}
-    VALID_GENDERS = {"M", "F"}
+from src.utils.logger import get_logger
+from src.utils.constants import VALID_POSITIONS, VALID_GENDERS
 
 logger = get_logger(__name__)
 
