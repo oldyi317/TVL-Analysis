@@ -65,7 +65,7 @@ matplotlib.rcParams["font.sans-serif"] = CJK_FONT_STACK
 matplotlib.rcParams["axes.unicode_minus"] = False
 
 # ── 共用函式（從 helpers 匯入） ──────────────────────────────
-from src.app.helpers import load_data, inject_mobile_css
+from src.app.helpers import load_data, inject_mobile_css, get_current_roster
 
 # ── 注入手機 RWD CSS ─────────────────────────────────────────
 inject_mobile_css()
@@ -93,11 +93,7 @@ if teams_df.empty:
 team_name = st.sidebar.selectbox("選擇球隊", teams_df["team_name"].tolist())
 team_id = int(teams_df.loc[teams_df["team_name"] == team_name, "team_id"].iloc[0])
 
-players_df = load_data(
-    "SELECT player_id, jersey_number, name, position FROM players "
-    "WHERE team_id = ? AND gender = ? ORDER BY jersey_number",
-    (team_id, gender_code),
-)
+players_df = get_current_roster(team_id, gender_code)
 if players_df.empty:
     st.warning("該球隊目前沒有球員資料。")
     st.stop()
