@@ -29,7 +29,7 @@ TVL-Analysis/
 │   ├── app/
 │   │   ├── main.py            # Streamlit 入口（路由 + sidebar）
 │   │   ├── helpers.py         # 共用函式（DB 查詢、指標計算、外部 API）
-│   │   └── tabs/              # 六個分頁模組
+│   │   └── tabs/              # 五個分頁模組
 │   │       ├── player_deep.py
 │   │       ├── league_pr.py
 │   │       ├── match_trend.py
