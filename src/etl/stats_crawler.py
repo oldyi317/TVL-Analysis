@@ -18,6 +18,7 @@ from src.utils.logger import get_logger
 from src.utils.constants import (
     EXT_BASE, EXT_CUP_ID as CUP_ID, EXT_HEADERS as HEADERS,
     SEASON_YEAR_MAP, DEFAULT_YEAR, EXT_TEAM_MAP,
+    MATCH_POSITION_MAP, OPP_SHORT_TO_TEAM,
 )
 
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
@@ -322,6 +323,201 @@ def main(incremental: bool = False):
 
     conn.close()
     logger.info("事實表載入完成：%s", DB_PATH)
+
+
+# ── 出賽名單爬蟲（Phase 2：週次登錄資料來源） ──────────────────
+
+def fetch_match_list(cup_id: int = CUP_ID) -> list[dict]:
+    """
+    透過 Match.aspx 的下拉選單取得所有 MatchID 清單。
+    MatchID 本身不連續，不可用逐一 range 掃描列舉，必須用此函式。
+    """
+    url = f"{EXT_BASE}/Match.aspx"
+    r = requests.get(url, params={"CupID": cup_id}, headers=HEADERS, timeout=15)
+    r.raise_for_status()
+    r.encoding = "utf-8"
+    soup = BeautifulSoup(r.text, "html.parser")
+    sel = soup.find("select", id="divSelect")
+    if not sel:
+        return []
+    result = []
+    for opt in sel.find_all("option"):
+        value = opt.get("value")
+        if not value:
+            continue
+        result.append({"match_id": int(value), "label": opt.get_text(strip=True)})
+    return result
+
+
+def _parse_match_title(title_text: str) -> tuple[str, str] | None:
+    """從標題文字解析 (match_date, raw_round_text)。解析失敗回傳 None。"""
+    date_m = re.search(r"(\d{1,2})月(\d{1,2})日", title_text)
+    if not date_m:
+        return None
+    month, day = int(date_m.group(1)), int(date_m.group(2))
+    year = SEASON_YEAR_MAP.get(month, DEFAULT_YEAR)
+    match_date = f"{year}-{month:02d}-{day:02d}"
+
+    round_m = re.search(r"(第\d+週|挑戰賽|總決賽|季後賽|明星賽)", title_text)
+    raw_round_text = round_m.group(1) if round_m else "未知賽別"
+    return match_date, raw_round_text
+
+
+def fetch_match_roster(cup_id: int, match_id: int) -> list[dict] | None:
+    """
+    抓取單場出賽名單，回傳每位球員一筆 dict：
+    {'match_date', 'title_text', 'team_id', 'team_gender',
+     'jersey_number', 'name', 'position'}
+    頁面無效（如錯誤頁、無比賽資料）回傳 None。
+
+    欄位順序注意（與 fetch_player_stats() 不同，不可混用）：
+    每列扣除背號/姓名/位置後，共 12 個數值欄位，順序固定為
+    [攻擊得, 攻擊總, 攔網得, 發球得, 發球總,
+     接發好, 接發總, 防守好, 防守總, 舉球好, 舉球總, 總得分]
+    """
+    url = f"{EXT_BASE}/_handler/Match.ashx"
+    r = requests.get(
+        url, params={"CupID": cup_id, "MatchID": match_id},
+        headers=HEADERS, timeout=15,
+    )
+    r.raise_for_status()
+    r.encoding = "utf-8"
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    title_h3 = soup.find("h3")
+    if title_h3 is None:
+        return None
+    title_text = title_h3.get_text(" ", strip=True)
+    if "組" not in title_text:
+        return None  # 錯誤頁不含「組」字
+
+    parsed = _parse_match_title(title_text)
+    if parsed is None:
+        logger.warning("[MatchID=%d] 無法解析日期，跳過：%s", match_id, title_text)
+        return None
+    match_date, _raw_round_text = parsed
+
+    team_h3s = soup.find_all("h3")[1:]
+    rows = []
+    for team_h3 in team_h3s:
+        team_text = team_h3.get_text(strip=True)
+        if "：" not in team_text:
+            continue
+        team_name = team_text.split("：", 1)[0].strip()
+        team_info = OPP_SHORT_TO_TEAM.get(team_name)
+        if team_info is None:
+            logger.warning("[MatchID=%d] 無法辨識隊名：%s，跳過該隊", match_id, team_name)
+            continue
+        team_id, team_gender = team_info
+
+        table = team_h3.find_next("table")
+        if table is None:
+            continue
+
+        for tr in table.find_all("tr")[2:]:
+            cells = [td.get_text(strip=True) for td in tr.find_all("td")]
+            if not cells or cells[0] in ("全隊合計", ""):
+                continue
+            if len(cells) < 15:
+                continue
+
+            position_raw = cells[2]
+            rows.append({
+                "match_date": match_date,
+                "title_text": title_text,
+                "team_id": team_id,
+                "team_gender": team_gender,
+                "jersey_number": safe_int(cells[0]),
+                "name": cells[1],
+                "position": MATCH_POSITION_MAP.get(position_raw),
+            })
+
+    return rows
+
+
+def resolve_week_label(conn: sqlite3.Connection, match_date: str, title_text: str) -> tuple[str, str]:
+    """
+    回傳 (week_label, week_start_date)。
+    優先用 matches.round_name 反查（權威來源）；查無則退化用標題文字，
+    並記錄警告（此為已知限制，非本次遷移的資料涵蓋範圍）。
+    """
+    row = conn.execute(
+        "SELECT round_name FROM matches WHERE match_date = ? LIMIT 1", (match_date,)
+    ).fetchone()
+    if row and row[0]:
+        week_label = row[0]
+        start_row = conn.execute(
+            "SELECT MIN(match_date) FROM matches WHERE round_name = ?", (week_label,)
+        ).fetchone()
+        week_start_date = start_row[0] if start_row and start_row[0] else match_date
+        return week_label, week_start_date
+
+    logger.warning(
+        "match_date=%s 在 matches 表查無 round_name，退化用標題文字：%s",
+        match_date, title_text,
+    )
+    parsed = _parse_match_title(title_text)
+    raw_round_text = parsed[1] if parsed else "未知賽別"
+    return f"未比對-{raw_round_text}", match_date
+
+
+def upsert_roster_registration(
+    conn: sqlite3.Connection, player_id: int, row: dict,
+    week_label: str, week_start_date: str,
+) -> None:
+    """upsert 一筆 roster_registrations，source 固定為 'match_page'（真實出賽名單）。"""
+    conn.execute(
+        """
+        INSERT INTO roster_registrations
+            (player_id, team_id, gender, week_label, week_start_date, jersey_number, position, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'match_page')
+        ON CONFLICT (player_id, team_id, gender, week_label) DO UPDATE SET
+            jersey_number = excluded.jersey_number,
+            position = excluded.position,
+            week_start_date = excluded.week_start_date,
+            source = 'match_page'
+        """,
+        (player_id, row["team_id"], row["team_gender"], week_label,
+         week_start_date, row["jersey_number"], row["position"]),
+    )
+
+
+def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
+    """批次爬取全部場次出賽名單並 upsert 進 roster_registrations。"""
+    name_map = build_name_to_pid(conn)
+    match_list = fetch_match_list(cup_id)
+    stats = {"matches_scanned": 0, "matches_skipped": 0, "registrations_upserted": 0, "new_players": 0}
+
+    for m in match_list:
+        roster_rows = fetch_match_roster(cup_id, m["match_id"])
+        if not roster_rows:
+            stats["matches_skipped"] += 1
+            continue
+        stats["matches_scanned"] += 1
+
+        match_date = roster_rows[0]["match_date"]
+        title_text = roster_rows[0]["title_text"]
+        week_label, week_start_date = resolve_week_label(conn, match_date, title_text)
+
+        for row in roster_rows:
+            norm = normalize_name(row["name"])
+            player_id = name_map.get(norm)
+            if player_id is None:
+                cursor = conn.execute(
+                    "INSERT INTO players (name, gender) VALUES (?, ?)",
+                    (row["name"], row["team_gender"]),
+                )
+                player_id = cursor.lastrowid
+                name_map[norm] = player_id
+                stats["new_players"] += 1
+
+            upsert_roster_registration(conn, player_id, row, week_label, week_start_date)
+            stats["registrations_upserted"] += 1
+
+        conn.commit()
+        time.sleep(0.5)
+
+    return stats
 
 
 if __name__ == "__main__":
