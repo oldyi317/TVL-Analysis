@@ -1,4 +1,3 @@
-google-genai
 beautifulsoup4
 joblib
 matplotlib

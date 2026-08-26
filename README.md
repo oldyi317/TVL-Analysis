@@ -7,9 +7,8 @@
 - **資料爬取**：自動抓取 TVL 官網的球隊名單、球員資料與逐場技術統計（支援增量更新）
 - **資料清洗與載入**：標準化位置名稱、日期格式與數值欄位，寫入 SQLite 資料庫
 - **進階統計指標**：攻擊效率、同位置 PR 值、綜合防守到位率等 Proxy Metrics
-- **互動式儀表板**：Streamlit + Plotly 打造的六分頁視覺化分析介面
+- **互動式儀表板**：Streamlit + Plotly 打造的五分頁視覺化分析介面
 - **賽事預測**：基於 XGBoost 的比賽結果預測模型，搭配 SHAP 特徵解釋
-- **AI 戰報**：透過 Gemini API（免費）自動產生每周結構化中文戰報
 
 ## 儀表板分頁
 > 🔗 **Live Demo**: [點此查看互動儀表板](https://tvl-analysis-jggmoeky3gnjrdbcc4kzrc.streamlit.app/)
@@ -21,7 +20,6 @@
 | 逐場趨勢 | 熱力資料表、對戰對手績效分佈 |
 | 單場 Box Score | 雙方並列 Box Score、局比分、Top-10 排行 |
 | 賽果預測 | ML 滑桿模擬器、SHAP 戰術診斷圖 |
-| 每周戰報 | 視覺化比賽卡片、Gemini AI 自動撰寫戰報 |
 
 ## 專案結構
 
@@ -36,14 +34,12 @@ TVL-Analysis/
 │   │       ├── league_pr.py
 │   │       ├── match_trend.py
 │   │       ├── box_score.py
-│   │       ├── prediction.py
-│   │       └── weekly_report_tab.py
+│   │       └── prediction.py
 │   ├── etl/                   # ETL 模組
 │   │   ├── crawler.py         # 球員名單爬蟲
 │   │   ├── stats_crawler.py   # 技術統計爬蟲（支援 --incremental）
 │   │   ├── cleaner.py         # 資料清洗
-│   │   ├── db_loader.py       # 資料庫載入
-│   │   └── weekly_report.py   # 週報資料彙整
+│   │   └── db_loader.py       # 資料庫載入
 │   ├── models/                # ML 模型
 │   └── utils/
 │       ├── constants.py       # 共用常數（外部系統設定、隊伍對照表）
@@ -102,10 +98,6 @@ python -m src.etl.db_loader
 streamlit run src/app/main.py
 ```
 
-### AI 戰報（選用）
-
-在 `.env` 中設定 `GEMINI_API_KEY=...`（從 [Google AI Studio](https://aistudio.google.com/) 免費取得），即可在儀表板「每周戰報」分頁使用 Gemini 2.0 Flash 自動產生戰報。
-
 ## 位置代號對照
 
 | 中文 | 英文縮寫 |
@@ -124,7 +116,6 @@ streamlit run src/app/main.py
 - **視覺化**：Plotly, Matplotlib
 - **資料庫**：SQLite
 - **ML**：XGBoost, scikit-learn, SHAP
-- **AI 戰報**：Google Gemini 2.0 Flash（免費）
 
 ## 資料品質原則
 
