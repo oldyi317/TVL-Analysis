@@ -81,8 +81,8 @@ def render(ctx: dict):
         """
         SELECT DISTINCT s.match_date, s.opponent
         FROM player_match_stats s
-        JOIN players p ON s.player_id = p.player_id
-        WHERE p.team_id = ? AND p.gender = ?
+        JOIN roster_registrations r ON s.registration_id = r.registration_id
+        WHERE r.team_id = ? AND r.gender = ?
         ORDER BY s.match_date
         """,
         (bs_team_id, bs_gender_code),
