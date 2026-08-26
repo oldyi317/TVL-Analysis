@@ -18,9 +18,10 @@ python -m src.etl.db_loader                      # roster CSV → teams/players
 
 ## 地雷（改動前必讀）
 
-- **`db_loader` 會清空資料**：`sql/schema.sql` 開頭有 `DROP TABLE player_match_stats`，
-  執行 `db_loader.init_db()` 會刪掉全部逐場統計，且 `players` 重建後 `matches` 表
-  外鍵會錯位。跑之前先備份 `data/db/tvl_database.db`。
+- **`schema.sql` 已冪等，不會清空資料**：全部改用 `CREATE TABLE IF NOT EXISTS`，
+  沒有 `DROP TABLE`。`db_loader` 對 `teams`/`players` 是以自然鍵 upsert，會保留
+  既有 `player_id`；`stats_crawler` 全量與增量模式皆為「補缺不清表」，去重鍵是
+  `match_date + is_golden_set`（逐球員判斷）。
 - **`.db` 與 `.pkl` 是刻意 commit 進 git 的**：Streamlit Cloud 靠 repo 內的
   `data/db/tvl_database.db` 與 `src/models/match_predictor.pkl` 拿到資料與模型，
   不要把它們加進 `.gitignore`。

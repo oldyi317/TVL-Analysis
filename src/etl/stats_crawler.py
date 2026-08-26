@@ -161,12 +161,26 @@ def fetch_player_stats(team_id: int, ext_player_id: int) -> list[dict]:
 
 
 def get_existing_keys(conn: sqlite3.Connection, player_id: int) -> set[tuple]:
-    """取得某球員已存在的 (match_date, is_golden_set) 集合（用於增量比對）。"""
+    """取得某球員已存在的 (match_date, is_golden_set) 集合（用於去重比對）。"""
     rows = conn.execute(
         "SELECT match_date, is_golden_set FROM player_match_stats WHERE player_id = ?",
         (player_id,),
     ).fetchall()
     return {(r[0], r[1]) for r in rows}
+
+
+def filter_new_records(
+    conn: sqlite3.Connection, player_id: int, records: list[dict]
+) -> list[dict]:
+    """過濾出某球員尚未存在的紀錄（去重鍵：match_date + is_golden_set）。
+
+    全量、增量模式皆呼叫此函式，避免重跑造成重複列（無 UNIQUE 約束擋不住）。
+    """
+    existing = get_existing_keys(conn, player_id)
+    return [
+        r for r in records
+        if (r["match_date"], r["is_golden_set"]) not in existing
+    ]
 
 
 def main(incremental: bool = False):
@@ -177,18 +191,18 @@ def main(incremental: bool = False):
     ----------
     incremental : bool
         True = 增量模式，只新增尚未存在的比賽紀錄（不清除既有資料）。
-        False = 全量模式，DROP + CREATE 事實表後重新抓取。
+        False = 全量模式，掃描全部場次，但一樣只插入缺少的紀錄
+                （去重鍵：match_date + is_golden_set，逐球員判斷），不清空既有資料。
     """
     conn = get_connection()
+    init_stats_table(conn)
 
     if not incremental:
-        init_stats_table(conn)
         logger.warning(
-            "全量模式：schema.sql 為冪等 DDL，不會清空既有 player_match_stats；"
-            "若需真正重跑全量，請先手動清空該表或改用 --incremental。"
+            "全量模式：掃描全部場次，但去重機制與增量模式相同——"
+            "只插入尚未存在的紀錄（match_date + is_golden_set，逐球員判斷），不會清空既有資料。"
         )
     else:
-        init_stats_table(conn)
         logger.info("增量模式：保留既有資料，僅新增缺少的比賽紀錄")
 
     name_map = build_name_to_pid(conn)
@@ -239,17 +253,12 @@ def main(incremental: bool = False):
             if not records:
                 continue
 
-            # 增量模式：過濾已存在的紀錄（含黃金局區分）
-            if incremental:
-                existing = get_existing_keys(conn, player_id)
-                new_records = [
-                    r for r in records
-                    if (r["match_date"], r["is_golden_set"]) not in existing
-                ]
-                total_skipped += len(records) - len(new_records)
-                records = new_records
-                if not records:
-                    continue
+            # 去重：不論全量或增量，皆只插入尚未存在的紀錄（含黃金局區分）
+            new_records = filter_new_records(conn, player_id, records)
+            total_skipped += len(records) - len(new_records)
+            records = new_records
+            if not records:
+                continue
 
             # 批次寫入
             conn.executemany(
@@ -295,8 +304,7 @@ def main(incremental: bool = False):
     print(f"\n===== {mode_label}寫入完成 =====")
     print(f"player_match_stats 總筆數：{total_rows}")
     print(f"本次新增：{total_inserted} 筆")
-    if incremental:
-        print(f"跳過（已存在）：{total_skipped} 筆")
+    print(f"跳過（已存在）：{total_skipped} 筆")
     print(f"動態新增球員數：{total_new_players}")
     print(f"players 表總人數：{total_players}")
 

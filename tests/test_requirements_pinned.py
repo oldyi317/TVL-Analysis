@@ -3,7 +3,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PIN_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+==[A-Za-z0-9_.]+")
-RANGE_PIN_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+(>=|<=|~=)[A-Za-z0-9_.]+.*==[A-Za-z0-9_.]+")
 
 
 def _lines(path: Path) -> list[str]:
@@ -16,8 +15,7 @@ def _lines(path: Path) -> list[str]:
 
 def test_requirements_txt_all_pinned():
     for line in _lines(ROOT / "requirements.txt"):
-        assert PIN_PATTERN.match(line) or RANGE_PIN_PATTERN.match(line), \
-            f"未釘版本：{line}"
+        assert PIN_PATTERN.match(line), f"未釘版本：{line}"
 
 
 def test_requirements_txt_no_genai():

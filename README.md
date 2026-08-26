@@ -79,7 +79,7 @@ pip install -r requirements.txt
 # 爬取球員名單
 python -m src.etl.crawler
 
-# 爬取技術統計（全量）
+# 爬取技術統計（全量：掃全部場次，僅補齊缺少的紀錄，不清空既有資料）
 python -m src.etl.stats_crawler
 
 # 爬取技術統計（增量，僅新增缺少的比賽）
