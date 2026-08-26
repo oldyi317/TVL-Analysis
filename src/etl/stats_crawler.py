@@ -20,6 +20,8 @@ from src.utils.constants import (
     SEASON_YEAR_MAP, DEFAULT_YEAR, EXT_TEAM_MAP,
 )
 
+SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
+
 logger = get_logger(__name__)
 
 
@@ -51,39 +53,9 @@ def parse_match_date(raw: str) -> str | None:
 
 
 def init_stats_table(conn: sqlite3.Connection) -> None:
-    """建立 player_match_stats 事實表（若不存在）。"""
-    conn.execute("DROP TABLE IF EXISTS player_match_stats")
-    conn.execute("""
-        CREATE TABLE player_match_stats (
-            stat_id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            player_id         INTEGER NOT NULL,
-            match_date        DATE,
-            opponent          TEXT,
-            sets_played       INTEGER,
-            attack_total      INTEGER,
-            attack_points     INTEGER,
-            block_points      INTEGER,
-            serve_total       INTEGER,
-            serve_points      INTEGER,
-            receive_total     INTEGER,
-            receive_excellent INTEGER,
-            dig_total         INTEGER,
-            dig_excellent     INTEGER,
-            set_total         INTEGER,
-            set_excellent     INTEGER,
-            total_points      INTEGER,
-            is_golden_set     INTEGER NOT NULL DEFAULT 0,
-            FOREIGN KEY (player_id) REFERENCES players (player_id)
-        )
-    """)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_pms_player_id ON player_match_stats(player_id)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_pms_match_date ON player_match_stats(match_date)"
-    )
-    conn.commit()
-    logger.info("player_match_stats 表已建立")
+    """確保 player_match_stats 表存在（讀 schema.sql，冪等，不清空既有資料）。"""
+    conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    logger.info("player_match_stats 表已確認存在（DDL 來源：schema.sql）")
 
 
 def build_name_to_pid(conn: sqlite3.Connection) -> dict[str, int]:
@@ -211,7 +183,12 @@ def main(incremental: bool = False):
 
     if not incremental:
         init_stats_table(conn)
+        logger.warning(
+            "全量模式：schema.sql 為冪等 DDL，不會清空既有 player_match_stats；"
+            "若需真正重跑全量，請先手動清空該表或改用 --incremental。"
+        )
     else:
+        init_stats_table(conn)
         logger.info("增量模式：保留既有資料，僅新增缺少的比賽紀錄")
 
     name_map = build_name_to_pid(conn)

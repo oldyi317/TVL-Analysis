@@ -16,6 +16,8 @@ from src.utils.db_config import DB_PATH, get_connection
 from src.utils.logger import get_logger
 from src.utils.constants import EXT_HEADERS as HEADERS
 
+SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
+
 logger = get_logger(__name__)
 
 BASE_URL = "https://tvl.ctvba.org.tw"
@@ -40,41 +42,10 @@ def normalize_team(raw: str) -> str:
 
 
 def init_matches_table(conn: sqlite3.Connection) -> None:
-    """建立 matches 比賽結果表（若不存在）。"""
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS matches (
-            match_id        INTEGER PRIMARY KEY AUTOINCREMENT,
-            game_id         INTEGER NOT NULL,
-            gender          TEXT NOT NULL CHECK (gender IN ('M', 'F')),
-            match_date      DATE NOT NULL,
-            venue           TEXT,
-            round_name      TEXT,
-            game_label      TEXT,
-            is_golden_set   INTEGER NOT NULL DEFAULT 0,
-            home_team       TEXT NOT NULL,
-            away_team       TEXT NOT NULL,
-            home_set1       INTEGER,
-            home_set2       INTEGER,
-            home_set3       INTEGER,
-            home_set4       INTEGER,
-            home_set5       INTEGER,
-            home_total      INTEGER,
-            away_set1       INTEGER,
-            away_set2       INTEGER,
-            away_set3       INTEGER,
-            away_set4       INTEGER,
-            away_set5       INTEGER,
-            away_total      INTEGER,
-            home_sets_won   INTEGER,
-            away_sets_won   INTEGER,
-            UNIQUE (game_id, gender)
-        )
-    """)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_matches_date ON matches(match_date)"
-    )
+    """確保 matches 表存在（讀 schema.sql，冪等）。"""
+    conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     conn.commit()
-    logger.info("matches 表已確認存在")
+    logger.info("matches 表已確認存在（DDL 來源：schema.sql）")
 
 
 def _safe_int(val: str) -> int | None:
