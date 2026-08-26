@@ -1,6 +1,8 @@
 """
 回歸測試：stats_crawler 的去重機制必須在全量、增量模式下皆生效，
 避免無 UNIQUE 約束擋不住重複寫入（見 Phase 1 review Finding #1）。
+Phase 2 起 player_match_stats 改掛 registration_id，種子資料改建
+teams/players/roster_registrations 三層再掛 stats。
 """
 
 import sqlite3
@@ -11,24 +13,36 @@ from src.etl.stats_crawler import filter_new_records
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "sql" / "schema.sql"
 
 
-def _make_conn(tmp_db_path) -> sqlite3.Connection:
+def _make_conn(tmp_db_path) -> tuple[sqlite3.Connection, int]:
     conn = sqlite3.connect(tmp_db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     conn.execute(
         "INSERT INTO teams (team_id, team_name, gender) VALUES (1, '測試隊', 'M')"
     )
-    cursor = conn.execute(
-        "INSERT INTO players (name, team_id, gender) VALUES ('測試球員', 1, 'M')"
+    conn.execute(
+        "INSERT INTO players (name, gender) VALUES ('測試球員', 'M')"
+    )
+    player_id = conn.execute("SELECT player_id FROM players").fetchone()[0]
+    conn.execute(
+        """INSERT INTO roster_registrations
+           (player_id, team_id, gender, week_label, jersey_number, position, source)
+           VALUES (?, 1, 'M', '例行賽 Week 1', 5, 'OH', 'match_page')""",
+        (player_id,),
     )
     conn.commit()
-    return conn, cursor.lastrowid
+    return conn, player_id
 
 
 def _insert_records(conn: sqlite3.Connection, player_id: int, records: list[dict]) -> None:
-    """與 stats_crawler.main() 相同的批次寫入邏輯。"""
+    """與 stats_crawler.main() 相同的批次寫入邏輯（Phase 2：掛 registration_id）。"""
+    registration_id = conn.execute(
+        "SELECT registration_id FROM roster_registrations WHERE player_id = ?",
+        (player_id,),
+    ).fetchone()[0]
     conn.executemany(
         """INSERT INTO player_match_stats
-           (player_id, match_date, opponent, sets_played,
+           (registration_id, match_date, opponent, sets_played,
             attack_total, attack_points, block_points,
             serve_total, serve_points,
             receive_total, receive_excellent,
@@ -38,7 +52,7 @@ def _insert_records(conn: sqlite3.Connection, player_id: int, records: list[dict
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         [
             (
-                player_id,
+                registration_id,
                 r["match_date"], r["opponent"], r["sets_played"],
                 r["attack_total"], r["attack_points"], r["block_points"],
                 r["serve_total"], r["serve_points"],

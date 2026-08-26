@@ -162,9 +162,14 @@ def fetch_player_stats(team_id: int, ext_player_id: int) -> list[dict]:
 
 
 def get_existing_keys(conn: sqlite3.Connection, player_id: int) -> set[tuple]:
-    """取得某球員已存在的 (match_date, is_golden_set) 集合（用於去重比對）。"""
+    """取得某球員已存在的 (match_date, is_golden_set) 集合（用於去重比對）。
+    Phase 2 起 player_match_stats 無 player_id 欄，改經 JOIN roster_registrations 查詢；
+    回傳的鍵集合語意不變。"""
     rows = conn.execute(
-        "SELECT match_date, is_golden_set FROM player_match_stats WHERE player_id = ?",
+        """SELECT s.match_date, s.is_golden_set
+           FROM player_match_stats s
+           JOIN roster_registrations r ON s.registration_id = r.registration_id
+           WHERE r.player_id = ?""",
         (player_id,),
     ).fetchall()
     return {(r[0], r[1]) for r in rows}
@@ -223,19 +228,21 @@ def main(incremental: bool = False):
             name = p["name"]
             norm_name = normalize_name(name)
 
+            db_team_id, gender = EXT_TEAM_MAP[ext_team_id]
+
             # 正規化比對
             player_id = name_map.get(norm_name)
 
-            # Late Arriving Dimension：查無此人則動態新增
+            # Late Arriving Dimension：查無此人則動態新增（僅身分層欄位，
+            # team_id/背號/位置一律由 roster_registrations 維護）
             if player_id is None:
-                db_team_id, gender = EXT_TEAM_MAP[ext_team_id]
                 logger.info(
-                    "[動態新增] 發現新球員: %s，自動寫入 players 表。",
+                    "[動態新增] 發現新球員: %s，自動寫入 players 表（僅身分層欄位）。",
                     name,
                 )
                 cursor = conn.execute(
-                    "INSERT INTO players (name, team_id, gender) VALUES (?, ?, ?)",
-                    (name, db_team_id, gender),
+                    "INSERT INTO players (name, gender) VALUES (?, ?)",
+                    (name, gender),
                 )
                 conn.commit()
                 player_id = cursor.lastrowid
@@ -261,10 +268,26 @@ def main(incremental: bool = False):
             if not records:
                 continue
 
+            # 逐筆解析 registration_id（Phase 2：player_match_stats 改掛
+            # registration_id，不同筆記錄可能落在不同週次，須逐筆反查）
+            rows_to_insert = [
+                (
+                    resolve_registration_for_stats(conn, player_id, db_team_id, gender, r["match_date"]),
+                    r["match_date"], r["opponent"], r["sets_played"],
+                    r["attack_total"], r["attack_points"], r["block_points"],
+                    r["serve_total"], r["serve_points"],
+                    r["receive_total"], r["receive_excellent"],
+                    r["dig_total"], r["dig_excellent"],
+                    r["set_total"], r["set_excellent"], r["total_points"],
+                    r["is_golden_set"],
+                )
+                for r in records
+            ]
+
             # 批次寫入
             conn.executemany(
                 """INSERT INTO player_match_stats
-                   (player_id, match_date, opponent, sets_played,
+                   (registration_id, match_date, opponent, sets_played,
                     attack_total, attack_points, block_points,
                     serve_total, serve_points,
                     receive_total, receive_excellent,
@@ -272,19 +295,7 @@ def main(incremental: bool = False):
                     set_total, set_excellent, total_points,
                     is_golden_set)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                [
-                    (
-                        player_id,
-                        r["match_date"], r["opponent"], r["sets_played"],
-                        r["attack_total"], r["attack_points"], r["block_points"],
-                        r["serve_total"], r["serve_points"],
-                        r["receive_total"], r["receive_excellent"],
-                        r["dig_total"], r["dig_excellent"],
-                        r["set_total"], r["set_excellent"], r["total_points"],
-                        r["is_golden_set"],
-                    )
-                    for r in records
-                ],
+                rows_to_insert,
             )
             total_inserted += len(records)
 
@@ -315,7 +326,8 @@ def main(incremental: bool = False):
                   s.sets_played, s.attack_points, s.block_points,
                   s.serve_points, s.total_points
            FROM player_match_stats s
-           JOIN players p ON s.player_id = p.player_id
+           JOIN roster_registrations r ON s.registration_id = r.registration_id
+           JOIN players p ON r.player_id = p.player_id
            LIMIT 3""",
         conn,
     )
@@ -468,23 +480,57 @@ def resolve_week_label(conn: sqlite3.Connection, match_date: str, title_text: st
 
 def upsert_roster_registration(
     conn: sqlite3.Connection, player_id: int, row: dict,
-    week_label: str, week_start_date: str,
+    week_label: str, week_start_date: str, source: str = "match_page",
 ) -> None:
-    """upsert 一筆 roster_registrations，source 固定為 'match_page'（真實出賽名單）。"""
+    """upsert 一筆 roster_registrations。source 預設 'match_page'（真實出賽名單，
+    Task 3 的 crawl_all_rosters() 呼叫方式不變）；Task 3b 的統計寫入路徑查無登錄時
+    會傳入 source='backfill'，補一筆背號/位置皆為 NULL 的登錄。"""
     conn.execute(
         """
         INSERT INTO roster_registrations
             (player_id, team_id, gender, week_label, week_start_date, jersey_number, position, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'match_page')
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (player_id, team_id, gender, week_label) DO UPDATE SET
             jersey_number = excluded.jersey_number,
             position = excluded.position,
             week_start_date = excluded.week_start_date,
-            source = 'match_page'
+            source = excluded.source
         """,
         (player_id, row["team_id"], row["team_gender"], week_label,
-         week_start_date, row["jersey_number"], row["position"]),
+         week_start_date, row["jersey_number"], row["position"], source),
     )
+
+
+def resolve_registration_for_stats(
+    conn: sqlite3.Connection, player_id: int, team_id: int, gender: str, match_date: str,
+) -> int:
+    """
+    統計寫入路徑（Player.ashx 逐場數值統計，無背號/位置資訊）解析 registration_id。
+    解析順序：match_date -> resolve_week_label() 取 week_label（與 Task 3 出賽名單
+    爬蟲同邏輯，直接複用該函式）-> 查 roster_registrations -> 查無則以
+    source='backfill' 補一筆（背號/位置皆 NULL，只標記不插補，不得用其他資料推測填入）。
+    """
+    week_label, week_start_date = resolve_week_label(conn, match_date, "")
+
+    row = conn.execute(
+        """SELECT registration_id FROM roster_registrations
+           WHERE player_id = ? AND team_id = ? AND gender = ? AND week_label = ?""",
+        (player_id, team_id, gender, week_label),
+    ).fetchone()
+    if row:
+        return row[0]
+
+    upsert_roster_registration(
+        conn, player_id,
+        {"team_id": team_id, "team_gender": gender, "jersey_number": None, "position": None},
+        week_label, week_start_date, source="backfill",
+    )
+    row = conn.execute(
+        """SELECT registration_id FROM roster_registrations
+           WHERE player_id = ? AND team_id = ? AND gender = ? AND week_label = ?""",
+        (player_id, team_id, gender, week_label),
+    ).fetchone()
+    return row[0]
 
 
 def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
