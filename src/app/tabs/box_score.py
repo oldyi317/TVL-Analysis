@@ -154,7 +154,7 @@ def render(ctx: dict):
     # ── 撈取 Team A 單場數據 ─────────────────────────────────
     team_a_df = load_data(
         """
-        SELECT p.name, p.position, s.sets_played,
+        SELECT p.name, r.position, s.sets_played,
                s.attack_points, s.attack_total,
                s.block_points,
                s.serve_points, s.serve_total,
@@ -163,8 +163,9 @@ def render(ctx: dict):
                s.set_excellent, s.set_total,
                s.total_points
         FROM player_match_stats s
-        JOIN players p ON s.player_id = p.player_id
-        WHERE p.team_id = ? AND p.gender = ?
+        JOIN roster_registrations r ON s.registration_id = r.registration_id
+        JOIN players p ON r.player_id = p.player_id
+        WHERE r.team_id = ? AND r.gender = ?
           AND s.match_date = ? AND s.opponent = ?
         ORDER BY s.total_points DESC
         """,
@@ -179,7 +180,7 @@ def render(ctx: dict):
         opp_team_id, opp_gender = opp_info
         team_b_df = load_data(
             """
-            SELECT p.name, p.position, s.sets_played,
+            SELECT p.name, r.position, s.sets_played,
                    s.attack_points, s.attack_total,
                    s.block_points,
                    s.serve_points, s.serve_total,
@@ -188,8 +189,9 @@ def render(ctx: dict):
                    s.set_excellent, s.set_total,
                    s.total_points
             FROM player_match_stats s
-            JOIN players p ON s.player_id = p.player_id
-            WHERE p.team_id = ? AND p.gender = ?
+            JOIN roster_registrations r ON s.registration_id = r.registration_id
+            JOIN players p ON r.player_id = p.player_id
+            WHERE r.team_id = ? AND r.gender = ?
               AND s.match_date = ?
             ORDER BY s.total_points DESC
             """,
