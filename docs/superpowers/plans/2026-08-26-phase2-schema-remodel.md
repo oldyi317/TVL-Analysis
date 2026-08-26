@@ -978,6 +978,444 @@ GET http://114.35.229.141/Match.aspx?CupID=21
 
 ---
 
+## Task 3b：stats_crawler 統計寫入路徑遷移到 registration_id
+
+**背景（為何需要獨立一個 task）**：Task 3 只新增了「出賽名單」爬蟲（`fetch_match_roster`/`crawl_all_rosters` 等），沒有動到 `stats_crawler.py` 既有的「逐場數值統計」寫入路徑（`fetch_player_stats()` 之後的 `get_existing_keys()`/`filter_new_records()`/`main()` 主流程）。那條路徑現在仍假設 `player_match_stats` 有 `player_id` 欄、`players` 有 `team_id` 欄，遷移後（Task 4）schema 一換，`python -m src.etl.stats_crawler --incremental`（README 記載的常用指令）會直接炸掉。本 task 把這條路徑改成經 `roster_registrations` 解析 `registration_id`，排在 Task 4（正式遷移）之前完成，讓 Task 4 遷移落地的當下，`stats_crawler` 的程式碼已經是相容新 schema 的版本——不需要遷移完再手忙腳亂改爬蟲。
+
+**重要邊界**：本 task 只改程式碼、跑 scoped pytest（用合成種子資料，不連正式 DB），**不得**在正式 `data/db/tvl_database.db` 尚未跑過 Task 4 遷移前執行 `python -m src.etl.stats_crawler --incremental` 或 `main()`——舊 DB 的 `player_match_stats` 還是 `player_id` 欄，新程式碼對舊 DB 一樣會炸。Task 11 的整合驗證才是本 task 程式碼第一次對正式（已遷移）DB 實跑的時機。
+
+**`stats_crawler.py` 全部 `player_id`／`players` 舊欄位引用點（本 task 逐一修正）：**
+
+| 位置 | 內容 | 修法 |
+|---|---|---|
+| `src/etl/stats_crawler.py:163-169` | `get_existing_keys(conn, player_id)` 直接查 `player_match_stats.player_id` | 改經 JOIN `roster_registrations` 查 |
+| `src/etl/stats_crawler.py:172-183` | `filter_new_records(conn, player_id, records)` | 介面與函式本體不變（僅依賴 `get_existing_keys` 的回傳語意） |
+| `src/etl/stats_crawler.py:229-241` | 未知球員 `INSERT INTO players (name, team_id, gender)` | 改為身分層欄位 `INSERT INTO players (name, gender)`，`team_id` 移到 registration 解析 |
+| `src/etl/stats_crawler.py:257` | `main()` 呼叫 `filter_new_records(conn, player_id, records)` | 呼叫方式不變 |
+| `src/etl/stats_crawler.py:264-287` | `INSERT INTO player_match_stats (player_id, ...)` 批次寫入 | 改為逐筆解析 `registration_id` 後 `INSERT INTO player_match_stats (registration_id, ...)` |
+| `src/etl/stats_crawler.py:317` | `pd.read_sql_query(...) JOIN players p ON s.player_id = p.player_id` | 改為 `JOIN roster_registrations r ON s.registration_id = r.registration_id JOIN players p ON r.player_id = p.player_id` |
+
+**Files:**
+- Modify: `src/etl/stats_crawler.py`（新增 `resolve_registration_for_stats`；改寫 `get_existing_keys`、`main()` 內未知球員插入與批次寫入、驗證查詢；`upsert_roster_registration`（Task 3 產出）新增 `source` 參數）
+- Modify: `tests/test_stats_crawler_dedup.py`（Phase 1 建立，改用新 schema 種子）
+- Create: `tests/test_stats_crawler_registration.py`
+
+**Interfaces:**
+- Produces：
+  ```python
+  def resolve_registration_for_stats(
+      conn: sqlite3.Connection, player_id: int, team_id: int, gender: str, match_date: str,
+  ) -> int:
+      """
+      統計寫入路徑（Player.ashx，無背號/位置資訊）解析 registration_id：
+      用 match_date 反查 week_label（複用 Task 3 的 resolve_week_label）→
+      查 roster_registrations (player_id, team_id, gender, week_label)；
+      查無則以 source='backfill' 補一筆（背號/位置為 NULL，只標記不插補）。
+      """
+  ```
+- Modifies（Task 3 產出的函式簽名新增參數，向後相容）：
+  ```python
+  def upsert_roster_registration(
+      conn: sqlite3.Connection, player_id: int, row: dict,
+      week_label: str, week_start_date: str, source: str = "match_page",
+  ) -> None:
+      """upsert 一筆 roster_registrations。source 預設 'match_page'（Task 3 的出賽名單爬蟲呼叫方式不變）；
+      本 task 的統計寫入路徑查無登錄時傳入 source='backfill'。"""
+  ```
+- Consumes：`src.etl.stats_crawler.resolve_week_label`／`upsert_roster_registration`（Task 3）、`src.utils.constants.EXT_TEAM_MAP`（既有）。
+
+**設計約束（鎖定）**：
+- `registration_id` 解析順序：`match_date` → `resolve_week_label()` 取 `week_label` → 查 `roster_registrations (player_id, team_id, gender, week_label)` → 查無則 `upsert_roster_registration(..., source='backfill')` 建一筆背號/位置皆 `NULL` 的登錄再取其 id。
+- `get_existing_keys` 改經 JOIN 查詢，回傳鍵集合語意不變：`(match_date, is_golden_set)`；`filter_new_records` 介面不變（`player_id` 進、`records` 出），維持 Phase 1 終審「無條件去重補缺」語意。
+- 未知球員插入改為身分層欄位（`name`, `gender`），`team_id` 不再寫入 `players`。
+- `resolve_week_label` 呼叫時傳入 `title_text=""`（統計路徑沒有比賽標題文字可用）；查無 `matches.round_name` 時會退化成 `"未比對-未知賽別"`，這是 `resolve_week_label`（Task 3）fallback 既有的限制（本身就是以標題文字反推賽別，統計路徑沒有標題可用是原生限制）：只要 `match_date` 查無 `matches.round_name`，不同週次、甚至不同 `match_date` 的統計都會被歸併掛到同一筆 `week_label = "未比對-未知賽別"` 的 backfill 登錄下（`week_start_date` 取第一筆處理到的 `match_date`）——這不只是 `week_start_date` 精確度的問題，而是週次分組語意被合併（本應屬於不同週的登錄變成同一筆）。`player_match_stats.match_date` 本身不受影響（每筆統計仍各自保留正確日期），且現有 3,807 筆歷史資料已驗證每個 `match_date` 皆能在 `matches` 表查到唯一 `round_name`（見「Week Label 反查的驗證基礎」），不會觸發此邊界情況。
+
+**步驟：**
+
+- [ ] **Step 1:** 編輯 `src/etl/stats_crawler.py`，把 Task 3 的 `upsert_roster_registration` 改成接受 `source` 參數（取代原本寫死 `'match_page'` 的兩處）：
+   ```python
+   def upsert_roster_registration(
+       conn: sqlite3.Connection, player_id: int, row: dict,
+       week_label: str, week_start_date: str, source: str = "match_page",
+   ) -> None:
+       """upsert 一筆 roster_registrations。source 預設 'match_page'（真實出賽名單，
+       Task 3 的 crawl_all_rosters() 呼叫方式不變）；Task 3b 的統計寫入路徑查無登錄時
+       會傳入 source='backfill'，補一筆背號/位置皆為 NULL 的登錄。"""
+       conn.execute(
+           """
+           INSERT INTO roster_registrations
+               (player_id, team_id, gender, week_label, week_start_date, jersey_number, position, source)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT (player_id, team_id, gender, week_label) DO UPDATE SET
+               jersey_number = excluded.jersey_number,
+               position = excluded.position,
+               week_start_date = excluded.week_start_date,
+               source = excluded.source
+           """,
+           (player_id, row["team_id"], row["team_gender"], week_label,
+            week_start_date, row["jersey_number"], row["position"], source),
+       )
+   ```
+   > `ON CONFLICT DO UPDATE SET source = excluded.source` 由呼叫方決定要不要覆蓋既有列的 source；本 task 的 `resolve_registration_for_stats()` 只在查無登錄時才呼叫本函式（見 Step 2），不會把既有 `match_page` 列降級成 `backfill`。
+
+- [ ] **Step 2:** 在 `upsert_roster_registration` 之後新增 `resolve_registration_for_stats`：
+   ```python
+   def resolve_registration_for_stats(
+       conn: sqlite3.Connection, player_id: int, team_id: int, gender: str, match_date: str,
+   ) -> int:
+       """
+       統計寫入路徑（Player.ashx 逐場數值統計，無背號/位置資訊）解析 registration_id。
+       解析順序：match_date -> resolve_week_label() 取 week_label（與 Task 3 出賽名單
+       爬蟲同邏輯，直接複用該函式）-> 查 roster_registrations -> 查無則以
+       source='backfill' 補一筆（背號/位置皆 NULL，只標記不插補，不得用其他資料推測填入）。
+       """
+       week_label, week_start_date = resolve_week_label(conn, match_date, "")
+
+       row = conn.execute(
+           """SELECT registration_id FROM roster_registrations
+              WHERE player_id = ? AND team_id = ? AND gender = ? AND week_label = ?""",
+           (player_id, team_id, gender, week_label),
+       ).fetchone()
+       if row:
+           return row[0]
+
+       upsert_roster_registration(
+           conn, player_id,
+           {"team_id": team_id, "team_gender": gender, "jersey_number": None, "position": None},
+           week_label, week_start_date, source="backfill",
+       )
+       row = conn.execute(
+           """SELECT registration_id FROM roster_registrations
+              WHERE player_id = ? AND team_id = ? AND gender = ? AND week_label = ?""",
+           (player_id, team_id, gender, week_label),
+       ).fetchone()
+       return row[0]
+   ```
+
+- [ ] **Step 3:** 改寫 `get_existing_keys()`（原本直接查 `player_match_stats.player_id`，Phase 2 起該欄不存在）：
+   ```python
+   def get_existing_keys(conn: sqlite3.Connection, player_id: int) -> set[tuple]:
+       """取得某球員已存在的 (match_date, is_golden_set) 集合（用於去重比對）。
+       Phase 2 起 player_match_stats 無 player_id 欄，改經 JOIN roster_registrations 查詢；
+       回傳的鍵集合語意不變。"""
+       rows = conn.execute(
+           """SELECT s.match_date, s.is_golden_set
+              FROM player_match_stats s
+              JOIN roster_registrations r ON s.registration_id = r.registration_id
+              WHERE r.player_id = ?""",
+           (player_id,),
+       ).fetchall()
+       return {(r[0], r[1]) for r in rows}
+   ```
+   `filter_new_records()` 本體不動（僅依賴 `get_existing_keys` 的回傳語意，介面 `player_id` 進、`records` 出不變）。
+
+- [ ] **Step 4:** 改寫 `main()` 內的未知球員插入區塊，`db_team_id`/`gender` 改為無論球員是否已存在都要算出來（後面解析 `registration_id` 需要），插入 `players` 改為只寫身分層欄位：
+   ```python
+           for p in players:
+               ext_pid = p["ext_player_id"]
+               name = p["name"]
+               norm_name = normalize_name(name)
+
+               db_team_id, gender = EXT_TEAM_MAP[ext_team_id]
+
+               # 正規化比對
+               player_id = name_map.get(norm_name)
+
+               # Late Arriving Dimension：查無此人則動態新增（僅身分層欄位，
+               # team_id/背號/位置一律由 roster_registrations 維護）
+               if player_id is None:
+                   logger.info(
+                       "[動態新增] 發現新球員: %s，自動寫入 players 表（僅身分層欄位）。",
+                       name,
+                   )
+                   cursor = conn.execute(
+                       "INSERT INTO players (name, gender) VALUES (?, ?)",
+                       (name, gender),
+                   )
+                   conn.commit()
+                   player_id = cursor.lastrowid
+                   name_map[norm_name] = player_id
+                   total_new_players += 1
+   ```
+   （`db_team_id`/`gender` 變數名沿用 `db_team_id`；後續 Step 5 的批次寫入區塊會用到它。）
+
+- [ ] **Step 5:** 改寫批次寫入區塊，逐筆解析 `registration_id` 後才 `INSERT`（因為同一球員的不同筆記錄可能落在不同週次，不能沿用單一 `player_id` 當作外鍵）：
+   ```python
+               # 去重：不論全量或增量，皆只插入尚未存在的紀錄（含黃金局區分）
+               new_records = filter_new_records(conn, player_id, records)
+               total_skipped += len(records) - len(new_records)
+               records = new_records
+               if not records:
+                   continue
+
+               # 逐筆解析 registration_id（Phase 2：player_match_stats 改掛
+               # registration_id，不同筆記錄可能落在不同週次，須逐筆反查）
+               rows_to_insert = [
+                   (
+                       resolve_registration_for_stats(conn, player_id, db_team_id, gender, r["match_date"]),
+                       r["match_date"], r["opponent"], r["sets_played"],
+                       r["attack_total"], r["attack_points"], r["block_points"],
+                       r["serve_total"], r["serve_points"],
+                       r["receive_total"], r["receive_excellent"],
+                       r["dig_total"], r["dig_excellent"],
+                       r["set_total"], r["set_excellent"], r["total_points"],
+                       r["is_golden_set"],
+                   )
+                   for r in records
+               ]
+
+               # 批次寫入
+               conn.executemany(
+                   """INSERT INTO player_match_stats
+                      (registration_id, match_date, opponent, sets_played,
+                       attack_total, attack_points, block_points,
+                       serve_total, serve_points,
+                       receive_total, receive_excellent,
+                       dig_total, dig_excellent,
+                       set_total, set_excellent, total_points,
+                       is_golden_set)
+                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   rows_to_insert,
+               )
+               total_inserted += len(records)
+
+               time.sleep(0.5)
+   ```
+
+- [ ] **Step 6:** 改寫 `main()` 尾端的驗證查詢（原本 `JOIN players p ON s.player_id = p.player_id`，Phase 2 起該欄不存在）：
+   ```python
+       print(f"\n===== 前 3 筆資料 =====")
+       df = pd.read_sql_query(
+           """SELECT s.stat_id, p.name, s.match_date, s.opponent,
+                     s.sets_played, s.attack_points, s.block_points,
+                     s.serve_points, s.total_points
+              FROM player_match_stats s
+              JOIN roster_registrations r ON s.registration_id = r.registration_id
+              JOIN players p ON r.player_id = p.player_id
+              LIMIT 3""",
+           conn,
+       )
+       print(df.to_string(index=False))
+   ```
+
+- [ ] **Step 7:** 靜態語法檢查：
+   ```bash
+   python3 -c "import ast; ast.parse(open('src/etl/stats_crawler.py', encoding='utf-8').read())"
+   ```
+   **預期輸出**：無錯誤。
+
+- [ ] **Step 8:** 改寫 `tests/test_stats_crawler_dedup.py`，種子資料改建 `teams`/`players`/`roster_registrations` 三層再掛 `player_match_stats`，仍呼叫真實 `filter_new_records`（會經真實 `get_existing_keys` 的 JOIN 路徑）：
+   ```python
+   """
+   回歸測試：stats_crawler 的去重機制必須在全量、增量模式下皆生效，
+   避免無 UNIQUE 約束擋不住重複寫入（見 Phase 1 review Finding #1）。
+   Phase 2 起 player_match_stats 改掛 registration_id，種子資料改建
+   teams/players/roster_registrations 三層再掛 stats。
+   """
+
+   import sqlite3
+   from pathlib import Path
+
+   from src.etl.stats_crawler import filter_new_records
+
+   SCHEMA_PATH = Path(__file__).resolve().parents[1] / "sql" / "schema.sql"
+
+
+   def _make_conn(tmp_db_path) -> tuple[sqlite3.Connection, int]:
+       conn = sqlite3.connect(tmp_db_path)
+       conn.execute("PRAGMA foreign_keys = ON")
+       conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+       conn.execute(
+           "INSERT INTO teams (team_id, team_name, gender) VALUES (1, '測試隊', 'M')"
+       )
+       conn.execute(
+           "INSERT INTO players (name, gender) VALUES ('測試球員', 'M')"
+       )
+       player_id = conn.execute("SELECT player_id FROM players").fetchone()[0]
+       conn.execute(
+           """INSERT INTO roster_registrations
+              (player_id, team_id, gender, week_label, jersey_number, position, source)
+              VALUES (?, 1, 'M', '例行賽 Week 1', 5, 'OH', 'match_page')""",
+           (player_id,),
+       )
+       conn.commit()
+       return conn, player_id
+
+
+   def _insert_records(conn: sqlite3.Connection, player_id: int, records: list[dict]) -> None:
+       """與 stats_crawler.main() 相同的批次寫入邏輯（Phase 2：掛 registration_id）。"""
+       registration_id = conn.execute(
+           "SELECT registration_id FROM roster_registrations WHERE player_id = ?",
+           (player_id,),
+       ).fetchone()[0]
+       conn.executemany(
+           """INSERT INTO player_match_stats
+              (registration_id, match_date, opponent, sets_played,
+               attack_total, attack_points, block_points,
+               serve_total, serve_points,
+               receive_total, receive_excellent,
+               dig_total, dig_excellent,
+               set_total, set_excellent, total_points,
+               is_golden_set)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           [
+               (
+                   registration_id,
+                   r["match_date"], r["opponent"], r["sets_played"],
+                   r["attack_total"], r["attack_points"], r["block_points"],
+                   r["serve_total"], r["serve_points"],
+                   r["receive_total"], r["receive_excellent"],
+                   r["dig_total"], r["dig_excellent"],
+                   r["set_total"], r["set_excellent"], r["total_points"],
+                   r["is_golden_set"],
+               )
+               for r in records
+           ],
+       )
+       conn.commit()
+
+
+   def test_filter_new_records_prevents_duplicate_insert_on_rerun(tmp_db_path):
+       conn, player_id = _make_conn(tmp_db_path)
+       try:
+           fake_record = {
+               "match_date": "2026-01-01",
+               "opponent": "對手隊",
+               "sets_played": 3,
+               "attack_total": 10,
+               "attack_points": 5,
+               "block_points": 1,
+               "serve_total": 8,
+               "serve_points": 2,
+               "receive_total": 6,
+               "receive_excellent": 3,
+               "dig_total": 4,
+               "dig_excellent": 2,
+               "set_total": 0,
+               "set_excellent": 0,
+               "total_points": 8,
+               "is_golden_set": 0,
+           }
+
+           # 第一次：同一筆紀錄應成功寫入（走真正的 filter_new_records + insert 路徑）
+           new_records = filter_new_records(conn, player_id, [fake_record])
+           assert len(new_records) == 1
+           _insert_records(conn, player_id, new_records)
+
+           # 第二次：以完全相同的 records 重跑（模擬全量模式重複執行），應被去重濾掉
+           new_records_again = filter_new_records(conn, player_id, [fake_record])
+           assert new_records_again == []
+           _insert_records(conn, player_id, new_records_again)
+
+           total_rows = conn.execute(
+               "SELECT COUNT(*) FROM player_match_stats"
+           ).fetchone()[0]
+           assert total_rows == 1
+       finally:
+           conn.close()
+   ```
+
+- [ ] **Step 9:** 新增 `tests/test_stats_crawler_registration.py`，驗證 `resolve_registration_for_stats` 的兩條路徑（命中既有登錄／查無則 backfill）：
+   ```python
+   import sqlite3
+   from pathlib import Path
+
+   from src.etl.stats_crawler import resolve_registration_for_stats
+
+   SCHEMA_PATH = Path(__file__).resolve().parents[1] / "sql" / "schema.sql"
+
+
+   def _make_conn(tmp_db_path) -> sqlite3.Connection:
+       conn = sqlite3.connect(tmp_db_path)
+       conn.execute("PRAGMA foreign_keys = ON")
+       conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+       conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (5, '新北中纖', 'F')")
+       conn.execute(
+           "INSERT INTO matches (game_id, gender, match_date, round_name, home_team, away_team) "
+           "VALUES (1, 'F', '2025-11-01', '例行賽 Week 1', '新北中纖', '義力營造')"
+       )
+       conn.execute("INSERT INTO players (name, gender) VALUES ('張瓈文', 'F')")
+       conn.commit()
+       return conn
+
+
+   def test_resolve_registration_reuses_existing_match_page_row(tmp_db_path):
+       conn = _make_conn(tmp_db_path)
+       try:
+           pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
+           conn.execute(
+               """INSERT INTO roster_registrations
+                  (player_id, team_id, gender, week_label, jersey_number, position, source)
+                  VALUES (?, 5, 'F', '例行賽 Week 1', 2, 'OP', 'match_page')""",
+               (pid,),
+           )
+           conn.commit()
+
+           rid = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01")
+
+           row = conn.execute(
+               "SELECT source, jersey_number FROM roster_registrations WHERE registration_id = ?",
+               (rid,),
+           ).fetchone()
+           assert row == ("match_page", 2), "已有真實登錄時，不得覆蓋成 backfill"
+       finally:
+           conn.close()
+
+
+   def test_resolve_registration_creates_backfill_when_missing(tmp_db_path):
+       conn = _make_conn(tmp_db_path)
+       try:
+           pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
+
+           rid = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01")
+
+           row = conn.execute(
+               "SELECT source, jersey_number, position, week_label FROM roster_registrations WHERE registration_id = ?",
+               (rid,),
+           ).fetchone()
+           assert row == ("backfill", None, None, "例行賽 Week 1")
+       finally:
+           conn.close()
+
+
+   def test_resolve_registration_is_idempotent(tmp_db_path):
+       conn = _make_conn(tmp_db_path)
+       try:
+           pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
+
+           rid_first = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01")
+           rid_second = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01")
+
+           assert rid_first == rid_second
+           count = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0]
+           assert count == 1
+       finally:
+           conn.close()
+   ```
+
+- [ ] **Step 10:** 跑測試（僅 scoped pytest，不連正式 DB、不連外部系統）：
+   ```bash
+   python -m pytest tests/test_stats_crawler_dedup.py tests/test_stats_crawler_registration.py -v
+   ```
+   **預期輸出**：1 + 3 = 4 個測試 PASSED。
+
+   **未實測**：需執行者在有依賴的 venv 中實跑確認。
+
+- [ ] **Step 11:** 確認行尾乾淨：`git diff --stat -w`
+
+- [ ] **Step 12:** **[STOP：等待使用者同意 commit]**：
+   ```
+   fix: stats_crawler 統計寫入路徑遷移到 registration_id
+
+   get_existing_keys/未知球員插入/批次寫入/驗證查詢全部改經
+   roster_registrations 解析 registration_id，查無登錄時以
+   source='backfill' 補一筆（背號/位置皆 NULL，只標記不插補）。
+   排在 Task 4 正式遷移之前完成，僅 scoped pytest 驗證，實際對
+   正式 DB 執行仍要等 Task 4 遷移落地。
+   ```
+
+---
+
 ## Task 4：一次性遷移腳本（3,807 筆歷史統計）
 
 **Files:**
@@ -995,7 +1433,7 @@ GET http://114.35.229.141/Match.aspx?CupID=21
       'stats_migrated', 'stats_backfilled', 'orphans_found'}
       """
   ```
-- Consumes：`src.etl.backup_db.backup_database`（Task 1）、`src.etl.stats_crawler.crawl_all_rosters`（Task 3）、`src.utils.db_config.get_connection`。
+- Consumes：`src.etl.backup_db.backup_database`（Task 1）、`src.etl.stats_crawler.crawl_all_rosters`（Task 3）、`src.utils.db_config.get_connection`。本 task 完成、正式 DB 遷移落地後，`src.etl.stats_crawler.resolve_registration_for_stats`／`upsert_roster_registration`（source 參數，Task 3b 產出）才具備可實跑的前提——Task 3b 只保證程式碼相容新 schema，實際對正式 DB 寫入仍要等本 task 遷移完成。
 
 **設計說明**：本 task 是整個 Phase 2 風險最高的一步，步驟刻意拆得很細、每步都可獨立驗證，且全程在同一個 transaction 之外用「先建新表、跑完整驗證、確認無誤才刪舊表」的方式進行，任何一步失敗都可以從 Task 1 建立的備份檔復原。
 
@@ -1170,10 +1608,13 @@ GET http://114.35.229.141/Match.aspx?CupID=21
 
 
    def _drop_old_tables(conn: sqlite3.Connection) -> None:
-       conn.execute("DROP TABLE players_old")
+       # FK ON 時必須子表先 drop、父表後 drop：player_match_stats_old 仍是
+       # players_old 的子表（舊 FK 尚未搬移前的關聯），先 drop players_old
+       # 會觸發 FOREIGN KEY constraint failed（已用 in-memory 實驗證實）。
        conn.execute("DROP TABLE player_match_stats_old")
+       conn.execute("DROP TABLE players_old")
        conn.commit()
-       logger.info("已清除 players_old / player_match_stats_old")
+       logger.info("已清除 player_match_stats_old / players_old")
 
 
    def run_migration(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
@@ -1251,7 +1692,8 @@ GET http://114.35.229.141/Match.aspx?CupID=21
        attack_points INTEGER, block_points INTEGER, serve_total INTEGER,
        serve_points INTEGER, receive_total INTEGER, receive_excellent INTEGER,
        dig_total INTEGER, dig_excellent INTEGER, set_total INTEGER,
-       set_excellent INTEGER, total_points INTEGER, is_golden_set INTEGER DEFAULT 0
+       set_excellent INTEGER, total_points INTEGER, is_golden_set INTEGER DEFAULT 0,
+       FOREIGN KEY (player_id) REFERENCES players (player_id)
    );
    CREATE TABLE matches (
        match_id INTEGER PRIMARY KEY AUTOINCREMENT, game_id INTEGER NOT NULL,
@@ -1263,7 +1705,7 @@ GET http://114.35.229.141/Match.aspx?CupID=21
 
    def _seed_v1_db(tmp_db_path: Path) -> sqlite3.Connection:
        conn = sqlite3.connect(tmp_db_path)
-       conn.execute("PRAGMA foreign_keys = OFF")  # 遷移過程要 rename/drop 表，暫時關閉
+       conn.execute("PRAGMA foreign_keys = ON")  # 對齊正式連線行為：get_connection() 開 FK，測試種子不得關閉它
        conn.executescript(SCHEMA_V1)
        conn.execute("INSERT INTO teams VALUES (5, '新北中纖', 'F')")
        conn.execute(
@@ -2381,6 +2823,7 @@ GET http://114.35.229.141/Match.aspx?CupID=21
 - [ ] 遷移後 `player_match_stats` 總筆數與遷移前一致（不得減少）
 - [ ] `roster_registrations` 中 `source='match_page'` 筆數遠大於 `source='backfill'`
 - [ ] `db_loader.py` 不再寫入任何 team/jersey/position 到 `players`
+- [ ] `python -m src.etl.stats_crawler --incremental` 的寫入路徑已相容新 schema（scoped 測試證明，遷移後 Task 11 實跑驗證）
 - [ ] `main.py`、`player_deep.py`、`match_trend.py`、`box_score.py`、`league_pr.py`、`prediction.py` 六個 tab 全部驗證過能正常運作
 - [ ] `python -m pytest tests/ -v` 全數 PASSED
 - [ ] 遷移前備份檔（`data/db/tvl_database.db.bak-*`）確實存在於本機
