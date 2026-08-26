@@ -11,9 +11,10 @@ streamlit run src/app/main.py
 
 # 爬蟲（皆從 repo 根目錄以 module 方式執行）
 python -m src.etl.crawler                        # 官網球員名單 → data/raw/
-python -m src.etl.stats_crawler --incremental    # 逐場技術統計（增量）
 python -m src.etl.match_crawler                  # 官網各局比分 → matches 表
-python -m src.etl.db_loader                      # roster CSV → teams/players
+python -m src.etl.stats_crawler --incremental    # 逐場技術統計（增量；依賴 matches 表最新，需先跑 match_crawler）
+python -m src.etl.stats_crawler --rosters        # 出賽名單→roster_registrations（先跑 match_crawler）
+python -m src.etl.db_loader                      # roster CSV → players 身分層
 ```
 
 ## 地雷（改動前必讀）
@@ -31,7 +32,10 @@ python -m src.etl.db_loader                      # roster CSV → teams/players
   `http://114.35.229.141`（明文 HTTP、hardcoded IP，見 `src/utils/constants.py`）。
   後者不可從程式碼推斷格式，改爬蟲前先實際抓一頁看回應。
 - **每週登錄名單會變動**：企業排球每週登錄球員可能不同，`stats_crawler` 遇到
-  名單外的球員會直接插入 `players`（缺背號與位置），下游計算必須對缺值防禦。
+  名單外的球員現在是「插入身分層 `players` (name, gender) + 建
+  `source='backfill'` 登錄（背號/位置皆 NULL）」，下游計算仍須對缺值防禦。
+- **week_label 直接用 `matches.round_name`，跨賽季同名會碰撞**：Phase 3 開季前
+  必須加賽季限定鍵（cup_id/season），下季資料進來前不得先跑爬蟲。
 
 ## 慣例
 

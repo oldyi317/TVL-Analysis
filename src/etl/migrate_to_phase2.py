@@ -97,7 +97,8 @@ def _migrate_stats(conn: sqlite3.Connection, cup_id: int) -> dict:
         team_id, gender, jersey_number, position = player_snapshot
 
         week_row = conn.execute(
-            "SELECT round_name FROM matches WHERE match_date = ? LIMIT 1", (match_date,)
+            "SELECT round_name FROM matches WHERE match_date = ? ORDER BY round_name LIMIT 1",
+            (match_date,),
         ).fetchone()
         week_label = week_row[0] if week_row and week_row[0] else f"未比對-{match_date}"
 
@@ -112,7 +113,9 @@ def _migrate_stats(conn: sqlite3.Connection, cup_id: int) -> dict:
             registration_id = reg_row[0]
         else:
             start_row = conn.execute(
-                "SELECT MIN(match_date) FROM matches WHERE round_name = ?", (week_label,)
+                "SELECT MIN(match_date) FROM matches WHERE round_name = ? "
+                "AND ABS(julianday(match_date) - julianday(?)) < 200",
+                (week_label, match_date),
             ).fetchone()
             week_start_date = start_row[0] if start_row and start_row[0] else match_date
             registration_id = _backfill_registration(
@@ -156,7 +159,16 @@ def _drop_old_tables(conn: sqlite3.Connection) -> None:
     logger.info("已清除 player_match_stats_old / players_old")
 
 
+def _assert_not_migrated(conn: sqlite3.Connection) -> None:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='roster_registrations'"
+    ).fetchone()
+    if row:
+        raise RuntimeError("此資料庫已完成 Phase 2 遷移，請勿重複執行。")
+
+
 def run_migration(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
+    _assert_not_migrated(conn)
     expected_stat_count = conn.execute("SELECT COUNT(*) FROM player_match_stats").fetchone()[0]
 
     _rename_old_tables(conn)

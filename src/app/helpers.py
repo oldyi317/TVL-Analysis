@@ -233,7 +233,7 @@ def get_current_roster(team_id: int, gender_code: str) -> pd.DataFrame:
               SELECT MAX(week_start_date) FROM roster_registrations
               WHERE team_id = r.team_id AND gender = r.gender
           )
-        ORDER BY r.jersey_number
+        ORDER BY r.jersey_number IS NULL, r.jersey_number
         """,
         (team_id, gender_code),
     )

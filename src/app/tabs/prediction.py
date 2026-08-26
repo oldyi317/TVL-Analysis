@@ -9,7 +9,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 
-from src.app.helpers import MODEL_PATH, load_data, vec_pct
+from src.app.helpers import MODEL_PATH, vec_pct
 
 
 # ---------------------------------------------------------------------------

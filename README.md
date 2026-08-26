@@ -60,8 +60,9 @@ TVL-Analysis/
 | 資料表 | 說明 |
 |---|---|
 | `teams` | 球隊資料（複合主鍵：team_id + gender） |
-| `players` | 球員基本資料（背號、位置、身高、體重等） |
-| `player_match_stats` | 逐場技術統計（攻擊、攔網、發球、接發、防守、舉球） |
+| `players` | 球員身分層（姓名、性別、生日、身高、體重；不含背號/位置/隊伍） |
+| `roster_registrations` | 球員 × 週次 × 隊伍的登錄（背號、位置；`source` 標記 `match_page`（實際出賽名單）或 `backfill`（以舊快照回推或該場無出賽記錄，非當週實際登錄）） |
+| `player_match_stats` | 逐場技術統計（攻擊、攔網、發球、接發、防守、舉球），掛在 `registration_id` 下 |
 
 ## 安裝與使用
 
@@ -79,11 +80,17 @@ pip install -r requirements.txt
 # 爬取球員名單
 python -m src.etl.crawler
 
+# 爬取各局比分 → matches 表（stats_crawler 依賴此表最新，需先跑）
+python -m src.etl.match_crawler
+
 # 爬取技術統計（全量：掃全部場次，僅補齊缺少的紀錄，不清空既有資料）
 python -m src.etl.stats_crawler
 
 # 爬取技術統計（增量，僅新增缺少的比賽）
 python -m src.etl.stats_crawler --incremental
+
+# 爬取出賽名單 → roster_registrations
+python -m src.etl.stats_crawler --rosters
 ```
 
 ### 載入資料庫
@@ -91,6 +98,9 @@ python -m src.etl.stats_crawler --incremental
 ```bash
 python -m src.etl.db_loader
 ```
+
+`db_loader` 只負責建立/更新 `players` 身分層（姓名、性別等自然鍵 upsert），
+背號、位置、隊伍等每週會變動的資訊改由 `roster_registrations` 承載。
 
 ### 啟動儀表板
 

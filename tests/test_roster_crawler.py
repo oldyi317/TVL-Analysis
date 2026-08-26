@@ -98,6 +98,53 @@ def test_resolve_week_label_falls_back_when_no_match_found(tmp_db_path):
     conn.close()
 
 
+def test_resolve_week_label_fallback_distinguishes_different_dates(tmp_db_path):
+    """Finding 1: 不同 match_date 落入 fallback 時不應合併成同一個 week_label。"""
+    conn = sqlite3.connect(tmp_db_path)
+    conn.execute("""
+        CREATE TABLE matches (
+            match_id INTEGER PRIMARY KEY, game_id INTEGER, gender TEXT,
+            match_date DATE, round_name TEXT, home_team TEXT, away_team TEXT
+        )
+    """)
+    conn.commit()
+
+    label_1, start_1 = resolve_week_label(conn, "2099-01-01", "")
+    label_2, start_2 = resolve_week_label(conn, "2099-01-08", "")
+
+    assert label_1 != label_2
+    assert label_1 == "未比對-2099-01-01"
+    assert label_2 == "未比對-2099-01-08"
+    assert start_1 == "2099-01-01"
+    assert start_2 == "2099-01-08"
+    conn.close()
+
+
+def test_resolve_week_label_scopes_week_start_date_by_season(tmp_db_path):
+    """Finding 2: 同一 round_name 跨賽季時，week_start_date 應取離目標場次近的那個賽季。"""
+    conn = sqlite3.connect(tmp_db_path)
+    conn.execute("""
+        CREATE TABLE matches (
+            match_id INTEGER PRIMARY KEY, game_id INTEGER, gender TEXT,
+            match_date DATE, round_name TEXT, home_team TEXT, away_team TEXT
+        )
+    """)
+    conn.execute(
+        "INSERT INTO matches (game_id, gender, match_date, round_name, home_team, away_team) "
+        "VALUES (1, 'F', '2024-12-21', '例行賽 Week 1', '新北中纖', '義力營造')"
+    )
+    conn.execute(
+        "INSERT INTO matches (game_id, gender, match_date, round_name, home_team, away_team) "
+        "VALUES (1, 'F', '2026-01-04', '例行賽 Week 1', '新北中纖', '義力營造')"
+    )
+    conn.commit()
+
+    week_label, week_start = resolve_week_label(conn, "2026-01-04", "")
+    assert week_label == "例行賽 Week 1"
+    assert week_start == "2026-01-04"
+    conn.close()
+
+
 def test_upsert_roster_registration_is_idempotent(tmp_db_path):
     from pathlib import Path as _P
     schema_sql = (_P(__file__).resolve().parents[1] / "sql" / "schema.sql").read_text(encoding="utf-8")

@@ -459,23 +459,24 @@ def resolve_week_label(conn: sqlite3.Connection, match_date: str, title_text: st
     並記錄警告（此為已知限制，非本次遷移的資料涵蓋範圍）。
     """
     row = conn.execute(
-        "SELECT round_name FROM matches WHERE match_date = ? LIMIT 1", (match_date,)
+        "SELECT round_name FROM matches WHERE match_date = ? ORDER BY round_name LIMIT 1",
+        (match_date,),
     ).fetchone()
     if row and row[0]:
         week_label = row[0]
         start_row = conn.execute(
-            "SELECT MIN(match_date) FROM matches WHERE round_name = ?", (week_label,)
+            "SELECT MIN(match_date) FROM matches WHERE round_name = ? "
+            "AND ABS(julianday(match_date) - julianday(?)) < 200",
+            (week_label, match_date),
         ).fetchone()
         week_start_date = start_row[0] if start_row and start_row[0] else match_date
         return week_label, week_start_date
 
     logger.warning(
-        "match_date=%s 在 matches 表查無 round_name，退化用標題文字：%s",
+        "match_date=%s 在 matches 表查無 round_name，退化用 match_date 當 week_label：%s",
         match_date, title_text,
     )
-    parsed = _parse_match_title(title_text)
-    raw_round_text = parsed[1] if parsed else "未知賽別"
-    return f"未比對-{raw_round_text}", match_date
+    return f"未比對-{match_date}", match_date
 
 
 def upsert_roster_registration(
@@ -587,5 +588,18 @@ if __name__ == "__main__":
         "--incremental", "-i", action="store_true",
         help="增量模式：僅新增尚未存在的比賽紀錄，不清除既有資料",
     )
+    parser.add_argument(
+        "--rosters", action="store_true",
+        help="改跑出賽名單爬蟲（crawl_all_rosters），寫入 roster_registrations，"
+             "跳過技術統計爬蟲；請先跑過 match_crawler",
+    )
     args = parser.parse_args()
-    main(incremental=args.incremental)
+    if args.rosters:
+        _conn = get_connection()
+        try:
+            _stats = crawl_all_rosters(_conn)
+            print(_stats)
+        finally:
+            _conn.close()
+    else:
+        main(incremental=args.incremental)

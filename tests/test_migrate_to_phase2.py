@@ -2,6 +2,8 @@ import sqlite3
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from src.etl.migrate_to_phase2 import run_migration
 
 SCHEMA_V1 = """
@@ -113,4 +115,29 @@ def test_migration_drops_old_tables(tmp_db_path):
     }
     assert "players_old" not in tables
     assert "player_match_stats_old" not in tables
+    conn.close()
+
+
+def test_rerun_migration_raises_and_leaves_data_untouched(tmp_db_path):
+    """Finding 4: 已遷移過的 DB 再跑一次應直接拋錯，不得動到既有資料。"""
+    conn = _seed_v1_db(tmp_db_path)
+
+    with patch(
+        "src.etl.migrate_to_phase2.crawl_all_rosters",
+        return_value={"matches_scanned": 0, "matches_skipped": 0, "registrations_upserted": 0, "new_players": 0},
+    ):
+        first_result = run_migration(conn, cup_id=21)
+
+        players_before = conn.execute("SELECT player_id, name FROM players").fetchall()
+        stats_before = conn.execute("SELECT COUNT(*) FROM player_match_stats").fetchone()[0]
+
+        with pytest.raises(RuntimeError):
+            run_migration(conn, cup_id=21)
+
+    players_after = conn.execute("SELECT player_id, name FROM players").fetchall()
+    stats_after = conn.execute("SELECT COUNT(*) FROM player_match_stats").fetchone()[0]
+
+    assert players_after == players_before
+    assert stats_after == stats_before
+    assert stats_after == first_result["stats_migrated"]
     conn.close()

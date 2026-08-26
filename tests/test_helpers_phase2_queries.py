@@ -13,7 +13,7 @@ GET_CURRENT_ROSTER_SQL = """
           SELECT MAX(week_start_date) FROM roster_registrations
           WHERE team_id = r.team_id AND gender = r.gender
       )
-    ORDER BY r.jersey_number
+    ORDER BY r.jersey_number IS NULL, r.jersey_number
 """
 
 GET_LEAGUE_AGGREGATED_STATS_SQL = """
