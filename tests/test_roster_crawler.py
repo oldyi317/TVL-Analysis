@@ -152,3 +152,77 @@ def test_fetch_match_roster_logs_warning_for_unknown_position(caplog):
     # 驗證警告被記錄
     assert any("未知位置用語" in record.message and "教練" in record.message for record in caplog.records), \
         "應該記錄包含 '未知位置用語' 和 '教練' 的警告"
+
+
+def test_crawl_all_rosters_resilient_to_fetch_failures(tmp_db_path, caplog):
+    """
+    驗證 crawl_all_rosters 在單場出賽名單抓取失敗時，
+    記錄警告、跳過該場、繼續爬取其他場次。
+    """
+    import requests
+    from pathlib import Path as _P
+    from src.etl.stats_crawler import crawl_all_rosters
+
+    schema_sql = (_P(__file__).resolve().parents[1] / "sql" / "schema.sql").read_text(encoding="utf-8")
+    conn = sqlite3.connect(tmp_db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.executescript(schema_sql)
+
+    # 種子資料：兩支隊伍
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (5, '新北中纖', 'F')")
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (7, '義力營造', 'F')")
+
+    # 建立 matches 表，讓 resolve_week_label 能查到 round_name
+    conn.execute(
+        "INSERT INTO matches (game_id, gender, match_date, round_name, home_team, away_team) "
+        "VALUES (1, 'F', '2025-11-01', '例行賽 Week 1', '新北中纖', '義力營造')"
+    )
+    conn.execute(
+        "INSERT INTO matches (game_id, gender, match_date, round_name, home_team, away_team) "
+        "VALUES (2, 'F', '2025-11-08', '例行賽 Week 2', '義力營造', '新北中纖')"
+    )
+    conn.commit()
+    conn.close()
+
+    # 正常的名單回應
+    normal_roster_html = FIXTURE.read_text(encoding="utf-8")
+
+    # 模擬 fetch_match_roster：MatchID=208 拋 HTTPError，其他回傳正常
+    def mock_fetch_match_roster(cup_id, match_id):
+        if match_id == 208:
+            raise requests.HTTPError("500 Server Error")
+        # 對 MatchID=1 回傳 fixture 內容（已測試）
+        with patch("src.etl.stats_crawler.requests.get", return_value=_FakeResponse(normal_roster_html)):
+            return fetch_match_roster(cup_id, match_id)
+
+    # 模擬 fetch_match_list：返回兩場（1 成功，208 失敗）
+    mock_match_list = [
+        {"match_id": 1, "label": "第1週-女 1"},
+        {"match_id": 208, "label": "總決賽-女 115-1"},
+    ]
+
+    with patch("src.etl.stats_crawler.fetch_match_roster", side_effect=mock_fetch_match_roster):
+        with patch("src.etl.stats_crawler.fetch_match_list", return_value=mock_match_list):
+            with caplog.at_level("WARNING", logger="src.etl.stats_crawler"):
+                conn = sqlite3.connect(tmp_db_path)
+                conn.execute("PRAGMA foreign_keys = ON")
+                stats = crawl_all_rosters(conn, cup_id=21)
+                conn.close()
+
+    # 斷言：
+    # 1. 不拋例外（直接在 crawl_all_rosters 中被捕捉）
+    assert True, "crawl_all_rosters 應該不拋例外"
+
+    # 2. matches_skipped == 1（MatchID=208）
+    assert stats["matches_skipped"] == 1, f"Expected matches_skipped=1, got {stats['matches_skipped']}"
+
+    # 3. matches_scanned == 1（MatchID=1 成功）
+    assert stats["matches_scanned"] == 1, f"Expected matches_scanned=1, got {stats['matches_scanned']}"
+
+    # 4. registrations_upserted > 0（MatchID=1 的球員名單已寫入）
+    assert stats["registrations_upserted"] > 0, \
+        f"Expected registrations_upserted > 0, got {stats['registrations_upserted']}"
+
+    # 5. 驗證警告被記錄
+    assert any("抓取失敗" in record.message and "208" in record.message for record in caplog.records), \
+        "應該記錄包含 '抓取失敗' 和 '208' 的警告"

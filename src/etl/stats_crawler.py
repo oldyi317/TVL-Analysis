@@ -540,7 +540,16 @@ def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
     stats = {"matches_scanned": 0, "matches_skipped": 0, "registrations_upserted": 0, "new_players": 0}
 
     for m in match_list:
-        roster_rows = fetch_match_roster(cup_id, m["match_id"])
+        try:
+            roster_rows = fetch_match_roster(cup_id, m["match_id"])
+        except requests.RequestException as e:
+            logger.warning(
+                "[MatchID=%d] 抓取失敗（%s），跳過該場",
+                m["match_id"], e
+            )
+            stats["matches_skipped"] += 1
+            continue
+
         if not roster_rows:
             stats["matches_skipped"] += 1
             continue
