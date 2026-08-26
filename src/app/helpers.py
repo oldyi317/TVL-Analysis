@@ -272,9 +272,11 @@ def get_league_aggregated_stats(gender_code: str) -> pd.DataFrame:
         JOIN (
             SELECT rr.player_id, rr.position, rr.team_id, rr.gender
             FROM roster_registrations rr
-            WHERE rr.week_start_date = (
-                SELECT MAX(week_start_date) FROM roster_registrations rr2
+            WHERE rr.registration_id = (
+                SELECT rr2.registration_id FROM roster_registrations rr2
                 WHERE rr2.player_id = rr.player_id
+                ORDER BY rr2.week_start_date DESC, rr2.registration_id DESC
+                LIMIT 1
             )
         ) latest ON latest.player_id = p.player_id
         JOIN teams t ON t.team_id = latest.team_id AND t.gender = latest.gender
