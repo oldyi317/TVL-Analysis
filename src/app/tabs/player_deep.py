@@ -5,7 +5,7 @@ Tab 1：球員個人深度分析（KPI + 雷達圖 + 逐場趨勢）
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.app.helpers import load_data, safe_pct, vec_pct, responsive_chart_config, compact_margin
+from src.app.helpers import load_data, safe_div, safe_pct, vec_pct, responsive_chart_config, compact_margin
 
 # 樣本數門檻：比率型指標分母 < 10 → N/A
 MIN_DENOM = 10
@@ -56,10 +56,8 @@ def _parse_agg(lg):
             (lg["rcv_exc"] or 0) + (lg["dig_exc"] or 0),
             (lg["rcv_tot"] or 0) + (lg["dig_tot"] or 0),
         ),
-        "blk": (lg["blk_pts"] / lg["tot_sets"]
-                if lg["tot_sets"] and lg["tot_sets"] > 0 else 0),
-        "ppg": (lg["tot_pts"] / lg["n_games"]
-                if lg["n_games"] and lg["n_games"] > 0 else 0),
+        "blk": safe_div(lg["blk_pts"], lg["tot_sets"]),
+        "ppg": safe_div(lg["tot_pts"], lg["n_games"]),
     }
 
 

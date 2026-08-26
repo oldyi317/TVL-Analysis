@@ -12,7 +12,6 @@ _PROJECT_ROOT = str(Path(__file__).resolve().parents[2])
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-import pandas as pd
 import streamlit as st
 
 # ── 在 matplotlib 匯入前清除舊字型快取，避免抓到缺少 CJK 字型的舊快取 ──
@@ -103,16 +102,22 @@ if players_df.empty:
     st.warning("該球隊目前沒有球員資料。")
     st.stop()
 
-player_display = [
-    f"#{int(r['jersey_number'])} {r['name']}" if pd.notna(r["jersey_number"]) else r["name"]
-    for _, r in players_df.iterrows()
-]
+def _player_label(row) -> str:
+    """球員下拉選單標籤；每週登錄名單外的補登球員缺背號，顯示「—」。"""
+    try:
+        return f"#{int(row['jersey_number'])} {row['name']}"
+    except (TypeError, ValueError):
+        return f"#— {row['name']}"
+
+
+player_display = [_player_label(r) for _, r in players_df.iterrows()]
 
 selected_display = st.sidebar.selectbox("選擇球員", player_display)
 selected_idx = player_display.index(selected_display)
 player_id = int(players_df.iloc[selected_idx]["player_id"])
 player_name = players_df.iloc[selected_idx]["name"]
-player_position = players_df.iloc[selected_idx].get("position", None)
+_pos = players_df.iloc[selected_idx].get("position", None)
+player_position = _pos if isinstance(_pos, str) and _pos else None
 
 # ── 頁面標題 ──────────────────────────────────────────────────
 

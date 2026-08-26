@@ -96,8 +96,21 @@ def load_data(query: str, params: tuple = ()) -> pd.DataFrame:
 # ── 數值工具 ─────────────────────────────────────────────────
 
 def safe_pct(numerator: float, denominator: float) -> float:
-    """安全計算百分比，分母為 0 時回傳 0.0。"""
+    """安全計算百分比，分母為 0 或任一值為 None/NaN 時回傳 0.0。"""
+    if numerator is None or denominator is None:
+        return 0.0
+    if pd.isna(numerator) or pd.isna(denominator):
+        return 0.0
     return (numerator / denominator * 100) if denominator > 0 else 0.0
+
+
+def safe_div(numerator: float, denominator: float) -> float:
+    """安全除法，分母為 0 或任一值為 None/NaN 時回傳 0.0。"""
+    if numerator is None or denominator is None:
+        return 0.0
+    if pd.isna(numerator) or pd.isna(denominator):
+        return 0.0
+    return numerator / denominator if denominator > 0 else 0.0
 
 
 def vec_pct(num, den):
