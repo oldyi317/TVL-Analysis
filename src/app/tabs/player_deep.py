@@ -26,7 +26,9 @@ def _rate_safe(val: float, denom: float) -> float:
 
 
 def _load_league_agg(gender_code: str, pos_filter: str = "", params: tuple = ()):
-    """撈取聯盟聚合數據（全組別或特定位置）。"""
+    """撈取聯盟聚合數據（全組別或特定位置）。position 過濾直接用該筆統計對應的
+    registration.position（該球員該場當下的位置），不是球員層級的代表值——
+    這是「聯盟整體同位置平均」，用逐筆真實登錄位置加總最符合語意。"""
     return load_data(
         f"""
         SELECT SUM(s.attack_points) AS atk_pts, SUM(s.attack_total) AS atk_tot,
@@ -37,8 +39,8 @@ def _load_league_agg(gender_code: str, pos_filter: str = "", params: tuple = ())
                SUM(s.block_points) AS blk_pts, SUM(s.sets_played) AS tot_sets,
                SUM(s.total_points) AS tot_pts, COUNT(*) AS n_games
         FROM player_match_stats s
-        JOIN players p ON s.player_id = p.player_id
-        WHERE p.gender = ? {pos_filter}
+        JOIN roster_registrations r ON s.registration_id = r.registration_id
+        WHERE r.gender = ? {pos_filter}
         """,
         params,
     ).iloc[0]
@@ -69,7 +71,12 @@ def render(ctx: dict):
     gender = ctx["gender"]
 
     stats_df = load_data(
-        "SELECT * FROM player_match_stats WHERE player_id = ? ORDER BY match_date",
+        """
+        SELECT s.* FROM player_match_stats s
+        JOIN roster_registrations r ON s.registration_id = r.registration_id
+        WHERE r.player_id = ?
+        ORDER BY s.match_date
+        """,
         (player_id,),
     )
 
@@ -160,7 +167,7 @@ def render(ctx: dict):
     st.markdown("---")
 
     # ── 同位置平均（供雷達圖對照） ─────────────────────────────
-    pos_filter = "AND p.position = ?" if player_position else ""
+    pos_filter = "AND r.position = ?" if player_position else ""
     pos_params = (gender_code, player_position) if player_position else (gender_code,)
     lg = _parse_agg(_load_league_agg(gender_code, pos_filter, pos_params))
 

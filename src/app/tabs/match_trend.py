@@ -19,7 +19,12 @@ def render(ctx: dict):
     team_name = ctx["team_name"]
 
     match_df = load_data(
-        "SELECT * FROM player_match_stats WHERE player_id = ? ORDER BY match_date",
+        """
+        SELECT s.* FROM player_match_stats s
+        JOIN roster_registrations r ON s.registration_id = r.registration_id
+        WHERE r.player_id = ?
+        ORDER BY s.match_date
+        """,
         (player_id,),
     )
 
