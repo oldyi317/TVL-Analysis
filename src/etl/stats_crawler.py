@@ -422,6 +422,11 @@ def fetch_match_roster(cup_id: int, match_id: int) -> list[dict] | None:
                 continue
 
             position_raw = cells[2]
+            if position_raw and position_raw not in MATCH_POSITION_MAP:
+                logger.warning(
+                    "[MatchID=%d] 未知位置用語：%s（球員 %s），記為 None",
+                    match_id, position_raw, cells[1]
+                )
             rows.append({
                 "match_date": match_date,
                 "title_text": title_text,

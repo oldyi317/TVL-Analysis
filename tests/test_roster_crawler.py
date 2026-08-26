@@ -115,3 +115,40 @@ def test_upsert_roster_registration_is_idempotent(tmp_db_path):
     rows = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()
     assert rows[0] == 1, "重跑 upsert 不應產生重複列"
     conn.close()
+
+
+def test_fetch_match_roster_logs_warning_for_unknown_position(caplog):
+    """
+    驗證未知位置用語時記錄警告，且該列仍被納入結果但 position 為 None。
+    """
+    unknown_position_html = """<h3><img src='_images/Sex_2.png' height='32' />女子組 第1週(場地) 編號：1 (11月1日 13:00)  歷時 02:22</h3>
+<div class='TableFormat_1'><table cellpadding='0' cellspacing='0' align='center' width='100%'  >
+<tr><td><div class='MatchResult'><table cellpadding='0' cellspacing='0' align='center' width='100%'  >
+<tr><td class='TeamName  lightBackground'><a href='Team.aspx?CupID=21&TeamID=8'>新北中纖</a></td><td class='Score largeFont_3' style='color:red'>25</td></tr>
+</table>
+</div></td></tr>
+</table>
+</div>
+
+<h3>新北中纖：邱雅慧</h3>
+<br/>
+<div class='TableFormat_1'><table cellpadding='0' cellspacing='0' align='center' width='100%'  >
+<tr><td class='head' colspan='3'>新北中纖</td></td><td class='head' colspan='2'>攻擊(Attack)</td></td><td class='head' colspan='2'>發球(Serve)</td></td><td class='head' colspan='2'>接發(Receive)</td></td><td class='head' colspan='2'>防守(Dig)</td></td><td class='head' colspan='2'>舉球(Set)</td></td><td class='head'>總得分</td></tr>
+<tr><td class='head'>N<SUP>o</SUP></td></td><td class='head' colspan='2'>球員</td></td><td class='head'>得</td></td><td class='head'>總</td></td><td class='head'>得</td></td><td class='head'>得</td></td><td class='head'>總</td></td><td class='head'>好</td></td><td class='head'>總</td></td><td class='head'>好</td></td><td class='head'>總</td></td><td class='head'>好</td></td><td class='head'>總</td></td></tr>
+<tr><td class='largeFont_1'>2</td></td><td><a href='Player.aspx?CupID=21&PlayerID=124'>張瓈文</a></td><td>教練</td></td><td>1</td></td><td>2</td></td><td>0</td></td><td>0</td></td><td>1</td></td><td>0</td></td><td>0</td></td><td>0</td></td><td>0</td></td><td>0</td></td><td>0</td></td><td>1</td></td></tr>
+</table>
+</div>
+"""
+
+    with patch("src.etl.stats_crawler.requests.get", return_value=_FakeResponse(unknown_position_html)):
+        with caplog.at_level("WARNING", logger="src.etl.stats_crawler"):
+            rows = fetch_match_roster(cup_id=21, match_id=1)
+
+    assert rows is not None
+    assert len(rows) == 1
+    assert rows[0]["name"] == "張瓈文"
+    assert rows[0]["position"] is None  # 未知位置映射為 None
+
+    # 驗證警告被記錄
+    assert any("未知位置用語" in record.message and "教練" in record.message for record in caplog.records), \
+        "應該記錄包含 '未知位置用語' 和 '教練' 的警告"
