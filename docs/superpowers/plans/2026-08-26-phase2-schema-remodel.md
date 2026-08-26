@@ -18,6 +18,11 @@
 
 若上述任一項尚未完成，先執行 Phase 1 計畫，不要跳著做。
 
+**Phase 1 終審遺留事項（本 phase 執行時需知）：**
+- Phase 1 終審修正後，`stats_crawler` 全量/增量模式皆為「補缺不清表」，去重鍵 `(match_date, is_golden_set)` 逐球員判斷（`filter_new_records()`）；本 phase 改爬蟲時沿用此語意。
+- `upsert_players` 的自然鍵含 `jersey_number`：球員換背號會被視為新身分而分裂出第二筆 `players` 列（終審 Important #3，裁決帶到本 phase 處理）——本 phase 的身分層重建正是根治點，遷移前先檢查是否已有分裂列需合併。
+- NULL/NaN `jersey_number` 的 upsert 行為目前靠 sqlite3 C 層 NaN→NULL 轉換保證正確、無回歸測試守門；若本 phase 改動 pandas dtype（如 nullable Int64/pd.NA），需補測試。
+
 ## Global Constraints
 
 - **行尾一律 LF**：每個 task 收尾前跑 `git diff --stat -w` 確認無純行尾雜訊。
