@@ -59,10 +59,11 @@ def init_stats_table(conn: sqlite3.Connection) -> None:
     logger.info("player_match_stats 表已確認存在（DDL 來源：schema.sql）")
 
 
-def build_name_to_pid(conn: sqlite3.Connection) -> dict[str, int]:
-    """建立 {正規化姓名: player_id} 的查找表。"""
-    rows = conn.execute("SELECT player_id, name FROM players").fetchall()
-    return {normalize_name(name): pid for pid, name in rows}
+def build_name_to_pid(conn: sqlite3.Connection) -> dict[tuple[str, str], int]:
+    """建立 {(正規化姓名, gender): player_id} 的查找表。
+    同名不同性別是不同球員；同名同性別仍會碰撞（已知限制，罕見）。"""
+    rows = conn.execute("SELECT player_id, name, gender FROM players").fetchall()
+    return {(normalize_name(name), gender): pid for pid, name, gender in rows}
 
 
 def fetch_player_list(team_id: int) -> list[dict]:
@@ -231,7 +232,7 @@ def main(incremental: bool = False):
             db_team_id, gender = EXT_TEAM_MAP[ext_team_id]
 
             # 正規化比對
-            player_id = name_map.get(norm_name)
+            player_id = name_map.get((norm_name, gender))
 
             # Late Arriving Dimension：查無此人則動態新增（僅身分層欄位，
             # team_id/背號/位置一律由 roster_registrations 維護）
@@ -246,7 +247,7 @@ def main(incremental: bool = False):
                 )
                 conn.commit()
                 player_id = cursor.lastrowid
-                name_map[norm_name] = player_id
+                name_map[(norm_name, gender)] = player_id
                 total_new_players += 1
 
             # 抓取逐場數據
@@ -564,14 +565,14 @@ def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
 
         for row in roster_rows:
             norm = normalize_name(row["name"])
-            player_id = name_map.get(norm)
+            player_id = name_map.get((norm, row["team_gender"]))
             if player_id is None:
                 cursor = conn.execute(
                     "INSERT INTO players (name, gender) VALUES (?, ?)",
                     (row["name"], row["team_gender"]),
                 )
                 player_id = cursor.lastrowid
-                name_map[norm] = player_id
+                name_map[(norm, row["team_gender"])] = player_id
                 stats["new_players"] += 1
 
             upsert_roster_registration(conn, player_id, row, week_label, week_start_date, cup_id=cup_id)

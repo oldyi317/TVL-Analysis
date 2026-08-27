@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 
 from src.etl.stats_crawler import (
     fetch_match_roster, resolve_week_label, upsert_roster_registration,
+    build_name_to_pid,
 )
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "match_ashx_sample.html"
@@ -273,3 +274,24 @@ def test_crawl_all_rosters_resilient_to_fetch_failures(tmp_db_path, caplog):
     # 5. 驗證警告被記錄
     assert any("抓取失敗" in record.message and "208" in record.message for record in caplog.records), \
         "應該記錄包含 '抓取失敗' 和 '208' 的警告"
+
+
+def test_build_name_to_pid_distinguishes_gender(tmp_db_path):
+    """同名不同性別是兩位球員，查找表不得互相覆蓋。"""
+    from pathlib import Path as _P
+    from src.etl.stats_crawler import build_name_to_pid
+
+    schema_sql = (_P(__file__).resolve().parents[1] / "sql" / "schema.sql").read_text(encoding="utf-8")
+    conn = sqlite3.connect(tmp_db_path)
+    conn.executescript(schema_sql)
+    conn.execute("INSERT INTO players (name, gender) VALUES ('陳大文', 'M')")
+    conn.execute("INSERT INTO players (name, gender) VALUES ('陳大文', 'F')")
+    conn.commit()
+
+    name_map = build_name_to_pid(conn)
+
+    pid_m = conn.execute("SELECT player_id FROM players WHERE gender = 'M'").fetchone()[0]
+    pid_f = conn.execute("SELECT player_id FROM players WHERE gender = 'F'").fetchone()[0]
+    assert name_map[("陳大文", "M")] == pid_m
+    assert name_map[("陳大文", "F")] == pid_f
+    conn.close()
