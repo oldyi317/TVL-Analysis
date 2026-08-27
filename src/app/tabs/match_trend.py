@@ -8,6 +8,7 @@ import plotly.express as px
 import streamlit as st
 
 from src.app.helpers import load_data, safe_pct, vec_pct, responsive_chart_config, compact_margin
+from src.utils.constants import EXT_CUP_ID
 
 
 def render(ctx: dict):
@@ -22,10 +23,10 @@ def render(ctx: dict):
         """
         SELECT s.* FROM player_match_stats s
         JOIN roster_registrations r ON s.registration_id = r.registration_id
-        WHERE r.player_id = ?
+        WHERE r.player_id = ? AND r.cup_id = ?
         ORDER BY s.match_date
         """,
-        (player_id,),
+        (player_id, EXT_CUP_ID),
     )
 
     if match_df.empty:

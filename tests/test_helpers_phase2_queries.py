@@ -8,10 +8,10 @@ GET_CURRENT_ROSTER_SQL = """
     SELECT r.player_id, r.jersey_number, p.name, r.position
     FROM roster_registrations r
     JOIN players p ON r.player_id = p.player_id
-    WHERE r.team_id = ? AND r.gender = ?
+    WHERE r.team_id = ? AND r.gender = ? AND r.cup_id = ?
       AND r.week_start_date = (
           SELECT MAX(week_start_date) FROM roster_registrations
-          WHERE team_id = r.team_id AND gender = r.gender
+          WHERE team_id = r.team_id AND gender = r.gender AND cup_id = r.cup_id
       )
     ORDER BY r.jersey_number IS NULL, r.jersey_number
 """
@@ -49,7 +49,7 @@ GET_LEAGUE_AGGREGATED_STATS_SQL = """
         )
     ) latest ON latest.player_id = p.player_id
     JOIN teams t ON t.team_id = latest.team_id AND t.gender = latest.gender
-    WHERE latest.gender = ?
+    WHERE latest.gender = ? AND r.cup_id = ?
     GROUP BY p.player_id
     HAVING SUM(s.sets_played) >= 5
 """
@@ -85,7 +85,7 @@ def test_get_current_roster_uses_latest_week_per_team(tmp_path):
     conn = sqlite3.connect(str(tmp_db_path))
     pid_a, pid_b = _seed(conn)
 
-    rows = conn.execute(GET_CURRENT_ROSTER_SQL, (5, "F")).fetchall()
+    rows = conn.execute(GET_CURRENT_ROSTER_SQL, (5, "F", 21)).fetchall()
 
     # 只有球員A有第2週的紀錄（week_start_date 最大），球員B停留在第1週不應出現
     assert rows == [(pid_a, 5, "球員A", "OP")]
@@ -135,7 +135,7 @@ def test_aggregated_stats_handles_same_week_different_teams_no_double_count(tmp_
     conn.commit()
 
     # 執行彙總 SQL，verify 該球員只出現一列且 SUM 不翻倍
-    rows = conn.execute(GET_LEAGUE_AGGREGATED_STATS_SQL, ("F",)).fetchall()
+    rows = conn.execute(GET_LEAGUE_AGGREGATED_STATS_SQL, ("F", 21)).fetchall()
 
     assert len(rows) == 1, f"Expected 1 row, got {len(rows)}"
     row = rows[0]
@@ -180,7 +180,7 @@ def test_aggregated_stats_includes_player_with_null_week_start_date(tmp_path):
     conn.commit()
 
     # 執行彙總 SQL，verify 該球員仍出現在結果中
-    rows = conn.execute(GET_LEAGUE_AGGREGATED_STATS_SQL, ("F",)).fetchall()
+    rows = conn.execute(GET_LEAGUE_AGGREGATED_STATS_SQL, ("F", 21)).fetchall()
 
     assert len(rows) == 1, f"Expected 1 row (player with NULL week_start_date), got {len(rows)}"
     row = rows[0]
@@ -188,4 +188,38 @@ def test_aggregated_stats_includes_player_with_null_week_start_date(tmp_path):
     assert row[1] == '幽靈球員'
     assert row[17] == 1  # n_games = 1
 
+    conn.close()
+
+
+def test_aggregated_stats_excludes_other_seasons(tmp_path):
+    """他季（cup_id=20）的登錄與統計不得混入當季聚合。"""
+    tmp_db_path = tmp_path / "test.db"
+    conn = sqlite3.connect(str(tmp_db_path))
+    pid_a, pid_b = _seed(conn)
+    # 幫球員A掛一筆當季統計（達到 HAVING 門檻）
+    rid_now = conn.execute(
+        "SELECT registration_id FROM roster_registrations WHERE player_id = ? AND week_label = '例行賽 Week 2'",
+        (pid_a,),
+    ).fetchone()[0]
+    conn.execute(
+        "INSERT INTO player_match_stats (registration_id, match_date, opponent, sets_played, total_points) "
+        "VALUES (?, '2025-11-08', '義力營造', 5, 10)", (rid_now,),
+    )
+    # 他季（cup_id=20）同名週次登錄 + 一筆 99 局的統計
+    conn.execute(
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, week_start_date, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 20, '例行賽 Week 2', '2024-11-08', 2, 'OP', 'match_page')", (pid_a,),
+    )
+    rid_old = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO player_match_stats (registration_id, match_date, opponent, sets_played, total_points) "
+        "VALUES (?, '2024-11-08', '義力營造', 99, 99)", (rid_old,),
+    )
+    conn.commit()
+
+    rows = conn.execute(GET_LEAGUE_AGGREGATED_STATS_SQL, ("F", 21)).fetchall()
+
+    # 只該有球員A一列，且 total_sets 為當季的 5，而非混入他季後的 104
+    assert len(rows) == 1
+    assert rows[0][4] == 5, f"他季統計混入了當季聚合：total_sets={rows[0][4]}"
     conn.close()

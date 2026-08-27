@@ -15,6 +15,7 @@ from src.app.helpers import (
     fetch_match_index, fetch_set_scores, find_match_id,
     OPP_SHORT_TO_TEAM, responsive_chart_config, compact_margin,
 )
+from src.utils.constants import EXT_CUP_ID
 
 
 def _format_box_score(df: pd.DataFrame) -> pd.DataFrame:
@@ -82,10 +83,10 @@ def render(ctx: dict):
         SELECT DISTINCT s.match_date, s.opponent
         FROM player_match_stats s
         JOIN roster_registrations r ON s.registration_id = r.registration_id
-        WHERE r.team_id = ? AND r.gender = ?
+        WHERE r.team_id = ? AND r.gender = ? AND r.cup_id = ?
         ORDER BY s.match_date
         """,
-        (bs_team_id, bs_gender_code),
+        (bs_team_id, bs_gender_code, EXT_CUP_ID),
     )
     if matches_df.empty:
         st.info("該球隊尚無比賽紀錄。")
@@ -165,11 +166,11 @@ def render(ctx: dict):
         FROM player_match_stats s
         JOIN roster_registrations r ON s.registration_id = r.registration_id
         JOIN players p ON r.player_id = p.player_id
-        WHERE r.team_id = ? AND r.gender = ?
+        WHERE r.team_id = ? AND r.gender = ? AND r.cup_id = ?
           AND s.match_date = ? AND s.opponent = ?
         ORDER BY s.total_points DESC
         """,
-        (bs_team_id, bs_gender_code, sel_date, sel_opponent),
+        (bs_team_id, bs_gender_code, EXT_CUP_ID, sel_date, sel_opponent),
     )
 
     # ── 撈取 Team B 單場數據 ─────────────────────────────────
@@ -191,11 +192,11 @@ def render(ctx: dict):
             FROM player_match_stats s
             JOIN roster_registrations r ON s.registration_id = r.registration_id
             JOIN players p ON r.player_id = p.player_id
-            WHERE r.team_id = ? AND r.gender = ?
+            WHERE r.team_id = ? AND r.gender = ? AND r.cup_id = ?
               AND s.match_date = ?
             ORDER BY s.total_points DESC
             """,
-            (opp_team_id, opp_gender, sel_date),
+            (opp_team_id, opp_gender, EXT_CUP_ID, sel_date),
         )
 
     # ── 雙方 Box Score 並排 ───────────────────────────────────

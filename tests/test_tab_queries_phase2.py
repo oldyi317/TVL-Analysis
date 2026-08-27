@@ -100,7 +100,7 @@ MATCH_SELECTOR_SQL = """
     SELECT DISTINCT s.match_date, s.opponent
     FROM player_match_stats s
     JOIN roster_registrations r ON s.registration_id = r.registration_id
-    WHERE r.team_id = ? AND r.gender = ?
+    WHERE r.team_id = ? AND r.gender = ? AND r.cup_id = ?
     ORDER BY s.match_date
 """
 
@@ -135,8 +135,43 @@ def test_match_selector_query_returns_distinct_matches_per_team_and_date(tmp_db_
     )
     conn.commit()
 
-    rows = conn.execute(MATCH_SELECTOR_SQL, (5, "F")).fetchall()
+    rows = conn.execute(MATCH_SELECTOR_SQL, (5, "F", 21)).fetchall()
 
     assert len(rows) == 2, "應該撈到兩週各一場比賽的 DISTINCT 列表"
     assert rows == [("2025-11-01", "台北排協"), ("2025-11-08", "高雄隊")]
+    conn.close()
+
+
+def test_match_selector_query_excludes_other_seasons(tmp_db_path):
+    """他季（cup_id=20）同名週次的登錄與統計不得混入當季比賽選單。"""
+    conn = sqlite3.connect(tmp_db_path)
+    conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    conn.execute("INSERT INTO teams VALUES (5, '新北中纖', 'F')")
+    conn.execute("INSERT INTO players (name, gender) VALUES ('球員A', 'F')")
+    pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
+
+    # 當季登錄 + 一場比賽
+    conn.execute(
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 21, '例行賽 Week 1', 2, 'OP', 'match_page')", (pid,),
+    )
+    rid_now = conn.execute("SELECT registration_id FROM roster_registrations").fetchone()[0]
+    conn.execute(
+        "INSERT INTO player_match_stats (registration_id, match_date, opponent, total_points) VALUES (?, '2025-11-01', '台北排協', 10)", (rid_now,),
+    )
+
+    # 他季（cup_id=20）同名週次登錄 + 一場比賽
+    conn.execute(
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 20, '例行賽 Week 1', 2, 'OP', 'match_page')", (pid,),
+    )
+    rid_old = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO player_match_stats (registration_id, match_date, opponent, total_points) VALUES (?, '2024-11-01', '高雄隊', 15)", (rid_old,),
+    )
+    conn.commit()
+
+    rows = conn.execute(MATCH_SELECTOR_SQL, (5, "F", 21)).fetchall()
+
+    assert rows == [("2025-11-01", "台北排協")], f"他季比賽混入了當季選單：{rows}"
     conn.close()

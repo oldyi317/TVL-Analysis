@@ -14,7 +14,7 @@ import streamlit as st
 from bs4 import BeautifulSoup
 
 from src.utils.constants import (
-    EXT_BASE, EXT_CUP_ID, EXT_HEADERS, SEASON_YEAR_MAP, OPP_SHORT_TO_TEAM,
+    DEFAULT_YEAR, EXT_BASE, EXT_CUP_ID, EXT_HEADERS, SEASON_YEAR_MAP, OPP_SHORT_TO_TEAM,
 )
 
 
@@ -132,7 +132,7 @@ def fetch_match_index() -> list[dict]:
             if not m:
                 continue
             month, day = int(m.group(3)), int(m.group(4))
-            year = SEASON_YEAR_MAP.get(month, 2026)
+            year = SEASON_YEAR_MAP.get(month, DEFAULT_YEAR)
             matches.append({
                 "match_id": opt["value"],
                 "date": f"{year}-{month:02d}-{day:02d}",
@@ -228,14 +228,14 @@ def get_current_roster(team_id: int, gender_code: str) -> pd.DataFrame:
         SELECT r.player_id, r.jersey_number, p.name, r.position
         FROM roster_registrations r
         JOIN players p ON r.player_id = p.player_id
-        WHERE r.team_id = ? AND r.gender = ?
+        WHERE r.team_id = ? AND r.gender = ? AND r.cup_id = ?
           AND r.week_start_date = (
               SELECT MAX(week_start_date) FROM roster_registrations
-              WHERE team_id = r.team_id AND gender = r.gender
+              WHERE team_id = r.team_id AND gender = r.gender AND cup_id = r.cup_id
           )
         ORDER BY r.jersey_number IS NULL, r.jersey_number
         """,
-        (team_id, gender_code),
+        (team_id, gender_code, EXT_CUP_ID),
     )
 
 
@@ -280,11 +280,11 @@ def get_league_aggregated_stats(gender_code: str) -> pd.DataFrame:
             )
         ) latest ON latest.player_id = p.player_id
         JOIN teams t ON t.team_id = latest.team_id AND t.gender = latest.gender
-        WHERE latest.gender = ?
+        WHERE latest.gender = ? AND r.cup_id = ?
         GROUP BY p.player_id
         HAVING SUM(s.sets_played) >= 5
         """,
-        (gender_code,),
+        (gender_code, EXT_CUP_ID),
     )
     # 計算進階比率指標（向量化）—— 以下邏輯完全不變
     raw["asr"] = vec_pct(raw["atk_pts"], raw["atk_tot"])
