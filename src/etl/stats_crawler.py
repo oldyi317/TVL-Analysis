@@ -505,19 +505,20 @@ def upsert_roster_registration(
 
 def resolve_registration_for_stats(
     conn: sqlite3.Connection, player_id: int, team_id: int, gender: str, match_date: str,
+    cup_id: int = CUP_ID,
 ) -> int:
     """
     統計寫入路徑（Player.ashx 逐場數值統計，無背號/位置資訊）解析 registration_id。
-    解析順序：match_date -> resolve_week_label() 取 week_label（與 Task 3 出賽名單
-    爬蟲同邏輯，直接複用該函式）-> 查 roster_registrations -> 查無則以
-    source='backfill' 補一筆（背號/位置皆 NULL，只標記不插補，不得用其他資料推測填入）。
+    解析順序：match_date -> resolve_week_label() 取 week_label -> 以含 cup_id 的
+    五元鍵查 roster_registrations -> 查無則以 source='backfill' 補一筆
+    （背號/位置皆 NULL，只標記不插補，不得用其他資料推測填入）。
     """
     week_label, week_start_date = resolve_week_label(conn, match_date, "")
 
     row = conn.execute(
         """SELECT registration_id FROM roster_registrations
-           WHERE player_id = ? AND team_id = ? AND gender = ? AND week_label = ?""",
-        (player_id, team_id, gender, week_label),
+           WHERE player_id = ? AND team_id = ? AND gender = ? AND cup_id = ? AND week_label = ?""",
+        (player_id, team_id, gender, cup_id, week_label),
     ).fetchone()
     if row:
         return row[0]
@@ -525,12 +526,12 @@ def resolve_registration_for_stats(
     upsert_roster_registration(
         conn, player_id,
         {"team_id": team_id, "team_gender": gender, "jersey_number": None, "position": None},
-        week_label, week_start_date, source="backfill",
+        week_label, week_start_date, source="backfill", cup_id=cup_id,
     )
     row = conn.execute(
         """SELECT registration_id FROM roster_registrations
-           WHERE player_id = ? AND team_id = ? AND gender = ? AND week_label = ?""",
-        (player_id, team_id, gender, week_label),
+           WHERE player_id = ? AND team_id = ? AND gender = ? AND cup_id = ? AND week_label = ?""",
+        (player_id, team_id, gender, cup_id, week_label),
     ).fetchone()
     return row[0]
 
@@ -573,7 +574,7 @@ def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
                 name_map[norm] = player_id
                 stats["new_players"] += 1
 
-            upsert_roster_registration(conn, player_id, row, week_label, week_start_date)
+            upsert_roster_registration(conn, player_id, row, week_label, week_start_date, cup_id=cup_id)
             stats["registrations_upserted"] += 1
 
         conn.commit()

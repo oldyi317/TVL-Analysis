@@ -72,3 +72,30 @@ def test_resolve_registration_is_idempotent(tmp_db_path):
         assert count == 1
     finally:
         conn.close()
+
+
+def test_resolve_registration_scopes_by_cup_id(tmp_db_path):
+    """他季（cup_id=20）已有同 player/team/week_label 登錄時，
+    當季解析不得誤抓他季那筆，應另建當季 backfill。"""
+    conn = _make_conn(tmp_db_path)
+    try:
+        pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
+        conn.execute(
+            """INSERT INTO roster_registrations
+               (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source)
+               VALUES (?, 5, 'F', 20, '例行賽 Week 1', 9, 'OH', 'match_page')""",
+            (pid,),
+        )
+        conn.commit()
+
+        rid = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01", cup_id=21)
+
+        row = conn.execute(
+            "SELECT cup_id, source FROM roster_registrations WHERE registration_id = ?",
+            (rid,),
+        ).fetchone()
+        assert row == (21, "backfill"), "應建立當季新登錄，而非誤用他季登錄"
+        count = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0]
+        assert count == 2
+    finally:
+        conn.close()
