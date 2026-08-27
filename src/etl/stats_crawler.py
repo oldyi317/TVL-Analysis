@@ -482,22 +482,23 @@ def resolve_week_label(conn: sqlite3.Connection, match_date: str, title_text: st
 def upsert_roster_registration(
     conn: sqlite3.Connection, player_id: int, row: dict,
     week_label: str, week_start_date: str, source: str = "match_page",
+    cup_id: int = CUP_ID,
 ) -> None:
-    """upsert 一筆 roster_registrations。source 預設 'match_page'（真實出賽名單，
-    Task 3 的 crawl_all_rosters() 呼叫方式不變）；Task 3b 的統計寫入路徑查無登錄時
-    會傳入 source='backfill'，補一筆背號/位置皆為 NULL 的登錄。"""
+    """upsert 一筆 roster_registrations。source 預設 'match_page'（真實出賽名單）；
+    統計寫入路徑查無登錄時會傳入 source='backfill'，補一筆背號/位置皆 NULL 的登錄。
+    cup_id 為賽季限定鍵：不同賽季的同名週次是不同登錄，不互相覆寫。"""
     conn.execute(
         """
         INSERT INTO roster_registrations
-            (player_id, team_id, gender, week_label, week_start_date, jersey_number, position, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (player_id, team_id, gender, week_label) DO UPDATE SET
+            (player_id, team_id, gender, cup_id, week_label, week_start_date, jersey_number, position, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (player_id, team_id, gender, cup_id, week_label) DO UPDATE SET
             jersey_number = excluded.jersey_number,
             position = excluded.position,
             week_start_date = excluded.week_start_date,
             source = excluded.source
         """,
-        (player_id, row["team_id"], row["team_gender"], week_label,
+        (player_id, row["team_id"], row["team_gender"], cup_id, week_label,
          week_start_date, row["jersey_number"], row["position"], source),
     )
 

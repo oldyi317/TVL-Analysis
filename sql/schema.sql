@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS roster_registrations (
     player_id        INTEGER NOT NULL,
     team_id          INTEGER NOT NULL,
     gender           TEXT    NOT NULL CHECK (gender IN ('M', 'F')),
+    cup_id           INTEGER NOT NULL,
     week_label       TEXT    NOT NULL,
     week_start_date  DATE,
     jersey_number    INTEGER,
@@ -31,7 +32,7 @@ CREATE TABLE IF NOT EXISTS roster_registrations (
     source           TEXT    NOT NULL CHECK (source IN ('match_page', 'backfill')),
     FOREIGN KEY (player_id) REFERENCES players (player_id),
     FOREIGN KEY (team_id, gender) REFERENCES teams (team_id, gender),
-    UNIQUE (player_id, team_id, gender, week_label)
+    UNIQUE (player_id, team_id, gender, cup_id, week_label)
 );
 
 CREATE TABLE IF NOT EXISTS player_match_stats (

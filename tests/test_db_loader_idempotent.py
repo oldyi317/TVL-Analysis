@@ -73,8 +73,8 @@ def test_init_db_does_not_wipe_existing_registrations(conn):
     ).fetchone()[0]
     conn.execute(
         """INSERT INTO roster_registrations
-           (player_id, team_id, gender, week_label, jersey_number, position, source)
-           VALUES (?, 1, 'M', '例行賽 Week 1', 10, 'OH', 'match_page')""",
+           (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source)
+           VALUES (?, 1, 'M', 21, '例行賽 Week 1', 10, 'OH', 'match_page')""",
         (player_id,),
     )
     conn.commit()

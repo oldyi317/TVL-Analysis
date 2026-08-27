@@ -17,13 +17,13 @@ def _seed(conn):
     conn.execute("INSERT INTO players (name, gender) VALUES ('球員A', 'F')")
     pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
     conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, jersey_number, position, source) "
-        "VALUES (?, 5, 'F', '例行賽 Week 1', 2, 'OP', 'match_page')", (pid,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 21, '例行賽 Week 1', 2, 'OP', 'match_page')", (pid,),
     )
     rid1 = conn.execute("SELECT registration_id FROM roster_registrations").fetchone()[0]
     conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, jersey_number, position, source) "
-        "VALUES (?, 5, 'F', '例行賽 Week 2', 5, 'OP', 'match_page')", (pid,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 21, '例行賽 Week 2', 5, 'OP', 'match_page')", (pid,),
     )
     rid2 = conn.execute(
         "SELECT registration_id FROM roster_registrations WHERE week_label = '例行賽 Week 2'"
@@ -68,13 +68,13 @@ def test_box_score_query_reflects_position_at_time_of_match(tmp_db_path):
 
     # 第1週登記為 OP，第2週改登記為 MB（模擬位置調整）
     conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, jersey_number, position, source) "
-        "VALUES (?, 5, 'F', '例行賽 Week 1', 2, 'OP', 'match_page')", (pid,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 21, '例行賽 Week 1', 2, 'OP', 'match_page')", (pid,),
     )
     rid1 = conn.execute("SELECT registration_id FROM roster_registrations").fetchone()[0]
     conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, jersey_number, position, source) "
-        "VALUES (?, 5, 'F', '例行賽 Week 2', 2, 'MB', 'match_page')", (pid,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 21, '例行賽 Week 2', 2, 'MB', 'match_page')", (pid,),
     )
     rid2 = conn.execute(
         "SELECT registration_id FROM roster_registrations WHERE week_label = '例行賽 Week 2'"
@@ -114,13 +114,13 @@ def test_match_selector_query_returns_distinct_matches_per_team_and_date(tmp_db_
 
     # 建立兩週登錄
     conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, jersey_number, position, source) "
-        "VALUES (?, 5, 'F', '例行賽 Week 1', 2, 'OP', 'match_page')", (pid,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 21, '例行賽 Week 1', 2, 'OP', 'match_page')", (pid,),
     )
     rid1 = conn.execute("SELECT registration_id FROM roster_registrations").fetchone()[0]
     conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, jersey_number, position, source) "
-        "VALUES (?, 5, 'F', '例行賽 Week 2', 2, 'OP', 'match_page')", (pid,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 21, '例行賽 Week 2', 2, 'OP', 'match_page')", (pid,),
     )
     rid2 = conn.execute(
         "SELECT registration_id FROM roster_registrations WHERE week_label = '例行賽 Week 2'"

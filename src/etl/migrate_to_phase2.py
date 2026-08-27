@@ -53,19 +53,19 @@ def _backfill_registration(conn: sqlite3.Connection, old_player_row: tuple, week
     cur = conn.execute(
         """
         INSERT INTO roster_registrations
-            (player_id, team_id, gender, week_label, week_start_date, jersey_number, position, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'backfill')
-        ON CONFLICT (player_id, team_id, gender, week_label) DO NOTHING
+            (player_id, team_id, gender, cup_id, week_label, week_start_date, jersey_number, position, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'backfill')
+        ON CONFLICT (player_id, team_id, gender, cup_id, week_label) DO NOTHING
         """,
-        (player_id, team_id, gender, week_label, week_start_date, jersey_number, position),
+        (player_id, team_id, gender, CUP_ID, week_label, week_start_date, jersey_number, position),
     )
     if cur.lastrowid and cur.rowcount:
         return cur.lastrowid
     # ON CONFLICT DO NOTHING 命中時要回頭查已存在的那筆
     row = conn.execute(
         """SELECT registration_id FROM roster_registrations
-           WHERE player_id = ? AND team_id = ? AND gender = ? AND week_label = ?""",
-        (player_id, team_id, gender, week_label),
+           WHERE player_id = ? AND team_id = ? AND gender = ? AND cup_id = ? AND week_label = ?""",
+        (player_id, team_id, gender, CUP_ID, week_label),
     ).fetchone()
     return row[0]
 

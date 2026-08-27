@@ -64,17 +64,17 @@ def _seed(conn):
     pid_b = conn.execute("SELECT player_id FROM players WHERE name='球員B'").fetchone()[0]
     # 球員A：第1週背號2，第2週背號5（換背號）
     conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, week_start_date, jersey_number, position, source) "
-        "VALUES (?, 5, 'F', '例行賽 Week 1', '2025-11-01', 2, 'OP', 'match_page')", (pid_a,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, week_start_date, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 21, '例行賽 Week 1', '2025-11-01', 2, 'OP', 'match_page')", (pid_a,),
     )
     conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, week_start_date, jersey_number, position, source) "
-        "VALUES (?, 5, 'F', '例行賽 Week 2', '2025-11-08', 5, 'OP', 'match_page')", (pid_a,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, week_start_date, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 21, '例行賽 Week 2', '2025-11-08', 5, 'OP', 'match_page')", (pid_a,),
     )
     # 球員B：只在第1週出現過
     conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, week_start_date, jersey_number, position, source) "
-        "VALUES (?, 5, 'F', '例行賽 Week 1', '2025-11-01', 9, 'MB', 'match_page')", (pid_b,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, week_start_date, jersey_number, position, source) "
+        "VALUES (?, 5, 'F', 21, '例行賽 Week 1', '2025-11-01', 9, 'MB', 'match_page')", (pid_b,),
     )
     conn.commit()
     return pid_a, pid_b
@@ -109,13 +109,13 @@ def test_aggregated_stats_handles_same_week_different_teams_no_double_count(tmp_
 
     # 同一週內在兩隊各登錄一次（季中轉隊情境）
     cur1 = conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, week_start_date, jersey_number, position, source) "
-        "VALUES (?, 1, 'F', '例行賽 Week 1', '2025-11-01', 10, 'OP', 'match_page')", (pid,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, week_start_date, jersey_number, position, source) "
+        "VALUES (?, 1, 'F', 21, '例行賽 Week 1', '2025-11-01', 10, 'OP', 'match_page')", (pid,),
     )
     reg1_id = cur1.lastrowid
     cur2 = conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, week_start_date, jersey_number, position, source) "
-        "VALUES (?, 2, 'F', '例行賽 Week 1', '2025-11-01', 5, 'MB', 'match_page')", (pid,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, week_start_date, jersey_number, position, source) "
+        "VALUES (?, 2, 'F', 21, '例行賽 Week 1', '2025-11-01', 5, 'MB', 'match_page')", (pid,),
     )
     reg2_id = cur2.lastrowid
 
@@ -165,8 +165,8 @@ def test_aggregated_stats_includes_player_with_null_week_start_date(tmp_path):
 
     # 登錄時 week_start_date 為 NULL（week_label 必填，用 backfill 標記）
     cur = conn.execute(
-        "INSERT INTO roster_registrations (player_id, team_id, gender, week_label, week_start_date, jersey_number, position, source) "
-        "VALUES (?, 3, 'F', 'backfill', NULL, 7, 'L', 'backfill')", (pid,),
+        "INSERT INTO roster_registrations (player_id, team_id, gender, cup_id, week_label, week_start_date, jersey_number, position, source) "
+        "VALUES (?, 3, 'F', 21, 'backfill', NULL, 7, 'L', 'backfill')", (pid,),
     )
     reg_id = cur.lastrowid
 

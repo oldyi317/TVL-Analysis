@@ -26,8 +26,8 @@ def test_resolve_registration_reuses_existing_match_page_row(tmp_db_path):
         pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
         conn.execute(
             """INSERT INTO roster_registrations
-               (player_id, team_id, gender, week_label, jersey_number, position, source)
-               VALUES (?, 5, 'F', '例行賽 Week 1', 2, 'OP', 'match_page')""",
+               (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source)
+               VALUES (?, 5, 'F', 21, '例行賽 Week 1', 2, 'OP', 'match_page')""",
             (pid,),
         )
         conn.commit()

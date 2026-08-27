@@ -39,17 +39,32 @@ def test_roster_registrations_unique_constraint(conn):
     pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
     conn.execute(
         """INSERT INTO roster_registrations
-           (player_id, team_id, gender, week_label, jersey_number, position, source)
-           VALUES (?, 1, 'F', '例行賽 Week 1', 5, 'OH', 'match_page')""",
+           (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source)
+           VALUES (?, 1, 'F', 21, '例行賽 Week 1', 5, 'OH', 'match_page')""",
         (pid,),
     )
     with pytest.raises(sqlite3.IntegrityError):
         conn.execute(
             """INSERT INTO roster_registrations
-               (player_id, team_id, gender, week_label, jersey_number, position, source)
-               VALUES (?, 1, 'F', '例行賽 Week 1', 6, 'MB', 'match_page')""",
+               (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source)
+               VALUES (?, 1, 'F', 21, '例行賽 Week 1', 6, 'MB', 'match_page')""",
             (pid,),
         )
+
+
+def test_roster_registrations_same_week_label_different_cup_coexists(conn):
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (1, '測試隊', 'F')")
+    conn.execute("INSERT INTO players (name, gender) VALUES ('測試球員', 'F')")
+    pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
+    for cup in (21, 22):
+        conn.execute(
+            """INSERT INTO roster_registrations
+               (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source)
+               VALUES (?, 1, 'F', ?, '例行賽 Week 1', 5, 'OH', 'match_page')""",
+            (pid, cup),
+        )
+    count = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0]
+    assert count == 2, "不同賽季的同名週次應為兩筆獨立登錄"
 
 
 def test_player_match_stats_fk_to_registration(conn):
