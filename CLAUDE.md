@@ -15,6 +15,7 @@ python -m src.etl.match_crawler                  # 官網各局比分 → matche
 python -m src.etl.stats_crawler --incremental    # 逐場技術統計（增量；依賴 matches 表最新，需先跑 match_crawler）
 python -m src.etl.stats_crawler --rosters        # 出賽名單→roster_registrations（先跑 match_crawler）
 python -m src.etl.db_loader                      # roster CSV → players 身分層
+bash scripts/daily_update.sh                     # 每日增量更新（GitHub Actions 排程同款；DRY_RUN=1 可演練）
 ```
 
 ## 地雷（改動前必讀）
@@ -34,8 +35,9 @@ python -m src.etl.db_loader                      # roster CSV → players 身分
 - **每週登錄名單會變動**：企業排球每週登錄球員可能不同，`stats_crawler` 遇到
   名單外的球員現在是「插入身分層 `players` (name, gender) + 建
   `source='backfill'` 登錄（背號/位置皆 NULL）」，下游計算仍須對缺值防禦。
-- **week_label 直接用 `matches.round_name`，跨賽季同名會碰撞**：Phase 3 開季前
-  必須加賽季限定鍵（cup_id/season），下季資料進來前不得先跑爬蟲。
+- **換季前必跑 `docs/ops/season-switch.md` checklist**：cup_id 已進
+  roster_registrations 的 UNIQUE（Phase 3），跨季同名週次不再互相覆寫；但
+  `EXT_CUP_ID` 等常數是手動更新的，未更新前爬蟲抓不到新季資料。
 
 ## 慣例
 
