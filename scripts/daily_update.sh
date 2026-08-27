@@ -45,6 +45,8 @@ fi
 if [ "${DRY_RUN:-0}" = "1" ]; then
     echo "DRY_RUN：資料庫有變更，略過 commit/push。"
     git status --porcelain data/db/tvl_database.db
+    git checkout -- data/db/tvl_database.db
+    echo "DRY_RUN：已還原 .db，工作樹維持乾淨。"
     exit 0
 fi
 

@@ -7,6 +7,10 @@ on:
     - cron: "0 1 * * *"
   workflow_dispatch:
 
+# GITHUB_TOKEN 預設唯讀，push .db 需要 contents 寫入權限
+permissions:
+  contents: write
+
 concurrency:
   group: daily-crawl
   cancel-in-progress: false

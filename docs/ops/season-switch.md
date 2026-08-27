@@ -19,6 +19,7 @@
 
 - [ ] 跑 `python -m src.etl.crawler` 抓新季官網名單 → `data/raw/`。
 - [ ] 跑 `python -m src.etl.db_loader` 更新 players 身分層與 teams。
+- [ ] 到 Actions 頁確認 daily-crawl workflow 未因 60 天不活動被自動停用（被停用則按 Re-enable；GitHub 停用前會寄警告信）。
 - [ ] 手動 `workflow_dispatch` 觸發一次 daily-crawl 驗證整條管道，
       確認新季第一批資料正確落庫（cup_id 應為新季編號）。
 

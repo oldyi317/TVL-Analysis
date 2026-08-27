@@ -42,5 +42,11 @@ cat <<'EOF'
 3. 動作：啟動程式；程式：wsl.exe；引數：-d <發行版名稱> --exec /bin/true
    （發行版名稱在 PowerShell 跑 `wsl -l -q` 查）
 4. 完成。runner 的 systemd service 隨 WSL 啟動，常駐進程使 WSL 不被閒置回收。
+
+【公開 repo 安全加強】
+完成上述 WSL 端設定後，到 GitHub repo Settings → Actions → General 確認
+「Fork pull request workflows」的 approval 設定為「Require approval for all outside
+collaborators」（公開 repo 上惡意 fork PR 可能指向 self-hosted runner 執行任意程式碼）：
+https://github.com/oldyi317/TVL-Analysis/settings/actions
 EOF
 echo "安裝完成。到 https://github.com/${REPO}/settings/actions/runners 確認 runner 顯示 Idle。"
