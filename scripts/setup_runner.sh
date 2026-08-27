@@ -14,6 +14,9 @@ step "步驟 1/5：檢查 gh 登入與 systemd"
 gh auth status
 [ "$(ps -p 1 -o comm=)" = "systemd" ] || { echo "WSL 未啟用 systemd，請先在 /etc/wsl.conf 開啟後 wsl --shutdown 重進"; exit 1; }
 
+# 檢查 runner 工作環境的 venv 是否存在
+[ -x "$HOME/venvs/tvl/bin/python" ] || { echo "找不到 $HOME/venvs/tvl/bin/python，請先建立 venv 並 pip install -r requirements.txt"; exit 1; }
+
 step "步驟 2/5：下載 actions-runner 到 $RUNNER_DIR"
 mkdir -p "$RUNNER_DIR" && cd "$RUNNER_DIR"
 VER=$(gh api repos/actions/runner/releases/latest --jq '.tag_name' | tr -d v)
