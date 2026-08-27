@@ -6,7 +6,7 @@ SCHEMA_PATH = Path(__file__).resolve().parents[1] / "sql" / "schema.sql"
 PLAYER_STATS_SQL = """
     SELECT s.* FROM player_match_stats s
     JOIN roster_registrations r ON s.registration_id = r.registration_id
-    WHERE r.player_id = ?
+    WHERE r.player_id = ? AND r.cup_id = ?
     ORDER BY s.match_date
 """
 
@@ -42,7 +42,7 @@ def test_player_stats_query_returns_all_weeks_across_registrations(tmp_db_path):
     conn = sqlite3.connect(tmp_db_path)
     pid = _seed(conn)
 
-    rows = conn.execute(PLAYER_STATS_SQL, (pid,)).fetchall()
+    rows = conn.execute(PLAYER_STATS_SQL, (pid, 21)).fetchall()
 
     assert len(rows) == 2, "應該撈到該球員橫跨兩週不同 registration 的全部統計"
     conn.close()
@@ -53,7 +53,7 @@ BOX_SCORE_SQL = """
     FROM player_match_stats s
     JOIN roster_registrations r ON s.registration_id = r.registration_id
     JOIN players p ON r.player_id = p.player_id
-    WHERE r.team_id = ? AND r.gender = ?
+    WHERE r.team_id = ? AND r.gender = ? AND r.cup_id = ?
       AND s.match_date = ?
     ORDER BY s.total_points DESC
 """
@@ -88,8 +88,8 @@ def test_box_score_query_reflects_position_at_time_of_match(tmp_db_path):
     )
     conn.commit()
 
-    week1_rows = conn.execute(BOX_SCORE_SQL, (5, "F", "2025-11-01")).fetchall()
-    week2_rows = conn.execute(BOX_SCORE_SQL, (5, "F", "2025-11-08")).fetchall()
+    week1_rows = conn.execute(BOX_SCORE_SQL, (5, "F", 21, "2025-11-01")).fetchall()
+    week2_rows = conn.execute(BOX_SCORE_SQL, (5, "F", 21, "2025-11-08")).fetchall()
 
     assert week1_rows == [("球員A", "OP", 10)]
     assert week2_rows == [("球員A", "MB", 15)]
