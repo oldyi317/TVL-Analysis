@@ -15,6 +15,9 @@ import hashlib
 conn = sqlite3.connect('data/db/tvl_database.db')
 hasher = hashlib.sha256()
 for line in conn.iterdump():
+    # 濾除 sqlite_sequence 計數器：upsert 即使無資料變更也會遞增 AUTOINCREMENT，屬位元組噪音
+    if line.startswith('INSERT INTO "sqlite_sequence"') or line.startswith('DELETE FROM "sqlite_sequence"'):
+        continue
     hasher.update(line.encode() + b'\n')
 conn.close()
 print(hasher.hexdigest())
