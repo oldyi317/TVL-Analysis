@@ -28,6 +28,12 @@ _purge_mpl_font_cache()
 
 import matplotlib
 
+# ── 背景預熱 shap（import 鏈含 numba/llvmlite，冷啟動需 10 秒以上）──
+# 在啟動期先載入，避免使用者第一次進賽果預測 tab 時卡住等 import。
+import threading
+
+threading.Thread(target=lambda: __import__("shap"), daemon=True).start()
+
 st.set_page_config(
     layout="wide",
     page_title="TVL 進階數據分析儀表板",
