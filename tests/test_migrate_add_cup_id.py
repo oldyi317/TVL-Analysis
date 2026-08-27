@@ -112,3 +112,35 @@ def test_migration_refuses_rerun(tmp_db_path):
             run_migration(conn, cup_id=21)
     finally:
         conn.close()
+
+
+def test_migration_rolls_back_completely_on_orphan_validation_failure(tmp_db_path):
+    conn = _seed_old_db(tmp_db_path)
+    try:
+        # 種一筆懸空的 player_match_stats（registration_id 指向不存在的登錄），
+        # 觸發遷移內建的孤兒驗證失敗分支；插入本身要先關 FK 檢查才插得進去。
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.execute(
+            "INSERT INTO player_match_stats (registration_id, match_date, opponent, total_points) "
+            "VALUES (999, '2025-11-08', '待測隊伍', 5)"
+        )
+        conn.commit()
+        conn.execute("PRAGMA foreign_keys = ON")
+
+        before_count = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0]
+
+        with pytest.raises(RuntimeError, match="孤兒"):
+            run_migration(conn, cup_id=21)
+
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(roster_registrations)")}
+        assert "cup_id" not in cols, "驗證失敗必須完整回滾，不得留下 cup_id 欄位"
+
+        after_count = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0]
+        assert after_count == before_count, "回滾後筆數必須與遷移前一致"
+
+        old_table = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='roster_registrations_old'"
+        ).fetchone()
+        assert old_table is None, "回滾後不得殘留 roster_registrations_old"
+    finally:
+        conn.close()

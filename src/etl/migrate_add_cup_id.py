@@ -25,7 +25,18 @@ def run_migration(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
     _assert_not_migrated(conn)
     expected = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0]
 
+    # 這個 PRAGMA 只是語意宣告，不是安全機制：ALTER TABLE RENAME／DROP INDEX／
+    # DROP TABLE 這類 DDL 在 SQLite 本來就不會回溯檢查外鍵，OFF/ON 開關對本遷移
+    # 沒有實質防護作用，保留只是避免其他連線在遷移期間受到 FK 檢查影響。
     conn.execute("PRAGMA foreign_keys = OFF")
+
+    # Python sqlite3 的隱式交易只涵蓋 DML；ALTER/DROP/executescript 這類 DDL
+    # 在預設（legacy）交易模式下會逐句自動提交，導致驗證失敗時 rename、drop
+    # index、建好的新表都已經永久生效，只有最後的 INSERT 被捨棄，資料庫卡在
+    # 半殘狀態。改用 PEP 249 手動交易模式（autocommit = False）之後，DDL 與
+    # DML 同屬一個交易，任何例外都能靠 conn.rollback() 完整復原到遷移前狀態。
+    original_autocommit = conn.autocommit
+    conn.autocommit = False
     try:
         # legacy 模式：RENAME 不改寫 player_match_stats 的 FK 參照名稱，
         # 舊表 drop、新表補位後，FK 仍指向 roster_registrations 本名。
@@ -55,7 +66,7 @@ def run_migration(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
 
         actual = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0]
         if actual != expected:
-            raise RuntimeError(f"筆數不符：預期 {expected}，實際 {actual}，未清除舊表，可安全重查。")
+            raise RuntimeError(f"筆數不符：預期 {expected}，實際 {actual}，已回滾，資料庫維持遷移前狀態。")
 
         orphans = conn.execute("""
             SELECT COUNT(*) FROM player_match_stats s
@@ -64,11 +75,15 @@ def run_migration(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
             )
         """).fetchone()[0]
         if orphans > 0:
-            raise RuntimeError(f"遷移驗證失敗：{orphans} 筆孤兒 player_match_stats，未清除舊表。")
+            raise RuntimeError(f"遷移驗證失敗：{orphans} 筆孤兒 player_match_stats，已回滾，資料庫維持遷移前狀態。")
 
         conn.execute("DROP TABLE roster_registrations_old")
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
+        conn.autocommit = original_autocommit
         conn.execute("PRAGMA foreign_keys = ON")
 
     logger.info("cup_id 遷移完成：%d 筆登錄補上 cup_id=%d", actual, cup_id)
