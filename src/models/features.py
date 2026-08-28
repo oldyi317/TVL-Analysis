@@ -92,3 +92,49 @@ def attach_labels(team_match: pd.DataFrame, labels: pd.DataFrame) -> pd.DataFram
         raise ValueError(f"{len(missing)} 筆球隊單場統計找不到對應比分：\n{detail}")
     merged["win"] = merged["win"].astype(int)
     return merged
+
+
+ROLLING_FEATURES = (
+    [f"{c}_roll3" for c in GAME_STAT_COLS]
+    + [f"{c}_roll5" for c in GAME_STAT_COLS]
+    + ["win_streak"]
+)
+
+_GROUP_KEYS = ["team_id", "gender"]
+
+
+def compute_win_streak(wins: pd.Series) -> list[int]:
+    streaks, current = [], 0
+    for w in wins:
+        streaks.append(current)
+        if w == 1:
+            current = current + 1 if current > 0 else 1
+        else:
+            current = current - 1 if current < 0 else -1
+    return streaks
+
+
+def add_rolling_features(labeled: pd.DataFrame) -> pd.DataFrame:
+    df = (labeled.sort_values(_GROUP_KEYS + ["match_date", "opponent"])
+          .reset_index(drop=True))
+    gkey = df[_GROUP_KEYS].apply(tuple, axis=1)
+    for col in GAME_STAT_COLS:
+        shifted = df.groupby(_GROUP_KEYS)[col].shift(1)
+        df[f"{col}_roll3"] = shifted.groupby(gkey).transform(
+            lambda x: x.rolling(3, min_periods=1).mean())
+        df[f"{col}_roll5"] = shifted.groupby(gkey).transform(
+            lambda x: x.rolling(5, min_periods=1).mean())
+    df["win_streak"] = df.groupby(_GROUP_KEYS)["win"].transform(compute_win_streak)
+    return (df.dropna(subset=[f"{GAME_STAT_COLS[0]}_roll3"])
+            .reset_index(drop=True))
+
+
+def build_training_frame(conn) -> tuple[pd.DataFrame, dict]:
+    team_match = load_team_match_stats(conn)
+    matches = pd.read_sql_query("SELECT * FROM matches", conn)
+    labels, report = build_match_labels(matches)
+    labeled = attach_labels(team_match, labels)
+    report["team_match_rows"] = len(labeled)
+    frame = add_rolling_features(labeled)
+    report["training_rows"] = len(frame)
+    return frame, report
