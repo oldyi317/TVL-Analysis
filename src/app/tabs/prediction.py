@@ -3,94 +3,72 @@ Tab 5：賽果預測 (ML Match Prediction)
 使用訓練好的模型預測勝率，並以 SHAP 解釋特徵貢獻。
 """
 
+import math
+
 import numpy as np
 import streamlit as st
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 
-from src.app.helpers import MODEL_PATH, vec_pct
+from src.app.helpers import MODEL_PATH, DB_PATH
 
 
 # ---------------------------------------------------------------------------
-# 從資料庫取得各指標的實際範圍
+# 從資料庫取得球隊層級各指標的實際範圍
 # ---------------------------------------------------------------------------
 @st.cache_data
 def _get_data_ranges(gender_code: str) -> dict[str, tuple[float, float]]:
-    """從聯盟聚合數據計算各滑桿指標的實際 (min, max)，加 10% 緩衝。"""
+    """球隊層級單場指標的實際 (min, max)，加 10% 緩衝。"""
+    import sqlite3
+    from src.models.features import GAME_STAT_COLS, load_team_match_stats
     try:
-        from src.app.helpers import get_league_aggregated_stats
-        df = get_league_aggregated_stats(gender_code)
+        conn = sqlite3.connect(DB_PATH)
+        try:
+            df = load_team_match_stats(conn)
+        finally:
+            conn.close()
+        df = df[df["gender"] == gender_code]
         if df.empty:
             return {}
-
-        def _range(col):
+        ranges = {}
+        for col in GAME_STAT_COLS:
             lo, hi = float(df[col].min()), float(df[col].max())
             buf = (hi - lo) * 0.1 if hi > lo else 1.0
-            return (round(max(0, lo - buf), 1), round(hi + buf, 1))
-
-        ranges = {}
-        if "asr" in df.columns:
-            ranges["ASR"] = _range("asr")
-            ranges["ASR_roll3"] = _range("asr")
-            ranges["ASR_roll5"] = _range("asr")
-        if "gp_pct" in df.columns:
-            ranges["GP_pct"] = _range("gp_pct")
-            ranges["GP_pct_roll3"] = _range("gp_pct")
-            ranges["GP_pct_roll5"] = _range("gp_pct")
-        if "dig_pct" in df.columns:
-            ranges["DIG_pct"] = _range("dig_pct")
-            ranges["DIG_pct_roll3"] = _range("dig_pct")
-            ranges["DIG_pct_roll5"] = _range("dig_pct")
-        if "blk_per_set" in df.columns:
-            ranges["BLK_per_set"] = _range("blk_per_set")
-            ranges["BLK_per_set_roll3"] = _range("blk_per_set")
-            ranges["BLK_per_set_roll5"] = _range("blk_per_set")
-        if "ace_pct" in df.columns:
-            ranges["ACE_pct"] = _range("ace_pct")
-            ranges["ACE_pct_roll3"] = _range("ace_pct")
-            ranges["ACE_pct_roll5"] = _range("ace_pct")
+            ranges[col] = (round(max(0.0, lo - buf), 1), round(hi + buf, 1))
         return ranges
     except Exception:
         return {}
 
 
 # ---------------------------------------------------------------------------
-# Slider 設定：V1 (5 特徵) / V2 (11 特徵)
+# Slider 設定與 artifact 版本檢查
 # ---------------------------------------------------------------------------
-V1_SLIDER_CFG = [
-    ("ASR",         "攻擊成功率 (ASR %)",     30.0, 65.0, 42.0, 0.5),
-    ("GP_pct",      "接發到位率 (GP %)",       20.0, 80.0, 50.0, 0.5),
-    ("DIG_pct",     "防守起球率 (DIG %)",      10.0, 75.0, 32.0, 0.5),
-    ("BLK_per_set", "局均攔網 (BLK/Set)",       0.0,  5.0,  1.8, 0.1),
-    ("ACE_pct",     "發球破壞率 (ACE %)",       0.0, 18.0,  4.0, 0.5),
-]
+KNOWN_VERSIONS = {"v2"}
 
-V2_SLIDER_CFG = [
-    ("ASR_roll3",         "近3場 攻擊率 (%)",       25.0, 65.0, 42.0, 0.5),
-    ("ASR_roll5",         "近5場 攻擊率 (%)",       25.0, 65.0, 42.0, 0.5),
-    ("GP_pct_roll3",      "近3場 接發率 (%)",       15.0, 85.0, 50.0, 0.5),
-    ("GP_pct_roll5",      "近5場 接發率 (%)",       15.0, 85.0, 50.0, 0.5),
-    ("DIG_pct_roll3",     "近3場 防守率 (%)",        5.0, 75.0, 32.0, 0.5),
-    ("DIG_pct_roll5",     "近5場 防守率 (%)",        5.0, 75.0, 32.0, 0.5),
-    ("BLK_per_set_roll3", "近3場 局均攔網",          0.0,  5.0,  1.8, 0.1),
-    ("BLK_per_set_roll5", "近5場 局均攔網",          0.0,  5.0,  1.8, 0.1),
-    ("ACE_pct_roll3",     "近3場 發球率 (%)",        0.0, 18.0,  4.0, 0.5),
-    ("ACE_pct_roll5",     "近5場 發球率 (%)",        0.0, 18.0,  4.0, 0.5),
-    ("win_streak",        "連勝/連敗 (正=連勝)",    -8.0,  8.0,  0.0, 1.0),
-]
-
-FEAT_LABELS_MAP = {
-    "ASR": "攻擊成功率", "GP_pct": "接發到位率",
-    "DIG_pct": "防守起球率", "BLK_per_set": "局均攔網",
-    "ACE_pct": "發球破壞率",
-    "ASR_roll3": "近3場攻擊率", "ASR_roll5": "近5場攻擊率",
-    "GP_pct_roll3": "近3場接發率", "GP_pct_roll5": "近5場接發率",
-    "DIG_pct_roll3": "近3場防守率", "DIG_pct_roll5": "近5場防守率",
-    "BLK_per_set_roll3": "近3場局均攔網", "BLK_per_set_roll5": "近5場局均攔網",
-    "ACE_pct_roll3": "近3場發球率", "ACE_pct_roll5": "近5場發球率",
-    "win_streak": "連勝/連敗",
+SLIDER_CFG = {
+    "ASR_roll3":         ("近3場 攻擊率 (%)",   25.0, 65.0, 42.0, 0.5),
+    "ASR_roll5":         ("近5場 攻擊率 (%)",   25.0, 65.0, 42.0, 0.5),
+    "GP_pct_roll3":      ("近3場 接發率 (%)",   15.0, 85.0, 50.0, 0.5),
+    "GP_pct_roll5":      ("近5場 接發率 (%)",   15.0, 85.0, 50.0, 0.5),
+    "DIG_pct_roll3":     ("近3場 防守率 (%)",    5.0, 75.0, 32.0, 0.5),
+    "DIG_pct_roll5":     ("近5場 防守率 (%)",    5.0, 75.0, 32.0, 0.5),
+    "BLK_per_set_roll3": ("近3場 局均攔網",      0.0,  5.0,  1.8, 0.1),
+    "BLK_per_set_roll5": ("近5場 局均攔網",      0.0,  5.0,  1.8, 0.1),
+    "ACE_pct_roll3":     ("近3場 發球率 (%)",    0.0, 18.0,  4.0, 0.5),
+    "ACE_pct_roll5":     ("近5場 發球率 (%)",    0.0, 18.0,  4.0, 0.5),
+    "win_streak":        ("連勝/連敗 (正=連勝)", -8.0,  8.0,  0.0, 1.0),
 }
+
+
+def _artifact_error(artifact) -> str | None:
+    version = artifact.get("version")
+    if version not in KNOWN_VERSIONS:
+        return f"未知的模型版本：{version!r}，請以 python -m src.models.train 重訓"
+    feature_cols = artifact.get("feature_cols", [])
+    if set(feature_cols) != set(SLIDER_CFG) or len(feature_cols) != len(SLIDER_CFG):
+        return f"模型特徵與滑桿設定不一致：{sorted(set(feature_cols) ^ set(SLIDER_CFG))}"
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -120,37 +98,32 @@ def render(ctx, cjk_font_path=None, cjk_font_stack=None):
         st.info("尚未訓練模型，請先執行模型訓練流程以產生模型檔案。")
         return
 
-    # ------ 載入模型與 SHAP 解釋器 ------
+    # ------ 載入模型與 SHAP 解釋器，檢查 artifact 版本 ------
     artifact, model, explainer = _load_model_and_explainer()
-    feature_names = artifact.get("feature_names", [])
-    n_features = len(feature_names)
-
-    # 根據特徵數量決定使用哪組 Slider
-    if n_features == 11:
-        slider_cfg = V2_SLIDER_CFG
-        version_label = "V2（滑動窗口 + 連勝）"
-    else:
-        slider_cfg = V1_SLIDER_CFG
-        version_label = "V1（基本五指標）"
-
-    st.caption(f"模型版本：{version_label}｜特徵數：{n_features}")
+    err = _artifact_error(artifact)
+    if err:
+        st.error(err)
+        return
+    feature_cols = artifact["feature_cols"]
+    st.caption(
+        f"模型版本：{artifact['version']}｜特徵數：{len(feature_cols)}｜"
+        f"訓練樣本：{artifact.get('training_samples', '—')}｜"
+        f"訓練時間：{artifact.get('trained_at', '—')}")
 
     # ------ 動態 Slider UI（從實際資料取得範圍） ------
     st.subheader("調整比賽指標")
 
-    # 嘗試從資料庫取得各指標的實際範圍，給予 10% 緩衝
     _data_ranges = _get_data_ranges(ctx.get("gender_code", "M"))
 
     input_values = {}
     cols = st.columns(2)
-    for idx, (key, label, min_v, max_v, default_v, step) in enumerate(slider_cfg):
-        # 若有實際資料範圍，使用資料驅動的範圍
-        if key in _data_ranges:
-            d_min, d_max = _data_ranges[key]
+    for idx, key in enumerate(feature_cols):
+        label, min_v, max_v, default_v, step = SLIDER_CFG[key]
+        base = key.rsplit("_roll", 1)[0]
+        if base in _data_ranges:
+            d_min, d_max = _data_ranges[base]
             min_v = min(min_v, d_min)
             max_v = max(max_v, d_max)
-        # 對齊 step 並確保 default 在範圍內
-        import math
         min_v = round(math.floor(min_v / step) * step, 4)
         max_v = round(math.ceil(max_v / step) * step, 4)
         default_v = round(round(default_v / step) * step, 4)
@@ -163,7 +136,7 @@ def render(ctx, cjk_font_path=None, cjk_font_stack=None):
             )
 
     # ------ 組裝特徵向量並預測 ------
-    X = np.array([[input_values[k] for k, *_ in slider_cfg]])
+    X = np.array([[input_values[k] for k in feature_cols]])
     prob = model.predict_proba(X)[0]  # [P(lose), P(win)]
     win_prob = prob[1] * 100
 
@@ -200,10 +173,8 @@ def render(ctx, cjk_font_path=None, cjk_font_stack=None):
         else:
             sv = shap_values[0]
 
-        # 建立 SHAP Explanation 物件（附帶中文特徵名稱）
-        display_names = [
-            FEAT_LABELS_MAP.get(k, k) for k, *_ in slider_cfg
-        ]
+        # 建立 SHAP Explanation 物件（附帶顯示用特徵名稱）
+        display_names = artifact.get("feature_labels") or feature_cols
         explanation = shap.Explanation(
             values=sv,
             base_values=(

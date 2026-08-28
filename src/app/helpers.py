@@ -70,7 +70,7 @@ def compact_margin(l=20, r=20, t=30, b=40) -> dict:
 
 
 DB_PATH = Path(__file__).resolve().parents[2] / "data" / "db" / "tvl_database.db"
-MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "match_predictor.pkl"
+MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "match_predictor_v2.pkl"
 
 
 # ── DB 查詢 ──────────────────────────────────────────────────
