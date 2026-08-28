@@ -52,3 +52,43 @@ def load_team_match_stats(conn) -> pd.DataFrame:
     df["ACE_pct"] = _pct(df["srv_pts"], df["srv_tot"])
     df["BLK_per_set"] = (df["blk_pts"] / df["total_sets"]).where(df["total_sets"] > 0, 0.0)
     return df
+
+
+def build_match_labels(matches: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    report = {"legacy_skipped": 0, "invalid_skipped": 0}
+    rows = []
+    for _, m in matches.iterrows():
+        if m["is_golden_set"] == 1:
+            continue
+        home = normalize_match_team(m["home_team"])
+        away = normalize_match_team(m["away_team"])
+        if home in LEGACY_TEAMS or away in LEGACY_TEAMS:
+            report["legacy_skipped"] += 1
+            continue
+        if (pd.isna(m["home_sets_won"]) or pd.isna(m["away_sets_won"])
+                or m["home_sets_won"] == m["away_sets_won"]):
+            report["invalid_skipped"] += 1
+            continue
+        home_tid, home_g = OPP_SHORT_TO_TEAM[home]
+        away_tid, away_g = OPP_SHORT_TO_TEAM[away]
+        if home_g != m["gender"] or away_g != m["gender"]:
+            raise ValueError(
+                f"隊伍性別對不上 matches.gender：{m['home_team']} vs {m['away_team']}（{m['gender']}）")
+        home_win = int(m["home_sets_won"] > m["away_sets_won"])
+        rows.append((m["match_date"], home_tid, home_g, home_win))
+        rows.append((m["match_date"], away_tid, away_g, 1 - home_win))
+    labels = pd.DataFrame(rows, columns=["match_date", "team_id", "gender", "win"])
+    dup = labels.duplicated(["match_date", "team_id", "gender"], keep=False)
+    if dup.any():
+        raise ValueError(f"同日同隊出現多筆標籤：\n{labels[dup].to_string(index=False)}")
+    return labels, report
+
+
+def attach_labels(team_match: pd.DataFrame, labels: pd.DataFrame) -> pd.DataFrame:
+    merged = team_match.merge(labels, on=["match_date", "team_id", "gender"], how="left")
+    missing = merged[merged["win"].isna()]
+    if not missing.empty:
+        detail = missing[["match_date", "team_id", "gender", "opponent"]].to_string(index=False)
+        raise ValueError(f"{len(missing)} 筆球隊單場統計找不到對應比分：\n{detail}")
+    merged["win"] = merged["win"].astype(int)
+    return merged
