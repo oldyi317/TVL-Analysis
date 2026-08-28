@@ -28,7 +28,11 @@ def test_requirements_dev_pinned():
         assert PIN_PATTERN.match(line), f"未釘版本：{line}"
 
 
-def test_optuna_not_in_any_requirements():
-    for fname in ["requirements.txt", "requirements-dev.txt"]:
-        source = (ROOT / fname).read_text(encoding="utf-8").lower()
-        assert "optuna" not in source
+def test_optuna_in_requirements():
+    source = (ROOT / "requirements.txt").read_text(encoding="utf-8").lower()
+    assert "optuna" in source
+
+
+def test_optuna_not_in_dev_requirements():
+    source = (ROOT / "requirements-dev.txt").read_text(encoding="utf-8").lower()
+    assert "optuna" not in source
