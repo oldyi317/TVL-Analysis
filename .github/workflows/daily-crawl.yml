@@ -1,10 +1,11 @@
-# 每日增量爬蟲：台灣 09:00（01:00 UTC）排程。
+# 每日增量爬蟲：台灣 09:23（01:23 UTC）排程。錯開整點——GitHub 高負載時
+# 整點 schedule 事件可能延遲甚至丟棄（2026-08-28 首次排程即未觸發）。
 # 跑在 self-hosted runner（使用者 WSL；官網有 Cloudflare，雲端 runner 進不去）。
 # 機器未開機時 job 會排隊等 runner 上線（至多 24 小時），開機即補跑。
 name: daily-crawl
 on:
   schedule:
-    - cron: "0 1 * * *"
+    - cron: "23 1 * * *"
   workflow_dispatch:
 
 # GITHUB_TOKEN 預設唯讀，push .db 需要 contents 寫入權限
