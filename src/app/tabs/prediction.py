@@ -193,12 +193,12 @@ def render(ctx, cjk_font_path=None, cjk_font_stack=None):
 
         # 套用 CJK 字型至所有文字物件
         _cjk_fp = (
-            FontProperties(fname=cjk_font_path)
+            FontProperties(fname=cjk_font_path, size=13)
             if cjk_font_path
-            else FontProperties(family=cjk_font_stack or [])
+            else FontProperties(family=cjk_font_stack or [], size=13)
         )
         for text_obj in fig_shap.findobj(matplotlib.text.Text):
             text_obj.set_fontproperties(_cjk_fp)
 
-        st.pyplot(fig_shap)
+        st.pyplot(fig_shap, use_container_width=True)
         plt.close(fig_shap)

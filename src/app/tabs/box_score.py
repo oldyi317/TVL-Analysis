@@ -296,6 +296,7 @@ def render(ctx: dict):
                     y=sub["name"], x=sub[rank_col],
                     name=team_label, orientation="h",
                     marker_color=color, text=text_vals, textposition="auto",
+                    textfont=dict(size=14),
                     hovertemplate=(
                         "%{y}<br>"
                         f"{rank_label}: %{{x:.1f}}<br>"
@@ -312,5 +313,6 @@ def render(ctx: dict):
                 margin=compact_margin(l=80, r=20, t=30, b=40),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
                 xaxis_title=rank_label, yaxis_title="",
+                uniformtext_minsize=14, uniformtext_mode="show",
             )
             st.plotly_chart(fig_rank, use_container_width=True, config=responsive_chart_config())

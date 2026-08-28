@@ -69,9 +69,15 @@ CJK_FONT_STACK = (
 ) + ["Noto Sans CJK TC", "Microsoft JhengHei", "SimHei", "DejaVu Sans"]
 matplotlib.rcParams["font.sans-serif"] = CJK_FONT_STACK
 matplotlib.rcParams["axes.unicode_minus"] = False
+matplotlib.rcParams["font.size"] = 13
 
 # ── 共用函式（從 helpers 匯入） ──────────────────────────────
-from src.app.helpers import load_data, inject_mobile_css, get_current_roster
+from src.app.helpers import (
+    load_data, inject_mobile_css, get_current_roster, register_plotly_font_template,
+)
+
+# ── 全域 Plotly 字級 template（一次生效，全 app 圖表跟著調大）──
+register_plotly_font_template()
 
 # ── 注入手機 RWD CSS ─────────────────────────────────────────
 inject_mobile_css()

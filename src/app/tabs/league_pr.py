@@ -221,7 +221,7 @@ def render(ctx: dict) -> None:
             fig_scatter.add_annotation(
                 x=qx, y=qy,
                 text=f"<b>{text}</b>", showarrow=False,
-                font=dict(size=11, color=color), opacity=1.0,
+                font=dict(size=14, color=color), opacity=1.0,
             )
 
     # 只標記選中球員（避免全部文字擠在一起）
@@ -231,7 +231,7 @@ def render(ctx: dict) -> None:
             x=me_r[x_col], y=me_r[y_col],
             text=f"★ {player_name}",
             showarrow=True, arrowhead=2, arrowsize=1, arrowcolor="#0D47A1",
-            font=dict(size=12, color="#0D47A1", family="Arial Black"),
+            font=dict(size=15, color="#0D47A1", family="Arial Black"),
             xanchor="left", ax=20, ay=-20,
         )
 
@@ -240,11 +240,9 @@ def render(ctx: dict) -> None:
         margin=compact_margin(l=40, r=10, t=30, b=60),
         # 圖例移到底部水平排列，不佔右側空間
         legend=dict(
-            title="", font=dict(size=11),
+            title="", font=dict(size=14),
             orientation="h", yanchor="top", y=-0.12, xanchor="center", x=0.5,
         ),
-        xaxis=dict(title=dict(font=dict(size=12)), tickfont=dict(size=10)),
-        yaxis=dict(title=dict(font=dict(size=12)), tickfont=dict(size=10)),
         plot_bgcolor="rgba(248,249,250,1)",
     )
     st.plotly_chart(fig_scatter, use_container_width=True, config=responsive_chart_config())

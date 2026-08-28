@@ -9,6 +9,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
+import plotly.io as pio
 import requests
 import streamlit as st
 from bs4 import BeautifulSoup
@@ -57,6 +59,26 @@ MOBILE_CSS = """
 def inject_mobile_css():
     """注入手機 RWD CSS，只需在 main.py 呼叫一次。"""
     st.markdown(MOBILE_CSS, unsafe_allow_html=True)
+
+
+def register_plotly_font_template() -> None:
+    """註冊全域 Plotly 字級 template，讓全 app 圖表字級一次調大生效。"""
+    pio.templates["tvl"] = go.layout.Template(
+        layout=go.Layout(
+            font=dict(size=16),
+            title=dict(font=dict(size=18)),
+            legend=dict(font=dict(size=14)),
+            xaxis=dict(
+                title=dict(font=dict(size=16)),
+                tickfont=dict(size=14),
+            ),
+            yaxis=dict(
+                title=dict(font=dict(size=16)),
+                tickfont=dict(size=14),
+            ),
+        )
+    )
+    pio.templates.default = "plotly+tvl"
 
 
 def responsive_chart_config() -> dict:
