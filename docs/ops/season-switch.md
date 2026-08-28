@@ -25,4 +25,5 @@
 
 ## 模型（可延後）
 
-- [ ] 新季累積足夠場次後重訓 match_predictor（見 Phase 4）。
+- [ ] 新季累積足夠場次後跑 `python -m src.models.train --trials 100` 重訓
+      match_predictor_v2；產出後跑 `python -m pytest tests/test_prediction_artifact.py` 驗契約。

@@ -16,6 +16,7 @@ python -m src.etl.stats_crawler --incremental    # 逐場技術統計（增量�
 python -m src.etl.stats_crawler --rosters        # 出賽名單→roster_registrations（先跑 match_crawler）
 python -m src.etl.db_loader                      # roster CSV → players 身分層
 bash scripts/daily_update.sh                     # 每日增量更新（GitHub Actions 排程同款；DRY_RUN=1 可演練）
+python -m src.models.train                       # 重訓賽果預測模型 → match_predictor_v2.pkl
 ```
 
 ## 地雷（改動前必讀）
@@ -25,8 +26,9 @@ bash scripts/daily_update.sh                     # 每日增量更新（GitHub A
   既有 `player_id`；`stats_crawler` 全量與增量模式皆為「補缺不清表」，去重鍵是
   `match_date + is_golden_set`（逐球員判斷）。
 - **`.db` 與 `.pkl` 是刻意 commit 進 git 的**：Streamlit Cloud 靠 repo 內的
-  `data/db/tvl_database.db` 與 `src/models/match_predictor.pkl` 拿到資料與模型，
-  不要把它們加進 `.gitignore`。
+  `data/db/tvl_database.db` 與 `src/models/match_predictor_v2.pkl` 拿到資料與模型，
+  不要把它們加進 `.gitignore`。artifact 需含 `version`/`feature_cols`，app 對
+  未知版本會直接報錯，重訓務必走 `python -m src.models.train`，不要手動 pickle。
 - **行尾一律 LF**：repo 在 WSL 的 `/mnt/d` 上，Windows 工具容易把檔案轉成 CRLF，
   會製造上萬行假 diff。commit 前用 `git diff --stat -w` 確認沒有純行尾雜訊。
 - **資料來源有兩個**：官網 `tvl.ctvba.org.tw`（名單、比分）與外部統計系統

@@ -49,7 +49,7 @@ TVL-Analysis/
 │   ├── raw/                   # 原始爬取資料 (CSV)
 │   ├── processed/             # 清洗後資料
 │   └── db/                    # SQLite 資料庫
-├── notebooks/                 # 探索性分析與模型開發
+├── notebooks/                 # 探索性分析（01_eda.ipynb）
 ├── sql/
 │   └── schema.sql             # 資料庫 Schema（含效能索引）
 └── requirements.txt
@@ -101,6 +101,14 @@ python -m src.etl.db_loader
 
 `db_loader` 只負責建立/更新 `players` 身分層（姓名、性別等自然鍵 upsert），
 背號、位置、隊伍等每週會變動的資訊改由 `roster_registrations` 承載。
+
+### 重訓賽果預測模型
+
+```bash
+python -m src.models.train
+```
+
+以真實局數標籤重訓 XGBoost 賽果預測模型，產出 `src/models/match_predictor_v2.pkl`。
 
 ### 啟動儀表板
 
