@@ -1,7 +1,8 @@
 # TVL 儀表板遷移 HPE PCAI 設計書（Phase 1）
 
 日期：2026-08-28
-狀態：已與使用者逐節確認的設計，待實作
+狀態：**已取消（2026-09-29）**——決定不遷移至 PCAI，維持 Streamlit Cloud 部署。
+本文件僅留作決策紀錄；已完成的實作封存於本地 `pcai-migration` 分支，未 merge。
 範圍：方案三第一期——SQLite 平移 + MinIO 儲存 + Airflow ETL + Helm/Harbor 部署。
 Phase 2（EzPresto/Superset）與 Qdrant 不在本期，僅附綱要。
 
