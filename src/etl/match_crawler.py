@@ -45,7 +45,17 @@ def init_matches_table(conn: sqlite3.Connection) -> None:
     """確保 matches 表存在（讀 schema.sql，冪等）。"""
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     conn.commit()
+    _assert_matches_migrated(conn)
     logger.info("matches 表已確認存在（DDL 來源：schema.sql）")
+
+
+def _assert_matches_migrated(conn: sqlite3.Connection) -> None:
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(matches)")}
+    if "cup_id" in cols:
+        return
+    raise RuntimeError(
+        "matches 表尚無 cup_id（舊 schema），請先執行 python -m src.etl.migrate_add_season。"
+    )
 
 
 def _safe_int(val: str) -> int | None:
@@ -177,24 +187,38 @@ def scrape_match_page(prefix: str, game_id: int) -> dict | None:
     }
 
 
+def resolve_cup_id(conn: sqlite3.Connection, match_date: str) -> int:
+    row = conn.execute(
+        "SELECT cup_id FROM seasons WHERE ? BETWEEN start_date AND end_date",
+        (match_date,),
+    ).fetchone()
+    if row is None:
+        raise RuntimeError(
+            f"找不到涵蓋 {match_date} 的賽季，請在 sql/schema.sql 的 seasons 種子"
+            "與 DB 的 seasons 表新增該賽季。"
+        )
+    return row[0]
+
+
 def upsert_match(conn: sqlite3.Connection, match: dict) -> bool:
     """寫入或更新單場比賽紀錄，回傳是否為新增。"""
     existing = conn.execute(
         "SELECT match_id FROM matches WHERE game_id = ? AND gender = ?",
         (match["game_id"], match["gender"]),
     ).fetchone()
+    cup_id = resolve_cup_id(conn, match["match_date"])
 
     if existing:
         conn.execute("""
             UPDATE matches SET
-                match_date=?, venue=?, round_name=?, game_label=?,
+                cup_id=?, match_date=?, venue=?, round_name=?, game_label=?,
                 is_golden_set=?, home_team=?, away_team=?,
                 home_set1=?, home_set2=?, home_set3=?, home_set4=?, home_set5=?,
                 home_total=?, away_set1=?, away_set2=?, away_set3=?, away_set4=?,
                 away_set5=?, away_total=?, home_sets_won=?, away_sets_won=?
             WHERE game_id=? AND gender=?
         """, (
-            match["match_date"], match["venue"], match["round_name"],
+            cup_id, match["match_date"], match["venue"], match["round_name"],
             match["game_label"], match["is_golden_set"],
             match["home_team"], match["away_team"],
             match["home_set1"], match["home_set2"], match["home_set3"],
@@ -208,14 +232,14 @@ def upsert_match(conn: sqlite3.Connection, match: dict) -> bool:
     else:
         conn.execute("""
             INSERT INTO matches (
-                game_id, gender, match_date, venue, round_name, game_label,
+                game_id, gender, cup_id, match_date, venue, round_name, game_label,
                 is_golden_set, home_team, away_team,
                 home_set1, home_set2, home_set3, home_set4, home_set5, home_total,
                 away_set1, away_set2, away_set3, away_set4, away_set5, away_total,
                 home_sets_won, away_sets_won
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
-            match["game_id"], match["gender"], match["match_date"],
+            match["game_id"], match["gender"], cup_id, match["match_date"],
             match["venue"], match["round_name"], match["game_label"],
             match["is_golden_set"], match["home_team"], match["away_team"],
             match["home_set1"], match["home_set2"], match["home_set3"],

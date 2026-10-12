@@ -222,12 +222,12 @@ def test_crawl_all_rosters_resilient_to_fetch_failures(tmp_db_path, caplog):
 
     # 建立 matches 表，讓 resolve_week_label 能查到 round_name
     conn.execute(
-        "INSERT INTO matches (game_id, gender, match_date, round_name, home_team, away_team) "
-        "VALUES (1, 'F', '2025-11-01', '例行賽 Week 1', '新北中纖', '義力營造')"
+        "INSERT INTO matches (game_id, gender, cup_id, match_date, round_name, home_team, away_team) "
+        "VALUES (1, 'F', 21, '2025-11-01', '例行賽 Week 1', '新北中纖', '義力營造')"
     )
     conn.execute(
-        "INSERT INTO matches (game_id, gender, match_date, round_name, home_team, away_team) "
-        "VALUES (2, 'F', '2025-11-08', '例行賽 Week 2', '義力營造', '新北中纖')"
+        "INSERT INTO matches (game_id, gender, cup_id, match_date, round_name, home_team, away_team) "
+        "VALUES (2, 'F', 21, '2025-11-08', '例行賽 Week 2', '義力營造', '新北中纖')"
     )
     conn.commit()
     conn.close()

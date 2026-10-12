@@ -22,7 +22,15 @@ def test_v2_tables_exist(conn):
         row[0] for row in
         conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
     }
-    assert tables == {"teams", "players", "roster_registrations", "player_match_stats", "matches"}
+    assert tables == {"teams", "players", "roster_registrations", "player_match_stats", "matches", "seasons"}
+
+
+def test_schema_is_idempotent_and_seeds_seasons(conn):
+    conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    seasons = conn.execute("SELECT cup_id, name FROM seasons ORDER BY cup_id").fetchall()
+    assert seasons == [(20, "2024-25"), (21, "2025-26")]
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(matches)")}
+    assert {"cup_id", "start_time"} <= cols
 
 
 def test_players_has_no_team_columns(conn):

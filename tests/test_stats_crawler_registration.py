@@ -12,8 +12,8 @@ def _make_conn(tmp_db_path) -> sqlite3.Connection:
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (5, '新北中纖', 'F')")
     conn.execute(
-        "INSERT INTO matches (game_id, gender, match_date, round_name, home_team, away_team) "
-        "VALUES (1, 'F', '2025-11-01', '例行賽 Week 1', '新北中纖', '義力營造')"
+        "INSERT INTO matches (game_id, gender, cup_id, match_date, round_name, home_team, away_team) "
+        "VALUES (1, 'F', 21, '2025-11-01', '例行賽 Week 1', '新北中纖', '義力營造')"
     )
     conn.execute("INSERT INTO players (name, gender) VALUES ('張瓈文', 'F')")
     conn.commit()

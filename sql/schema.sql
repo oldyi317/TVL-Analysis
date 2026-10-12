@@ -57,11 +57,25 @@ CREATE TABLE IF NOT EXISTS player_match_stats (
     FOREIGN KEY (registration_id) REFERENCES roster_registrations (registration_id)
 );
 
+-- 賽季起訖採「七月到隔年六月」不重疊視窗，讓季前季後的賽程也落在正確賽季
+CREATE TABLE IF NOT EXISTS seasons (
+    cup_id     INTEGER PRIMARY KEY,
+    name       TEXT NOT NULL UNIQUE,
+    start_date DATE NOT NULL,
+    end_date   DATE NOT NULL
+);
+
+INSERT OR IGNORE INTO seasons (cup_id, name, start_date, end_date) VALUES
+    (20, '2024-25', '2024-07-01', '2025-06-30'),
+    (21, '2025-26', '2025-07-01', '2026-06-30');
+
 CREATE TABLE IF NOT EXISTS matches (
     match_id        INTEGER PRIMARY KEY AUTOINCREMENT,
     game_id         INTEGER NOT NULL,
     gender          TEXT NOT NULL CHECK (gender IN ('M', 'F')),
+    cup_id          INTEGER NOT NULL REFERENCES seasons (cup_id),
     match_date      DATE NOT NULL,
+    start_time      TEXT,
     venue           TEXT,
     round_name      TEXT,
     game_label      TEXT,
