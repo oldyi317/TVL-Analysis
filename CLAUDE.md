@@ -56,3 +56,17 @@ python -m src.models.train                       # 重訓賽果預測模型 → 
 ## 資料品質原則
 
 只標記與警告異常，不插補、不竄改原始數據（cleaner 的既有原則，維持它）。
+
+## Agent skills
+
+### Issue tracker
+
+Issue 記在 GitHub Issues（github.com/oldyi317/TVL-Analysis，以 `gh` CLI 操作）。見 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+沿用預設五個 label：needs-triage、needs-info、ready-for-agent、ready-for-human、wontfix。見 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+單一 context：根目錄 `CONTEXT.md` 加 `docs/adr/`，由 /domain-modeling 於需要時建立。見 `docs/agents/domain.md`。
