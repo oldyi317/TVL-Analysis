@@ -10,14 +10,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = PROJECT_ROOT / "data" / "db" / "tvl_database.db"
 
 
-def get_connection(foreign_keys: bool = True) -> sqlite3.Connection:
+def get_connection(foreign_keys: bool = True, db_path: Path = DB_PATH) -> sqlite3.Connection:
     """
     建立並回傳 SQLite 連線。
-    預設啟用 PRAGMA foreign_keys。
+    預設啟用 PRAGMA foreign_keys；db_path 預設為正式 DB，測試可改傳隔離路徑。
     呼叫端負責關閉連線。
     """
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(db_path)
     if foreign_keys:
         conn.execute("PRAGMA foreign_keys = ON")
     return conn
