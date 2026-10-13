@@ -97,6 +97,8 @@ CREATE TABLE IF NOT EXISTS matches (
     is_golden_set   INTEGER NOT NULL DEFAULT 0,
     home_team       TEXT NOT NULL,
     away_team       TEXT NOT NULL,
+    home_team_id    INTEGER,  -- 複合主鍵 teams(team_id, gender) 無法用 ALTER 加 FK；FK 留到 contract 步重建表時加
+    away_team_id    INTEGER,
     home_set1       INTEGER,
     home_set2       INTEGER,
     home_set3       INTEGER,

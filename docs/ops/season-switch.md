@@ -20,6 +20,8 @@
       再套用：`python -c "from src.utils.db_config import get_connection; from src.utils.teams import apply_team_seed; c=get_connection(); apply_team_seed(c); c.commit()"`。
       過渡期相容：`EXT_TEAM_MAP`、`OPP_SHORT_TO_TEAM`、`TEAM_NAME_SHORT`（constants.py）與
       `TEAM_ALIAS`（match_crawler.py）仍被爬蟲使用，需同步修改，直到爬蟲改用 DB。
+      `match_crawler` 寫入 matches 時以 `team_aliases`（`source <> 'ext_stats'`）解析 `home_team_id`/`away_team_id`；
+      新隊名或新別名未進種子會 log warning 並寫 NULL，記得補 `sql/team_seed.sql`。
 
 ## 季前作業
 
