@@ -57,7 +57,7 @@ GET_LEAGUE_AGGREGATED_STATS_SQL = """
 
 def _seed(conn):
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    conn.execute("INSERT INTO teams VALUES (5, '新北中纖', 'F')")
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (5, '新北中纖', 'F')")
     conn.execute("INSERT INTO players (name, gender) VALUES ('球員A', 'F')")
     conn.execute("INSERT INTO players (name, gender) VALUES ('球員B', 'F')")
     pid_a = conn.execute("SELECT player_id FROM players WHERE name='球員A'").fetchone()[0]
@@ -100,8 +100,8 @@ def test_aggregated_stats_handles_same_week_different_teams_no_double_count(tmp_
     conn.execute("PRAGMA foreign_keys = ON")
 
     # 建立兩隊
-    conn.execute("INSERT INTO teams VALUES (1, '隊1', 'F')")
-    conn.execute("INSERT INTO teams VALUES (2, '隊2', 'F')")
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (1, '隊1', 'F')")
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (2, '隊2', 'F')")
 
     # 建立球員
     conn.execute("INSERT INTO players (name, gender) VALUES ('轉隊球員', 'F')")
@@ -157,7 +157,7 @@ def test_aggregated_stats_includes_player_with_null_week_start_date(tmp_path):
     conn.execute("PRAGMA foreign_keys = ON")
 
     # 建立隊伍
-    conn.execute("INSERT INTO teams VALUES (3, '隊3', 'F')")
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (3, '隊3', 'F')")
 
     # 建立球員
     conn.execute("INSERT INTO players (name, gender) VALUES ('幽靈球員', 'F')")

@@ -10,6 +10,7 @@ import pandas as pd
 from src.etl.cleaner import load_raw, clean, quality_report
 from src.utils.db_config import PROJECT_ROOT, DB_PATH, get_connection
 from src.utils.logger import get_logger
+from src.utils.teams import apply_team_seed
 
 logger = get_logger(__name__)
 
@@ -21,6 +22,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     """讀取 schema.sql 建立資料表（CREATE TABLE IF NOT EXISTS，冪等，不清空既有資料）。"""
     schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
     conn.executescript(schema_sql)
+    apply_team_seed(conn)
     logger.info("資料庫 Schema 已確認存在（未清空既有資料）")
 
 

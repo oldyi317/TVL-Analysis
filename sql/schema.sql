@@ -7,8 +7,23 @@ CREATE TABLE IF NOT EXISTS teams (
     team_id   INTEGER NOT NULL,
     team_name TEXT    NOT NULL,
     gender    TEXT    NOT NULL CHECK (gender IN ('M', 'F')),
+    short_name    TEXT,
+    official_name TEXT,
+    color         TEXT,
+    is_active     INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
     PRIMARY KEY (team_id, gender)
 );
+-- 過渡期 short_name 與 team_name 同值（既有程式仍讀 team_name）；球隊身分種子見 sql/team_seed.sql
+
+-- 隊名別名 → 球隊。source 值域：short / official / match / legacy / ext_stats
+CREATE TABLE IF NOT EXISTS team_aliases (
+    alias   TEXT PRIMARY KEY,
+    team_id INTEGER NOT NULL,
+    gender  TEXT NOT NULL CHECK (gender IN ('M', 'F')),
+    source  TEXT NOT NULL,
+    FOREIGN KEY (team_id, gender) REFERENCES teams (team_id, gender)
+);
+CREATE INDEX IF NOT EXISTS idx_team_aliases_team ON team_aliases (team_id, gender);
 
 CREATE TABLE IF NOT EXISTS players (
     player_id  INTEGER PRIMARY KEY AUTOINCREMENT,

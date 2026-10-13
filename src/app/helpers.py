@@ -107,6 +107,14 @@ def load_data(query: str, params: tuple = ()) -> pd.DataFrame:
         conn.close()
 
 
+def fetch_active_teams(gender_code: str) -> pd.DataFrame:
+    """回傳指定組別仍在聯賽的球隊（排除停用的舊隊）。"""
+    return load_data(
+        "SELECT team_id, team_name FROM teams WHERE gender = ? AND is_active = 1 ORDER BY team_id",
+        (gender_code,),
+    )
+
+
 # ── 數值工具 ─────────────────────────────────────────────────
 
 def safe_pct(numerator: float, denominator: float) -> float:

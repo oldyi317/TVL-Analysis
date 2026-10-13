@@ -19,6 +19,9 @@ EXT_HEADERS = {
 SEASON_YEAR_MAP = {11: 2025, 12: 2025}
 DEFAULT_YEAR = 2026
 
+# 過渡期相容：球隊身分單一來源為 DB 的 teams/team_aliases（種子 sql/team_seed.sql，解析用 src/utils/teams.resolve_team）；
+# 下列常數 EXT_TEAM_MAP、OPP_SHORT_TO_TEAM、TEAM_NAME_SHORT、MATCH_TEAM_ALIASES、LEGACY_TEAMS
+# 待各爬蟲改用 DB 後移除。
 # ── 外部系統 TeamID → 本地 DB (team_id, gender) 對照表 ─────────
 EXT_TEAM_MAP = {
     1: (1, "M"),   # 屏東台電(男)

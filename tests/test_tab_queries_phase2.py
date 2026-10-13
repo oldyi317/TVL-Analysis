@@ -13,7 +13,7 @@ PLAYER_STATS_SQL = """
 
 def _seed(conn):
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    conn.execute("INSERT INTO teams VALUES (5, '新北中纖', 'F')")
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (5, '新北中纖', 'F')")
     conn.execute("INSERT INTO players (name, gender) VALUES ('球員A', 'F')")
     pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
     conn.execute(
@@ -62,7 +62,7 @@ BOX_SCORE_SQL = """
 def test_box_score_query_reflects_position_at_time_of_match(tmp_db_path):
     conn = sqlite3.connect(tmp_db_path)
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    conn.execute("INSERT INTO teams VALUES (5, '新北中纖', 'F')")
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (5, '新北中纖', 'F')")
     conn.execute("INSERT INTO players (name, gender) VALUES ('球員A', 'F')")
     pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
 
@@ -108,7 +108,7 @@ MATCH_SELECTOR_SQL = """
 def test_match_selector_query_returns_distinct_matches_per_team_and_date(tmp_db_path):
     conn = sqlite3.connect(tmp_db_path)
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    conn.execute("INSERT INTO teams VALUES (5, '新北中纖', 'F')")
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (5, '新北中纖', 'F')")
     conn.execute("INSERT INTO players (name, gender) VALUES ('球員A', 'F')")
     pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
 
@@ -146,7 +146,7 @@ def test_match_selector_query_excludes_other_seasons(tmp_db_path):
     """他季（cup_id=20）同名週次的登錄與統計不得混入當季比賽選單。"""
     conn = sqlite3.connect(tmp_db_path)
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    conn.execute("INSERT INTO teams VALUES (5, '新北中纖', 'F')")
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (5, '新北中纖', 'F')")
     conn.execute("INSERT INTO players (name, gender) VALUES ('球員A', 'F')")
     pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
 

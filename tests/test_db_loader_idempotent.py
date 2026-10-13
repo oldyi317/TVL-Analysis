@@ -85,3 +85,9 @@ def test_init_db_does_not_wipe_existing_registrations(conn):
 
     remaining = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0]
     assert remaining == 1
+
+
+def test_init_db_seeds_team_identity(conn):
+    init_db(conn)
+    assert conn.execute("SELECT short_name FROM teams WHERE team_id = 3 AND gender = 'F'").fetchone() == ("臺北鯨華",)
+    assert conn.execute("SELECT COUNT(*) FROM team_aliases").fetchone()[0] == 32

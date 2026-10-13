@@ -22,7 +22,7 @@ def test_v2_tables_exist(conn):
         row[0] for row in
         conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
     }
-    assert tables == {"teams", "players", "roster_registrations", "player_match_stats", "matches", "seasons"}
+    assert tables == {"teams", "players", "roster_registrations", "player_match_stats", "matches", "seasons", "team_aliases"}
 
 
 def test_schema_is_idempotent_and_seeds_seasons(conn):

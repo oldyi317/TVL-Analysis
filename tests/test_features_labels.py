@@ -23,7 +23,7 @@ def _make_db(tmp_db_path) -> sqlite3.Connection:
 
 
 def _seed_team(conn, team_id, name, gender):
-    conn.execute("INSERT INTO teams VALUES (?, ?, ?)", (team_id, name, gender))
+    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (?, ?, ?)", (team_id, name, gender))
 
 
 def _seed_stat(conn, team_id, gender, match_date, opponent, *,

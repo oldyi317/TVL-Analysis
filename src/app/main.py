@@ -73,7 +73,7 @@ matplotlib.rcParams["font.size"] = 13
 
 # ── 共用函式（從 helpers 匯入） ──────────────────────────────
 from src.app.helpers import (
-    load_data, inject_mobile_css, get_current_roster, register_plotly_font_template,
+    load_data, fetch_active_teams, inject_mobile_css, get_current_roster, register_plotly_font_template,
 )
 
 # ── 全域 Plotly 字級 template（一次生效，全 app 圖表跟著調大）──
@@ -94,10 +94,7 @@ st.sidebar.markdown("---")
 gender = st.sidebar.selectbox("選擇組別", ["男子組", "女子組"])
 gender_code = "M" if gender == "男子組" else "F"
 
-teams_df = load_data(
-    "SELECT team_id, team_name FROM teams WHERE gender = ? ORDER BY team_id",
-    (gender_code,),
-)
+teams_df = fetch_active_teams(gender_code)
 if teams_df.empty:
     st.warning("該組別目前沒有球隊資料。")
     st.stop()

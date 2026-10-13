@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.app.helpers import (
-    load_data, enrich_box_score, vec_pct,
+    load_data, fetch_active_teams, enrich_box_score, vec_pct,
     fetch_match_index, fetch_set_scores, find_match_id,
     OPP_SHORT_TO_TEAM, responsive_chart_config, compact_margin,
 )
@@ -63,10 +63,7 @@ def render(ctx: dict):
         bs_gender = st.selectbox("組別", ["男子組", "女子組"], key="bs_gender")
     bs_gender_code = "M" if bs_gender == "男子組" else "F"
 
-    bs_teams = load_data(
-        "SELECT team_id, team_name FROM teams WHERE gender = ? ORDER BY team_id",
-        (bs_gender_code,),
-    )
+    bs_teams = fetch_active_teams(bs_gender_code)
     if bs_teams.empty:
         st.warning("該組別無球隊資料。")
         st.stop()

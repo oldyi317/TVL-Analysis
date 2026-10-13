@@ -23,6 +23,7 @@ logger = get_logger(__name__)
 BASE_URL = "https://tvl.ctvba.org.tw"
 
 # 官網隊名 → DB 簡寫對照（官網隊名可能有差異）
+# 過渡期相容：單一來源為 DB 的 teams/team_aliases（sql/team_seed.sql），待改用 resolve_team 後移除。
 TEAM_ALIAS = {
     "臺北鯨華": "臺北鯨華",
     "新北中纖": "新北中纖",
