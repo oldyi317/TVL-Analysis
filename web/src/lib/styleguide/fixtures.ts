@@ -50,14 +50,23 @@ function standingsRows(list: Team[]): StandingsRow[] {
 	return list.map((team, i) => {
 		const wins = Math.max(list.length - 1 - i, 0) * 2 + 1;
 		const losses = i * 2 + 1;
+		const sets_won = wins * 3 + i;
+		const sets_lost = losses * 2 + 1;
+		const points_for = sets_won * 25 + 40;
+		const points_against = sets_lost * 25 + 90 + i * 20;
 		return {
 			rank: i + 1,
 			team,
 			wins,
 			losses,
+			win_pct: Number((wins / (wins + losses)).toFixed(3)),
 			points: wins * 3 - i,
-			set_ratio: i === list.length - 1 ? null : Number((2.4 - i * 0.35).toFixed(2)),
-			point_ratio: Number((1.18 - i * 0.04).toFixed(2)),
+			sets_won,
+			sets_lost,
+			points_for,
+			points_against,
+			set_ratio: i === list.length - 1 ? null : Number((sets_won / sets_lost).toFixed(3)),
+			point_ratio: Number((points_for / points_against).toFixed(3)),
 			set_record: {
 				'3-0': Math.max(wins - 2, 0),
 				'3-1': 1,

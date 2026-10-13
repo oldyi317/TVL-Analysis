@@ -30,7 +30,7 @@
 
 <style>
 	h1 {
-		font-size: 1.375rem;
+		font-size: var(--text-xl);
 		font-weight: 700;
 		margin-block: 1.5rem 0.75rem;
 	}

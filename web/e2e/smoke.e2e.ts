@@ -1,11 +1,5 @@
-import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-
-const BASE = '/TVL-Analysis';
-const seasonsData = JSON.parse(readFileSync('src/lib/data/seasons.json', 'utf8'));
-const current: string = seasonsData.seasons.find(
-	(s: { cup_id: number }) => s.cup_id === seasonsData.current_cup_id
-).name;
+import { BASE, currentSeason as current, seasonsData } from './helpers.js';
 
 test('根路徑導向當季男子組', async ({ page }) => {
 	await page.goto(`${BASE}/`);

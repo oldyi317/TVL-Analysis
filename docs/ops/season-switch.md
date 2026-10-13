@@ -23,6 +23,9 @@
       `match_crawler` 寫入 matches 時以 `team_aliases`（`source <> 'ext_stats'`）解析 `home_team_id`/`away_team_id`；
       新隊名或新別名未進種子會 log warning 並寫 NULL，記得補 `sql/team_seed.sql`。
 
+- [ ] `STANDINGS_NOTES`（src/export/site_data.py）：以 `(cup_id, gender)` 標記官網收錄不全的
+      戰績（目前只有 2024-25 兩組）。新季正常不用加；若官網缺漏賽事再補一列。
+
 ## 季前作業
 
 - [ ] 跑 `python -m src.etl.crawler` 抓新季官網名單 → `data/raw/`。

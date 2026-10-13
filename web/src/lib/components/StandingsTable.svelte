@@ -7,7 +7,12 @@
 		team: Team;
 		wins: number;
 		losses: number;
+		win_pct: number | null;
 		points: number;
+		sets_won: number;
+		sets_lost: number;
+		points_for: number;
+		points_against: number;
 		set_ratio: number | null;
 		point_ratio: number | null;
 		set_record: Record<SetRecordKey, number>;
@@ -17,7 +22,7 @@
 	const RECORD_KEYS: SetRecordKey[] = ['3-0', '3-1', '3-2', '2-3', '1-3', '0-3'];
 
 	function ratio(value: number | null): string {
-		return value === null ? '—' : value.toFixed(2);
+		return value === null ? '—' : value.toFixed(3);
 	}
 </script>
 
@@ -61,11 +66,16 @@
 				<th scope="col" class="team">隊伍</th>
 				<th scope="col" class="num">勝</th>
 				<th scope="col" class="num">敗</th>
+				<th scope="col" class="num wide">勝率</th>
 				<th scope="col" class="num">積分</th>
 				{#each RECORD_KEYS as key (key)}
 					<th scope="col" class="num wide">{key}</th>
 				{/each}
+				<th scope="col" class="num wide">勝局</th>
+				<th scope="col" class="num wide">敗局</th>
 				<th scope="col" class="num wide">局數比</th>
+				<th scope="col" class="num wide">得分</th>
+				<th scope="col" class="num wide">失分</th>
 				<th scope="col" class="num wide">得失分比</th>
 				<th scope="col" class="wide">近五場</th>
 				<th scope="col" class="toggle"><span class="sr">詳細</span></th>
@@ -83,11 +93,16 @@
 					</td>
 					<td class="num">{row.wins}</td>
 					<td class="num">{row.losses}</td>
+					<td class="num wide small">{ratio(row.win_pct)}</td>
 					<td class="num">{row.points}</td>
 					{#each RECORD_KEYS as key (key)}
 						<td class="num wide small">{row.set_record[key]}</td>
 					{/each}
+					<td class="num wide small">{row.sets_won}</td>
+					<td class="num wide small">{row.sets_lost}</td>
 					<td class="num wide small">{ratio(row.set_ratio)}</td>
+					<td class="num wide small">{row.points_for}</td>
+					<td class="num wide small">{row.points_against}</td>
 					<td class="num wide small">{ratio(row.point_ratio)}</td>
 					<td class="wide">{@render last5Tags(row)}</td>
 					<td class="toggle">
@@ -114,12 +129,24 @@
 								</dd>
 							</div>
 							<div>
+								<dt>勝率</dt>
+								<dd><b>{ratio(row.win_pct)}</b></dd>
+							</div>
+							<div>
 								<dt>局數比</dt>
 								<dd><b>{ratio(row.set_ratio)}</b></dd>
 							</div>
 							<div>
+								<dt>勝局／敗局</dt>
+								<dd><b>{row.sets_won}／{row.sets_lost}</b></dd>
+							</div>
+							<div>
 								<dt>得失分比</dt>
 								<dd><b>{ratio(row.point_ratio)}</b></dd>
+							</div>
+							<div>
+								<dt>得分／失分</dt>
+								<dd><b>{row.points_for}／{row.points_against}</b></dd>
 							</div>
 							<div class="full">
 								<dt>近五場</dt>
@@ -186,7 +213,7 @@
 	}
 
 	td.small {
-		font-size: var(--text-md);
+		font-size: var(--text-sm);
 		font-weight: 600;
 	}
 
@@ -316,10 +343,10 @@
 		display: none;
 	}
 
-	/* 完整欄位比 40rem 版心寬：寬版跳出版心置中，最寬 60rem；再不夠才在卡片內橫向捲動 */
+	/* 完整欄位比 40rem 版心寬：寬版跳出版心置中，最寬 72rem；再不夠才在卡片內橫向捲動 */
 	@media (min-width: 48rem) {
 		.scroll {
-			--wide: min(60rem, 100vw - 2 * var(--space-4));
+			--wide: min(72rem, 100vw - 2 * var(--space-4));
 			inline-size: var(--wide);
 			margin-inline-start: calc((100% - var(--wide)) / 2);
 		}

@@ -216,11 +216,12 @@ def test_men_and_women_are_separate(export_matches):
     assert row(p, 4, name="men")["wins"] == 0
 
 
-def test_note_only_for_2024_25_women(export_matches):
+def test_notes_only_for_incomplete_2024_25_groups(export_matches):
     p = export_matches([match(1, 4, 5, 3, 0, gender="F", cup=20)])
     notes = {(g["cup_id"], g["group"]): g["note"] for g in p["standings"]}
+    assert notes[(20, "men")] == "2024-25 男子組官網只收錄第 6 週起的例行賽，戰績不完整"
     assert notes[(20, "women")] == "2024-25 女子組官網只收錄 8 場賽事，戰績不完整"
-    assert [k for k, v in notes.items() if v is not None] == [(20, "women")]
+    assert [k for k, v in notes.items() if v is not None] == [(20, "men"), (20, "women")]
 
 
 def test_standings_json_matches_schema(export_matches):
@@ -253,7 +254,9 @@ def test_real_db_matches_official_points(real_standings):
         assert row(p, ids[(name, team)], 21, name)["points"] == points, team
 
 
-def test_real_db_2024_25_keeps_legacy_teams_and_flags_women(real_standings):
+def test_real_db_2024_25_keeps_legacy_teams_and_flags_incomplete_groups(real_standings):
     p, _ = real_standings
     assert {8, 9, 10} <= set(order(p, 20, "men"))
+    assert group(p, 20, "men")["note"] is not None
     assert group(p, 20, "women")["note"] is not None
+    assert group(p, 21, "men")["note"] is None

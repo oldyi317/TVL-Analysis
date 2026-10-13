@@ -47,22 +47,9 @@ export function standingsFor(cupId: number, group: Group): GroupStandings | unde
 }
 
 // 對不到球隊代表資料檔壞了：直接丟錯讓 build 失敗，不默默少一列
-export function toStandingsRow(
-	entry: StandingsEntry,
-	group: Group,
-	teamList: readonly Team[] = teams
-): StandingsRow {
-	const team = teamList.find((t) => t.group === group && t.team_id === entry.team_id);
-	if (!team) throw new Error(`戰績的 team_id ${entry.team_id}（${group}）不在 teams.json`);
-	return {
-		rank: entry.rank,
-		team,
-		wins: entry.wins,
-		losses: entry.losses,
-		points: entry.points,
-		set_ratio: entry.set_ratio,
-		point_ratio: entry.point_ratio,
-		set_record: entry.set_record,
-		last5: entry.last5
-	};
+export function toStandingsRow(entry: StandingsEntry, group: Group): StandingsRow {
+	const { team_id, ...rest } = entry;
+	const team = teams.find((t) => t.group === group && t.team_id === team_id);
+	if (!team) throw new Error(`戰績的 team_id ${team_id}（${group}）不在 teams.json`);
+	return { ...rest, team };
 }

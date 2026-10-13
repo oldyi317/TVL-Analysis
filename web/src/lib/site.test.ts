@@ -1,16 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { StandingsEntry, Team } from '#lib/data/types.js';
-import { standingsFor, toStandingsRow } from './site.js';
-
-const team = (team_id: number, group: 'men' | 'women'): Team => ({
-	team_id,
-	group,
-	name: `隊${team_id}`,
-	short_name: `隊${team_id}`,
-	color: '#123456',
-	is_active: true,
-	cup_ids: [21]
-});
+import type { StandingsEntry } from '#lib/data/types.js';
+import { standingsFor, teams, toStandingsRow } from './site.js';
 
 const entry: StandingsEntry = {
 	rank: 1,
@@ -31,14 +21,26 @@ const entry: StandingsEntry = {
 
 describe('toStandingsRow', () => {
 	it('以 group + team_id 對回球隊並帶過數值', () => {
-		const list = [team(3, 'men'), team(3, 'women')];
-		const row = toStandingsRow(entry, 'women', list);
-		expect(row.team).toBe(list[1]);
+		const real = teams.find((t) => t.group === 'women')!;
+		const row = toStandingsRow({ ...entry, team_id: real.team_id }, 'women');
+		expect(row.team).toBe(real);
 		expect(row).toMatchObject({ rank: 1, wins: 5, losses: 1, points: 14, set_ratio: null });
+		expect(row).not.toHaveProperty('team_id');
 		expect(row.last5).toEqual(['W', 'W', 'L', 'W', 'W']);
 	});
+	it('帶過勝率、局數與得失分欄位', () => {
+		const real = teams.find((t) => t.group === 'men')!;
+		const row = toStandingsRow({ ...entry, team_id: real.team_id }, 'men');
+		expect(row).toMatchObject({
+			win_pct: 0.833,
+			sets_won: 16,
+			sets_lost: 7,
+			points_for: 400,
+			points_against: 350
+		});
+	});
 	it('對不到球隊就丟錯', () => {
-		expect(() => toStandingsRow(entry, 'men', [team(4, 'men')])).toThrow('team_id 3');
+		expect(() => toStandingsRow({ ...entry, team_id: -1 }, 'men')).toThrow('team_id -1');
 	});
 });
 

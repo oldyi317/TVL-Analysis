@@ -8,7 +8,10 @@ from src.utils.db_config import DB_PATH, PROJECT_ROOT, get_connection
 DEFAULT_OUT_DIR = PROJECT_ROOT / "web" / "src" / "lib" / "data"
 GROUP_BY_GENDER = {"M": "men", "F": "women"}
 GROUP_ORDER = list(GROUP_BY_GENDER.values())
-STANDINGS_NOTES = {(20, "F"): "2024-25 女子組官網只收錄 8 場賽事，戰績不完整"}
+STANDINGS_NOTES = {
+    (20, "M"): "2024-25 男子組官網只收錄第 6 週起的例行賽，戰績不完整",
+    (20, "F"): "2024-25 女子組官網只收錄 8 場賽事，戰績不完整",
+}
 SET_RECORD_POINTS = {(3, 0): 3, (3, 1): 3, (3, 2): 2, (2, 3): 1}
 SET_RECORD_KEYS = ["3-0", "3-1", "3-2", "2-3", "1-3", "0-3"]
 
@@ -97,7 +100,7 @@ def _add_result(tally: dict, own_sets: int, opp_sets: int, own_pts: int, opp_pts
         tally["set_record"][key] += 1
 
 
-def _set_points(values: tuple) -> int:
+def _sum_scores(values: list) -> int:
     return sum(v for v in values if v is not None)
 
 
@@ -126,7 +129,7 @@ def _group_tallies(conn: sqlite3.Connection, cup_id: int, gender: str) -> dict[i
     for home, away, home_sets, away_sets, *scores in games:
         if home is None or away is None:
             continue
-        home_pts, away_pts = _set_points(tuple(scores[:5])), _set_points(tuple(scores[5:]))
+        home_pts, away_pts = _sum_scores(scores[:5]), _sum_scores(scores[5:])
         _add_result(tallies[home], home_sets, away_sets, home_pts, away_pts)
         _add_result(tallies[away], away_sets, home_sets, away_pts, home_pts)
     return tallies

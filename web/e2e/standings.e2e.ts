@@ -1,11 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
+import { BASE, currentSeason as current } from './helpers.js';
 
-const BASE = '/TVL-Analysis';
-const seasonsData = JSON.parse(readFileSync('src/lib/data/seasons.json', 'utf8'));
-const current: string = seasonsData.seasons.find(
-	(s: { cup_id: number }) => s.cup_id === seasonsData.current_cup_id
-).name;
 const URL = `${BASE}/${current}/men/standings/`;
 
 test.describe('手機', () => {
@@ -24,6 +19,7 @@ test.describe('手機', () => {
 		const detail = page.locator(`#${detailId}`);
 		await expect(detail).toBeVisible();
 		await expect(detail).toContainText('近五場');
+		await expect(detail).toContainText('勝率');
 
 		const overflow = await page.evaluate(
 			() => document.documentElement.scrollWidth - document.documentElement.clientWidth
@@ -37,7 +33,7 @@ test.describe('桌機', () => {
 
 	test('完整欄位且沒有展開按鈕', async ({ page }) => {
 		await page.goto(URL);
-		for (const name of ['3-0', '3-1', '3-2', '2-3', '1-3', '0-3', '近五場']) {
+		for (const name of ['勝率', '勝局', '敗局', '得分', '失分', '3-0', '3-1', '3-2', '2-3', '1-3', '0-3', '近五場']) {
 			await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible();
 		}
 		await expect(page.getByRole('button', { name: /詳細數據/ }).first()).toBeHidden();
