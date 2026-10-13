@@ -116,6 +116,23 @@ python -m src.models.train
 streamlit run src/app/main.py
 ```
 
+### 靜態站（web/）本機開發三步
+
+靜態站以 SvelteKit 建置，部署在 GitHub Pages（push 到 `main` 由 `.github/workflows/pages.yml` 自動匯出、建置、部署）。本機開發：
+
+```bash
+# 1. 匯出 JSON（從 repo 根目錄；輸出到 web/src/lib/data/，不進 git）
+python3 -m src.export.site_data
+
+# 2. dev server（會先驗證 JSON 符合 web/schema 並產生 TypeScript 型別）
+cd web && npm ci && npm run dev
+
+# 3. 建置靜態產物到 web/build/
+npm run build
+```
+
+其他：`npm run check` 跑型別檢查；`npm run test:e2e` 以手機視窗對建置產物跑 Playwright smoke（第一次先 `npx playwright install chromium`）；匯出器測試 `pytest tests/test_export_site_data.py`。
+
 ## 位置代號對照
 
 | 中文 | 英文縮寫 |
