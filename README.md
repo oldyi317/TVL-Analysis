@@ -131,7 +131,7 @@ cd web && npm ci && npm run dev
 npm run build
 ```
 
-其他：`npm run check` 跑型別檢查；`npm run test:e2e` 以手機視窗對建置產物跑 Playwright smoke（第一次先 `npx playwright install chromium`）；匯出器測試 `pytest tests/test_export_site_data.py`。
+其他：`npm run check` 跑型別檢查；`npm run test:e2e` 以手機視窗對建置產物跑 Playwright smoke（第一次先 `npx playwright install chromium`）；匯出器測試 `pytest tests/test_export_site_data.py tests/test_export_standings.py tests/test_export_matches.py`。
 
 ## 位置代號對照
 

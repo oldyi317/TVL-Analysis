@@ -10,10 +10,14 @@
 
 	// 切換賽季或組別：只替換路徑中該片段的第一次出現，停留在同一頁面類型。
 	// base 是固定的 /TVL-Analysis，賽季與組別是 base 之後的前兩段，不會與其他片段撞名。
+	// 單場賽事只屬於一個賽季與組別，從詳情頁切換就退回該組別的賽事列表。
 	function switchHref(param: 'season' | 'group', value: string): string | undefined {
 		const current = page.params[param];
 		if (!current) return undefined;
-		return page.url.pathname.replace(`/${current}/`, `/${value}/`);
+		const path = page.params.game
+			? page.url.pathname.replace(`/matches/${page.params.game}/`, '/matches/')
+			: page.url.pathname;
+		return path.replace(`/${current}/`, `/${value}/`);
 	}
 
 	const group = $derived(page.params.group && isGroup(page.params.group) ? page.params.group : undefined);

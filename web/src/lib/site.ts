@@ -1,9 +1,13 @@
+import matchesJson from '#lib/data/matches.json';
 import seasonsJson from '#lib/data/seasons.json';
 import standingsJson from '#lib/data/standings.json';
 import teamsJson from '#lib/data/teams.json';
 import type { StandingsRow } from '#lib/components/StandingsTable.svelte';
+import type { StyleMatch } from '#lib/match.js';
 import type {
 	GroupStandings,
+	MatchEntry,
+	MatchesData,
 	Season,
 	SeasonsData,
 	StandingsData,
@@ -52,4 +56,51 @@ export function toStandingsRow(entry: StandingsEntry, group: Group): StandingsRo
 	const team = teams.find((t) => t.group === group && t.team_id === team_id);
 	if (!team) throw new Error(`戰績的 team_id ${team_id}（${group}）不在 teams.json`);
 	return { ...rest, team };
+}
+
+export type MatchView = StyleMatch & {
+	game_id: number;
+	stage: string | null;
+	week: number | null;
+};
+
+function teamOf(teamId: number, group: Group, what: string): Team {
+	const team = teams.find((t) => t.group === group && t.team_id === teamId);
+	if (!team) throw new Error(`${what}的 team_id ${teamId}（${group}）不在 teams.json`);
+	return team;
+}
+
+export function toMatchView(entry: MatchEntry, group: Group): MatchView {
+	return {
+		game_id: entry.game_id,
+		date: entry.date,
+		weekday: entry.weekday,
+		start_time: entry.start_time,
+		venue: entry.venue ?? '場館未定',
+		stage: entry.stage,
+		week: entry.week,
+		home: teamOf(entry.home_team_id, group, '賽事'),
+		away: teamOf(entry.away_team_id, group, '賽事'),
+		sets: entry.sets.map(([h, a]) => [h, a]),
+		golden_set: entry.golden_set
+	};
+}
+
+export function matchesFor(cupId: number, group: Group): MatchView[] {
+	const found = (matchesJson as MatchesData).matches.find(
+		(m) => m.cup_id === cupId && m.group === group
+	);
+	return (found?.matches ?? []).map((entry) => toMatchView(entry, group));
+}
+
+export function findMatch(cupId: number, group: Group, gameId: number): MatchView | undefined {
+	return matchesFor(cupId, group).find((m) => m.game_id === gameId);
+}
+
+export function matchEntries(): { season: string; group: Group; game: string }[] {
+	return seasonGroupEntries().flatMap(({ season, group }) => {
+		const cupId = findSeason(season)?.cup_id;
+		if (cupId === undefined) return [];
+		return matchesFor(cupId, group).map((m) => ({ season, group, game: String(m.game_id) }));
+	});
 }

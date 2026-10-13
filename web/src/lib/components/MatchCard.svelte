@@ -3,7 +3,11 @@
 	import TeamBadge from './TeamBadge.svelte';
 	import { teamStyle } from './teamStyle.js';
 
-	let { match }: { match: StyleMatch } = $props();
+	let {
+		match,
+		stage,
+		showSets = true
+	}: { match: StyleMatch; stage?: string | null; showSets?: boolean } = $props();
 
 	const played = $derived(match.sets.length > 0);
 	const winner = $derived(winnerSide(match.sets));
@@ -11,7 +15,12 @@
 </script>
 
 <article style={teamStyle(match.home)} aria-label="{match.home.short_name} 對 {match.away.short_name}">
-	<p class="meta">{match.date} 星期{match.weekday} · {match.venue}</p>
+	<p class="meta">
+		<span>{match.date} 星期{match.weekday}{match.start_time ? ` ${match.start_time}` : ''} · {match.venue}</span>
+		{#if stage}
+			<span class="stage">{stage}</span>
+		{/if}
+	</p>
 
 	<div class="teams">
 		{#each [{ side: 'home', team: match.home, won: homeSets }, { side: 'away', team: match.away, won: awaySets }] as row (row.side)}
@@ -24,11 +33,11 @@
 			</div>
 		{/each}
 		{#if !played}
-			<span class="pending">{match.start_time ?? '未開打'}</span>
+			<span class="pending">未開打</span>
 		{/if}
 	</div>
 
-	{#if played}
+	{#if played && showSets}
 		<p class="sets">
 			{#each match.sets as [h, a], i (i)}
 				<span class="set">
@@ -36,7 +45,10 @@
 				</span>
 			{/each}
 			{#if match.golden_set}
-				<span class="golden">黃金決勝局 {match.golden_set[0]}-{match.golden_set[1]}</span>
+				<span class="golden">
+					黃金決勝局
+					<span class:strong={match.golden_set[0] > match.golden_set[1]}>{match.golden_set[0]}</span>-<span class:strong={match.golden_set[1] > match.golden_set[0]}>{match.golden_set[1]}</span>
+				</span>
 			{/if}
 		</p>
 	{/if}
@@ -52,9 +64,17 @@
 	}
 
 	.meta {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		gap: var(--space-1) var(--space-3);
 		margin: 0 0 var(--space-3);
 		font-size: var(--text-sm);
 		color: var(--text-muted);
+	}
+
+	.stage {
+		font-weight: 500;
 	}
 
 	.teams {
@@ -100,9 +120,9 @@
 		inset-inline-end: 0;
 		display: flex;
 		align-items: center;
-		font-size: var(--num-md);
-		font-weight: var(--weight-num);
-		line-height: 1;
+		font-size: var(--text-lg);
+		font-weight: 700;
+		color: var(--text-muted);
 	}
 
 	.sets {

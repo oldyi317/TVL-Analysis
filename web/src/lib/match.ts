@@ -32,3 +32,33 @@ export type StyleMatch = {
 	golden_set?: SetScore | null;
 	start_time?: string | null;
 };
+
+// 「總決賽 第 19 週」；沒有階段就只有週次，兩者都沒有回 null
+export function stageLabel(stage: string | null, week: number | null): string | null {
+	const parts = [stage, week === null ? null : `第 ${week} 週`].filter((p) => p !== null);
+	return parts.length ? parts.join(' ') : null;
+}
+
+export type MonthGroup<T extends { date: string }> = {
+	key: string;
+	label: string;
+	short: string;
+	matches: T[];
+};
+
+// 依「YYYY-MM」分段，輸入已依日期排序時輸出順序不變
+export function groupByMonth<T extends { date: string }>(matches: readonly T[]): MonthGroup<T>[] {
+	const groups: MonthGroup<T>[] = [];
+	for (const match of matches) {
+		const key = match.date.slice(0, 7);
+		const last = groups.at(-1);
+		if (last && last.key === key) {
+			last.matches.push(match);
+			continue;
+		}
+		const [year, month] = key.split('-');
+		const m = Number(month);
+		groups.push({ key, label: `${year} 年 ${m} 月`, short: `${m}月`, matches: [match] });
+	}
+	return groups;
+}

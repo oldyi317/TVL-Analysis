@@ -83,3 +83,10 @@ test.describe('深色', () => {
 		await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(18, 20, 23)');
 	});
 });
+
+test('未開打的賽事卡標示未開打並保留開賽時間', async ({ page }) => {
+	await page.goto(`${BASE}/styleguide/`);
+	const card = page.locator('article', { hasText: '未開打' });
+	await expect(card).toContainText('19:00');
+	await expect(card.locator('.score')).toHaveCount(0);
+});

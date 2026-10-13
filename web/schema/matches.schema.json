@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "matches.schema.json",
+  "title": "MatchesData",
+  "description": "各賽季各組別的賽事清單（依日期排序；黃金決勝局附在母場次上）；由 src.export.site_data 產出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["matches"],
+  "properties": {
+    "matches": {
+      "type": "array",
+      "items": {
+        "title": "GroupMatches",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cup_id", "group", "matches"],
+        "properties": {
+          "cup_id": { "type": "integer" },
+          "group": { "type": "string", "enum": ["men", "women"] },
+          "matches": {
+            "type": "array",
+            "items": {
+              "title": "MatchEntry",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "game_id", "date", "weekday", "start_time", "venue", "stage", "week",
+                "home_team_id", "away_team_id", "sets", "home_sets_won", "away_sets_won", "golden_set"
+              ],
+              "properties": {
+                "game_id": { "type": "integer" },
+                "date": { "type": "string", "format": "date" },
+                "weekday": { "type": "string", "enum": ["一", "二", "三", "四", "五", "六", "日"] },
+                "start_time": { "type": ["string", "null"], "description": "開賽時間 HH:MM；官網未提供則 null" },
+                "venue": { "type": ["string", "null"] },
+                "stage": { "type": ["string", "null"], "description": "從 round_name 拆出的階段，如 例行賽／挑戰賽／總決賽" },
+                "week": { "type": ["integer", "null"], "minimum": 1, "description": "從 round_name 拆出的週次" },
+                "home_team_id": { "type": "integer" },
+                "away_team_id": { "type": "integer" },
+                "sets": {
+                  "type": "array",
+                  "maxItems": 5,
+                  "items": { "$ref": "#/$defs/SetScore" },
+                  "description": "逐局比分 [主, 客]；未開打為空陣列"
+                },
+                "home_sets_won": { "type": ["integer", "null"], "minimum": 0 },
+                "away_sets_won": { "type": ["integer", "null"], "minimum": 0 },
+                "golden_set": {
+                  "oneOf": [{ "$ref": "#/$defs/SetScore" }, { "type": "null" }],
+                  "description": "黃金決勝局比分 [主, 客]；沒有則 null"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "SetScore": {
+      "title": "SetScore",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "type": "integer", "minimum": 0 }
+    }
+  }
+}

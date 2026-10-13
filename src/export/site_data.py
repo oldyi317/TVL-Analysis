@@ -1,6 +1,8 @@
 import json
 import math
+import re
 import sqlite3
+from datetime import date
 from pathlib import Path
 
 from src.utils.db_config import DB_PATH, PROJECT_ROOT, get_connection
@@ -14,6 +16,8 @@ STANDINGS_NOTES = {
 }
 SET_RECORD_POINTS = {(3, 0): 3, (3, 1): 3, (3, 2): 2, (2, 3): 1}
 SET_RECORD_KEYS = ["3-0", "3-1", "3-2", "2-3", "1-3", "0-3"]
+WEEKDAYS = "一二三四五六日"
+ROUND_NAME = re.compile(r"^(\S+?)\s*Week\s*(\d+)$")
 
 
 def _seasons_payload(conn: sqlite3.Connection) -> dict:
@@ -186,6 +190,95 @@ def _standings_payload(conn: sqlite3.Connection) -> dict:
     return {"standings": standings}
 
 
+def parse_round_name(round_name: str | None) -> tuple[str | None, int | None]:
+    if not round_name:
+        return None, None
+    m = ROUND_NAME.match(round_name.strip())
+    if not m:
+        return round_name.strip(), None
+    return m.group(1), int(m.group(2))
+
+
+def _weekday(iso_date: str) -> str:
+    return WEEKDAYS[date.fromisoformat(iso_date).weekday()]
+
+
+def _set_pairs(scores: list) -> list[list[int]]:
+    home, away = scores[:5], scores[5:]
+    return [[h, a] for h, a in zip(home, away) if h is not None and a is not None]
+
+
+def _match_entry(row: tuple) -> dict:
+    (game_id, match_date, start_time, venue, round_name,
+     home_id, away_id, home_sets_won, away_sets_won, *scores) = row
+    stage, week = parse_round_name(round_name)
+    return {
+        "game_id": game_id,
+        "date": match_date,
+        "weekday": _weekday(match_date),
+        "start_time": start_time,
+        "venue": venue,
+        "stage": stage,
+        "week": week,
+        "home_team_id": home_id,
+        "away_team_id": away_id,
+        "sets": _set_pairs(scores),
+        "home_sets_won": home_sets_won,
+        "away_sets_won": away_sets_won,
+        "golden_set": None,
+    }
+
+
+def _attach_golden_sets(entries: list[dict], golden_rows: list[tuple]) -> None:
+    by_key: dict[tuple, list[dict]] = {}
+    for e in entries:
+        by_key.setdefault((e["date"], frozenset((e["home_team_id"], e["away_team_id"]))), []).append(e)
+    for game_id, match_date, home_id, away_id, home_pts, away_pts in golden_rows:
+        candidates = by_key.get((match_date, frozenset((home_id, away_id))), [])
+        if len(candidates) != 1:
+            raise ValueError(
+                f"黃金決勝局 game_id={game_id} 同日同隊的母場次有 {len(candidates)} 場，無法對應"
+            )
+        parent = candidates[0]
+        same_side = parent["home_team_id"] == home_id
+        parent["golden_set"] = [home_pts, away_pts] if same_side else [away_pts, home_pts]
+
+
+def _group_matches(conn: sqlite3.Connection, cup_id: int, gender: str) -> list[dict]:
+    rows = conn.execute(
+        """
+        SELECT game_id, match_date, start_time, venue, round_name,
+               home_team_id, away_team_id, home_sets_won, away_sets_won,
+               home_set1, home_set2, home_set3, home_set4, home_set5,
+               away_set1, away_set2, away_set3, away_set4, away_set5
+        FROM matches
+        WHERE cup_id = ? AND gender = ? AND is_golden_set = 0
+        ORDER BY match_date, game_id
+        """,
+        (cup_id, gender),
+    ).fetchall()
+    entries = [_match_entry(r) for r in rows]
+    golden_rows = conn.execute(
+        """
+        SELECT game_id, match_date, home_team_id, away_team_id, home_set1, away_set1
+        FROM matches
+        WHERE cup_id = ? AND gender = ? AND is_golden_set = 1
+        """,
+        (cup_id, gender),
+    ).fetchall()
+    _attach_golden_sets(entries, golden_rows)
+    return entries
+
+
+def _matches_payload(conn: sqlite3.Connection) -> dict:
+    cup_ids = [r[0] for r in conn.execute("SELECT cup_id FROM seasons ORDER BY cup_id")]
+    return {"matches": [
+        {"cup_id": cup_id, "group": group, "matches": _group_matches(conn, cup_id, gender)}
+        for cup_id in cup_ids
+        for gender, group in GROUP_BY_GENDER.items()
+    ]}
+
+
 def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -197,6 +290,7 @@ def export_site_data(db_path: Path, out_dir: Path) -> None:
         _write_json(out_dir / "seasons.json", _seasons_payload(conn))
         _write_json(out_dir / "teams.json", _teams_payload(conn))
         _write_json(out_dir / "standings.json", _standings_payload(conn))
+        _write_json(out_dir / "matches.json", _matches_payload(conn))
     finally:
         conn.close()
 
