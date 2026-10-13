@@ -1,15 +1,69 @@
+/* 設計 token：唯一來源。規範與依據見 docs/design-system.md */
 :root {
-	--bg: #f6f6f4;
+	/* 中性色 */
+	--bg: #f2f3f5;
 	--surface: #ffffff;
-	--text: #1c1c1a;
-	--text-muted: #5f5f5a;
-	--line: #d9d9d4;
-	--focus: #1c1c1a;
+	--text: #15171a;
+	--text-muted: #5b6168;
+	--line: #c8ccd2;
+	/* 動作與強調：不用品牌色相，彩色留給隊色 */
+	--accent: #15171a;
+	--on-accent: #ffffff;
+	--focus: #15171a;
+	/* 語意色 */
+	--win: #15803d;
+	--loss: #b91c1c;
+	--warn: #b45309;
+	--warn-tint: #fef3c7;
+	--warn-ink: #78350f;
+
+	/* 字級階梯：正文最小 16px；sm 只給日期、場館、欄名這類附註 */
+	--text-sm: 0.875rem;
+	--text-md: 1rem;
+	--text-lg: 1.125rem;
+	--text-xl: 1.375rem;
+	/* 數字專用階梯 */
+	--num-md: 1.5rem;
+	--num-lg: 2.25rem;
+	--num-xl: 3.25rem;
+	--weight-num: 800;
+
+	/* 間距：4px 基準 */
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.5rem;
+	--space-6: 2rem;
+	--space-7: 3rem;
+	/* 圓角：卡片 md、小標籤 sm、圓形 full */
+	--radius-sm: 0.5rem;
+	--radius-md: 1rem;
+	--radius-full: 999px;
+
 	--font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans TC', 'PingFang TC',
 		'Microsoft JhengHei', sans-serif;
 	--measure: 40rem;
 	--tap: 2.75rem;
-	color-scheme: light;
+	color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #121417;
+		--surface: #1c1f23;
+		--text: #eceef0;
+		--text-muted: #a3a9b1;
+		--line: #3a4048;
+		--accent: #eceef0;
+		--on-accent: #121417;
+		--focus: #eceef0;
+		--win: #4ade80;
+		--loss: #f87171;
+		--warn: #fbbf24;
+		--warn-tint: #3a2a0a;
+		--warn-ink: #fde68a;
+	}
 }
 
 * {
@@ -18,12 +72,15 @@
 
 html {
 	font-family: var(--font);
+	font-size: 100%;
 	line-height: 1.5;
+	font-variant-numeric: tabular-nums;
 	-webkit-text-size-adjust: 100%;
 }
 
 body {
 	margin: 0;
+	font-size: var(--text-md);
 	background: var(--bg);
 	color: var(--text);
 }
@@ -44,8 +101,41 @@ a {
 }
 
 h1,
-h2 {
+h2,
+h3 {
 	margin: 0;
-	font-weight: 600;
+	font-weight: 700;
 	text-wrap: balance;
+}
+
+h1 {
+	font-size: var(--text-xl);
+}
+
+h2 {
+	font-size: var(--text-lg);
+}
+
+h3 {
+	font-size: var(--text-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+	}
+}
+
+/* 隊色文字：元件只讀 --team-ink，模式切換由 CSS 處理 */
+[style*='--team-ink-light'] {
+	--team-ink: var(--team-ink-light);
+}
+
+@media (prefers-color-scheme: dark) {
+	[style*='--team-ink-light'] {
+		--team-ink: var(--team-ink-dark);
+	}
 }

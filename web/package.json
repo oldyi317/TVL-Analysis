@@ -13,7 +13,8 @@
 		"check": "npm run gen && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test:e2e": "npm run build && playwright test",
-		"test": "npm run test:e2e"
+		"test": "npm run test:unit && npm run test:e2e",
+		"test:unit": "vitest run"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.60.0",
@@ -27,9 +28,13 @@
 		"svelte": "^5.57.1",
 		"svelte-check": "^4.6.0",
 		"typescript": "^6.0.3",
-		"vite": "^8.3.0"
+		"vite": "^8.3.0",
+		"vitest": "5.0.4"
 	},
 	"imports": {
 		"#lib/*": "./src/lib/*"
+	},
+	"dependencies": {
+		"echarts": "6.1.0"
 	}
 }
