@@ -1,0 +1,53 @@
+# 靜態站：push 到 main 時匯出 JSON、建置 SvelteKit、部署到 GitHub Pages。
+# 與 daily-crawl.yml（自架 runner 爬蟲）分開；爬蟲 push .db 後會自然觸發本 workflow 重建。
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: 匯出賽季與球隊 JSON
+        run: python -m src.export.site_data
+      - name: 安裝前端依賴
+        working-directory: web
+        run: npm ci
+      - name: 建置靜態站（含 schema 驗證與型別產生）
+        working-directory: web
+        run: npm run build
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: web/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
