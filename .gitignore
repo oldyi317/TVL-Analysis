@@ -10,3 +10,6 @@ data/db/*
 .DS_Store
 .claude/
 .history/
+
+# 靜態站匯出資料與產生的型別（由 src.export.site_data 與 web/ 的 gen 腳本產生）
+web/src/lib/data/

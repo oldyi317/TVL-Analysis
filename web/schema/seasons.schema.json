@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "seasons.schema.json",
+  "title": "SeasonsData",
+  "description": "賽季清單與當季；由 src.export.site_data 產出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["current_cup_id", "seasons"],
+  "properties": {
+    "current_cup_id": { "type": "integer" },
+    "seasons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "title": "Season",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cup_id", "name", "start_date", "end_date"],
+        "properties": {
+          "cup_id": { "type": "integer" },
+          "name": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+          "start_date": { "type": "string", "format": "date" },
+          "end_date": { "type": "string", "format": "date" }
+        }
+      }
+    }
+  }
+}
