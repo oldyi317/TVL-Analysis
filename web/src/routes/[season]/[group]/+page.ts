@@ -1,9 +1,8 @@
 import { error } from '@sveltejs/kit';
-import { GROUPS, findSeason, isGroup, seasons, teamsIn } from '#lib/site.js';
+import { findSeason, isGroup, seasonGroupEntries, teamsIn } from '#lib/site.js';
 import type { EntryGenerator, PageLoad } from './$types';
 
-export const entries: EntryGenerator = () =>
-	seasons.flatMap((season) => GROUPS.map((group) => ({ season: season.name, group })));
+export const entries: EntryGenerator = seasonGroupEntries;
 
 export const load: PageLoad = ({ params }) => {
 	const season = findSeason(params.season);

@@ -1,4 +1,5 @@
 import json
+import math
 import sqlite3
 from pathlib import Path
 
@@ -7,6 +8,9 @@ from src.utils.db_config import DB_PATH, PROJECT_ROOT, get_connection
 DEFAULT_OUT_DIR = PROJECT_ROOT / "web" / "src" / "lib" / "data"
 GROUP_BY_GENDER = {"M": "men", "F": "women"}
 GROUP_ORDER = list(GROUP_BY_GENDER.values())
+STANDINGS_NOTES = {(20, "F"): "2024-25 女子組官網只收錄 8 場賽事，戰績不完整"}
+SET_RECORD_POINTS = {(3, 0): 3, (3, 1): 3, (3, 2): 2, (2, 3): 1}
+SET_RECORD_KEYS = ["3-0", "3-1", "3-2", "2-3", "1-3", "0-3"]
 
 
 def _seasons_payload(conn: sqlite3.Connection) -> dict:
@@ -61,6 +65,124 @@ def _teams_payload(conn: sqlite3.Connection) -> dict:
     return {"teams": teams}
 
 
+def _ratio(numerator: int, denominator: int) -> float | None:
+    if denominator == 0:
+        return None
+    return numerator / denominator
+
+
+def _rounded(value: float | None) -> float | None:
+    return None if value is None else round(value, 3)
+
+
+def _new_tally() -> dict:
+    return {
+        "wins": 0, "losses": 0, "points": 0, "sets_won": 0, "sets_lost": 0,
+        "points_for": 0, "points_against": 0, "results": [],
+        "set_record": dict.fromkeys(SET_RECORD_KEYS, 0),
+    }
+
+
+def _add_result(tally: dict, own_sets: int, opp_sets: int, own_pts: int, opp_pts: int) -> None:
+    won = own_sets > opp_sets
+    tally["wins" if won else "losses"] += 1
+    tally["points"] += SET_RECORD_POINTS.get((own_sets, opp_sets), 0)
+    tally["sets_won"] += own_sets
+    tally["sets_lost"] += opp_sets
+    tally["points_for"] += own_pts
+    tally["points_against"] += opp_pts
+    tally["results"].append("W" if won else "L")
+    key = f"{own_sets}-{opp_sets}"
+    if key in tally["set_record"]:
+        tally["set_record"][key] += 1
+
+
+def _set_points(values: tuple) -> int:
+    return sum(v for v in values if v is not None)
+
+
+def _group_tallies(conn: sqlite3.Connection, cup_id: int, gender: str) -> dict[int, dict]:
+    team_ids = conn.execute(
+        """
+        SELECT home_team_id FROM matches WHERE cup_id = ? AND gender = ? AND is_golden_set = 0
+        UNION
+        SELECT away_team_id FROM matches WHERE cup_id = ? AND gender = ? AND is_golden_set = 0
+        """,
+        (cup_id, gender, cup_id, gender),
+    ).fetchall()
+    tallies = {team_id: _new_tally() for (team_id,) in team_ids if team_id is not None}
+    games = conn.execute(
+        """
+        SELECT home_team_id, away_team_id, home_sets_won, away_sets_won,
+               home_set1, home_set2, home_set3, home_set4, home_set5,
+               away_set1, away_set2, away_set3, away_set4, away_set5
+        FROM matches
+        WHERE cup_id = ? AND gender = ? AND is_golden_set = 0 AND round_name LIKE '例行賽%'
+          AND home_sets_won IS NOT NULL AND away_sets_won IS NOT NULL
+        ORDER BY match_date, game_id
+        """,
+        (cup_id, gender),
+    ).fetchall()
+    for home, away, home_sets, away_sets, *scores in games:
+        if home is None or away is None:
+            continue
+        home_pts, away_pts = _set_points(tuple(scores[:5])), _set_points(tuple(scores[5:]))
+        _add_result(tallies[home], home_sets, away_sets, home_pts, away_pts)
+        _add_result(tallies[away], away_sets, home_sets, away_pts, home_pts)
+    return tallies
+
+
+def _inf_if_none(value: float | None) -> float:
+    return math.inf if value is None else value
+
+
+def _sort_key(team_id: int, tally: dict):
+    return (
+        -tally["wins"],
+        not tally["results"],
+        -tally["points"],
+        -_inf_if_none(_ratio(tally["sets_won"], tally["sets_lost"])),
+        -_inf_if_none(_ratio(tally["points_for"], tally["points_against"])),
+        team_id,
+    )
+
+
+def _standings_row(rank: int, team_id: int, tally: dict) -> dict:
+    played = tally["wins"] + tally["losses"]
+    return {
+        "rank": rank,
+        "team_id": team_id,
+        "wins": tally["wins"],
+        "losses": tally["losses"],
+        "win_pct": _rounded(_ratio(tally["wins"], played)),
+        "set_record": tally["set_record"],
+        "points": tally["points"],
+        "sets_won": tally["sets_won"],
+        "sets_lost": tally["sets_lost"],
+        "set_ratio": _rounded(_ratio(tally["sets_won"], tally["sets_lost"])),
+        "points_for": tally["points_for"],
+        "points_against": tally["points_against"],
+        "point_ratio": _rounded(_ratio(tally["points_for"], tally["points_against"])),
+        "last5": tally["results"][-5:],
+    }
+
+
+def _standings_payload(conn: sqlite3.Connection) -> dict:
+    cup_ids = [r[0] for r in conn.execute("SELECT cup_id FROM seasons ORDER BY cup_id")]
+    standings = []
+    for cup_id in cup_ids:
+        for gender, group in GROUP_BY_GENDER.items():
+            tallies = _group_tallies(conn, cup_id, gender)
+            ordered = sorted(tallies, key=lambda t: _sort_key(t, tallies[t]))
+            standings.append({
+                "cup_id": cup_id,
+                "group": group,
+                "note": STANDINGS_NOTES.get((cup_id, gender)),
+                "rows": [_standings_row(i, t, tallies[t]) for i, t in enumerate(ordered, 1)],
+            })
+    return {"standings": standings}
+
+
 def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -71,6 +193,7 @@ def export_site_data(db_path: Path, out_dir: Path) -> None:
     try:
         _write_json(out_dir / "seasons.json", _seasons_payload(conn))
         _write_json(out_dir / "teams.json", _teams_payload(conn))
+        _write_json(out_dir / "standings.json", _standings_payload(conn))
     finally:
         conn.close()
 

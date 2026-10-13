@@ -7,7 +7,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { compile } from 'json-schema-to-typescript';
 
-const DATASETS = ['seasons', 'teams'];
+const DATASETS = ['seasons', 'teams', 'standings'];
 const schemaDir = fileURLToPath(new URL('../schema/', import.meta.url));
 const dataDir = fileURLToPath(new URL('../src/lib/data/', import.meta.url));
 

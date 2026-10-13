@@ -1,5 +1,6 @@
 <script lang="ts">
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
+	import { resolve } from '$app/paths';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -11,6 +12,8 @@
 </svelte:head>
 
 <h1>{data.season.name} {GROUP_LABEL[data.group]} 球隊</h1>
+
+<a class="to-standings" href="{resolve('/[season]/[group]/standings', { season: data.season.name, group: data.group })}/">戰績</a>
 
 {#if data.teams.length === 0}
 	<p class="empty">這一季尚無球隊資料</p>
@@ -30,6 +33,14 @@
 		font-size: 1.375rem;
 		font-weight: 700;
 		margin-block: 1.5rem 0.75rem;
+	}
+
+	.to-standings {
+		display: inline-flex;
+		align-items: center;
+		min-block-size: var(--tap);
+		margin-block-end: var(--space-2);
+		font-weight: 500;
 	}
 
 	.teams {
