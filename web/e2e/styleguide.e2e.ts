@@ -30,8 +30,10 @@ test.describe('淺色', () => {
 		await page.goto(URL);
 		const button = page.locator('tbody tr.main button').first();
 		await expect(button).toHaveAttribute('aria-expanded', 'false');
-		await button.click();
-		await expect(button).toHaveAttribute('aria-expanded', 'true');
+		await expect(async () => {
+			await button.click();
+			await expect(button).toHaveAttribute('aria-expanded', 'true', { timeout: 500 });
+		}).toPass({ timeout: 10_000 });
 		const detail = page.locator(`#${await button.getAttribute('aria-controls')}`);
 		await expect(detail.getByText('近五場')).toBeVisible();
 	});

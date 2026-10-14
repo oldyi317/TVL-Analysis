@@ -29,6 +29,7 @@ export const GROUP_LABEL: Record<Group, string> = { men: '男子組', women: '�
 const seasonsData = seasonsJson as SeasonsData;
 export const seasons: readonly Season[] = seasonsData.seasons;
 export const teams: readonly Team[] = (teamsJson as TeamsData).teams;
+export const players: readonly PlayerEntry[] = (playersJson as PlayersData).players;
 
 const current = seasons.find((s) => s.cup_id === seasonsData.current_cup_id);
 if (!current) throw new Error(`seasons.json 的 current_cup_id ${seasonsData.current_cup_id} 不在賽季清單中`);
@@ -160,6 +161,17 @@ export function pickLatestWeek(weeks: readonly RosterWeek[]): RosterWeek | undef
 	}, undefined);
 }
 
+export function playerName(
+	group: Group,
+	playerId: number,
+	playerEntries: readonly PlayerEntry[]
+): string {
+	return (
+		playerEntries.find((e) => e.group === group && e.player_id === playerId)?.name ??
+		`球員 #${playerId}`
+	);
+}
+
 export function toRosterView(
 	week: RosterWeek,
 	group: Group,
@@ -170,9 +182,7 @@ export function toRosterView(
 		week_start_date: week.week_start_date,
 		players: week.players.map((p) => ({
 			player_id: p.player_id,
-			name:
-				playerEntries.find((e) => e.group === group && e.player_id === p.player_id)?.name ??
-				`球員 #${p.player_id}`,
+			name: playerName(group, p.player_id, playerEntries),
 			number: p.jersey_number,
 			position: p.position
 		}))
@@ -185,5 +195,5 @@ export function latestRoster(cupId: number, group: Group, teamId: number): Roste
 	);
 	const week = roster && pickLatestWeek(roster.weeks);
 	if (!week) return undefined;
-	return toRosterView(week, group, (playersJson as PlayersData).players);
+	return toRosterView(week, group, players);
 }
