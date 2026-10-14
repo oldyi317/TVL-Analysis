@@ -22,3 +22,9 @@ date: 2026-10-12
 - 舊 Streamlit 站在新站追平前凍結，只修會壞的 bug。追平點是第二期（球隊頁、球員頁、賽事詳情）完成。
 - 前端放在同一 repo 的 `web/`；匯出的 JSON 不進 git，由 CI 產生。
 - 組別與賽季進 URL 路徑（例如 `/2025-26/men/standings`），根路徑導向當季男子組。
+
+## 後續註記（2026-10-14）
+
+- 追平點於 2026-10-14 達成：#13 賽事詳情單場數據、#14 球隊頁、#16 球員進階數據已合併。
+- #17 下線動作：移除 `src/app`、`packages.txt` 與 streamlit/plotly/matplotlib/shap 依賴；README 與 CLAUDE.md 改指向 GitHub Pages 站。
+- Streamlit Cloud 的 app 待使用者自行刪除，刪除後在 #17 留言確認舊網址已失效。

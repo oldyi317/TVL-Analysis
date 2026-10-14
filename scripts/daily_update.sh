@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TVL 每日增量更新：爬蟲 → .db 邏輯內容有變更才 commit/push（觸發 Streamlit Cloud 重佈）
+# TVL 每日增量更新：爬蟲 → .db 邏輯內容有變更才 commit/push（push 後觸發 pages.yml 重建靜態站）
 # 本機驗證：DRY_RUN=1 bash scripts/daily_update.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."

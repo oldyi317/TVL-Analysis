@@ -1,13 +1,17 @@
 # TVL-Analysis
 
-台灣企業排球聯賽（TVL）數據分析：ETL 爬蟲 → SQLite → Streamlit 儀表板 + ML 賽果預測。
-公開部署於 Streamlit Cloud，繁體中文介面。
+台灣企業排球聯賽（TVL）數據分析：ETL 爬蟲 → SQLite → Python 匯出器 → SvelteKit 靜態站（GitHub Pages）+ ML 賽果預測。繁體中文介面。
 
 ## 常用指令
 
 ```bash
-# 啟動 app（從 repo 根目錄）
-streamlit run src/app/main.py
+# 靜態站（匯出器從 repo 根目錄跑）
+python -m src.export.site_data                   # 匯出 JSON 到 web/src/lib/data/
+cd web && npm run dev                            # 以下 npm 指令都在 web/ 下執行
+npm run build                                    # 建置到 web/build/
+npm run check                                    # 型別檢查
+npm run test:unit                                # 單元測試
+npm run test:e2e                                 # Playwright smoke（需先 build）
 
 # 爬蟲（皆從 repo 根目錄以 module 方式執行）
 python -m src.etl.crawler                        # 官網球員名單 → data/raw/
@@ -25,10 +29,11 @@ python -m src.models.train                       # 重訓賽果預測模型 → 
   沒有 `DROP TABLE`。`db_loader` 對 `teams`/`players` 是以自然鍵 upsert，會保留
   既有 `player_id`；`stats_crawler` 全量與增量模式皆為「補缺不清表」，去重鍵是
   `match_date + is_golden_set`（逐球員判斷）。
-- **`.db` 與 `.pkl` 是刻意 commit 進 git 的**：Streamlit Cloud 靠 repo 內的
-  `data/db/tvl_database.db` 與 `src/models/match_predictor_v2.pkl` 拿到資料與模型，
-  不要把它們加進 `.gitignore`。artifact 需含 `version`/`feature_cols`，app 對
-  未知版本會直接報錯，重訓務必走 `python -m src.models.train`，不要手動 pickle。
+- **`.db` 與 `.pkl` 是刻意 commit 進 git 的**：pages.yml 在雲端 runner 只
+  checkout repo 就跑匯出器建置，靠 repo 內的 `data/db/tvl_database.db`；
+  `src/models/match_predictor_v2.pkl` 供第三期賽前勝率匯出使用。
+  不要把它們加進 `.gitignore`。artifact 需含 `version`/`feature_cols`，
+  `tests/test_prediction_artifact.py` 鎖住合約（CI 不跑 pytest，本機要跑），重訓務必走 `python -m src.models.train`，不要手動 pickle。
 - **行尾一律 LF**：repo 在 WSL 的 `/mnt/d` 上，Windows 工具容易把檔案轉成 CRLF，
   會製造上萬行假 diff。commit 前用 `git diff --stat -w` 確認沒有純行尾雜訊。
 - **資料來源有兩個**：官網 `tvl.ctvba.org.tw`（名單、比分）與外部統計系統
@@ -50,8 +55,9 @@ python -m src.models.train                       # 重訓賽果預測模型 → 
   不要裸用 `sqlite3.connect()`。
 - Schema DDL 的唯一來源是 `sql/schema.sql`，爬蟲內不要重寫 CREATE TABLE。
 - UI 文案、註解、commit message 用繁體中文。
-- 部署依賴：`requirements.txt`（pip）與 `packages.txt`（Streamlit Cloud 的 apt
-  清單，目前只有中文字型）。改依賴要同時考慮 Streamlit Cloud 重建。
+- Python 依賴：`requirements.txt` 只服務自架 runner 的爬蟲與模型重訓；pages.yml
+  的匯出器只用標準庫、不裝 pip 套件，改匯出器時不要引入第三方套件。前端依賴在
+  `web/package.json`，改動要考慮 pages.yml 的 npm ci。
 
 ## 資料品質原則
 
