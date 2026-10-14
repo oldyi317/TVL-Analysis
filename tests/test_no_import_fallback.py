@@ -1,7 +1,6 @@
 from pathlib import Path
 
 ETL_DIR = Path(__file__).resolve().parents[1] / "src" / "etl"
-APP_DIR = Path(__file__).resolve().parents[1] / "src" / "app"
 
 FILES_TO_CHECK = [
     ETL_DIR / "db_loader.py",
@@ -9,7 +8,6 @@ FILES_TO_CHECK = [
     ETL_DIR / "cleaner.py",
     ETL_DIR / "match_crawler.py",
     ETL_DIR / "stats_crawler.py",
-    APP_DIR / "helpers.py",
 ]
 
 

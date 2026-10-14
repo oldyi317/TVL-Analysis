@@ -1,6 +1,6 @@
 """
 球隊層級特徵與真實勝負標籤（Phase 4）。
-不依賴 streamlit，訓練 script 與測試皆直接 import。
+訓練 script 與測試皆直接 import。
 """
 
 import pandas as pd

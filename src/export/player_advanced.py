@@ -1,6 +1,6 @@
 """球員進階數據的純函式：比率、PR 值與同位置分佈。
 
-匯出器與舊站 helper 共用這一處，不依賴 pandas / streamlit。
+匯出器用這一處，不依賴 pandas。
 輸入為球員某賽季的合計（games 與 13 項統計欄，欄名同 player_match_stats）。
 """
 from collections.abc import Iterable, Mapping, Sequence

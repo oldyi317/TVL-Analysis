@@ -1,55 +1,50 @@
-# TVL 企業排球聯賽數據分析儀表板
+# TVL 企業排球聯賽數據分析
 
-針對台灣企業排球聯賽（TVL）男女組賽事的數據爬取、清洗、儲存與視覺化分析系統。
+針對台灣企業排球聯賽（TVL）男女組賽事的數據爬取、清洗、儲存，並以靜態網站（GitHub Pages）呈現的數據系統。
 
 ## 功能特色
 
 - **資料爬取**：自動抓取 TVL 官網的球隊名單、球員資料與逐場技術統計（支援增量更新）
 - **資料清洗與載入**：標準化位置名稱、日期格式與數值欄位，寫入 SQLite 資料庫
 - **進階統計指標**：攻擊效率、同位置 PR 值、綜合防守到位率等 Proxy Metrics
-- **互動式儀表板**：Streamlit + Plotly 打造的五分頁視覺化分析介面
-- **賽事預測**：基於 XGBoost 的比賽結果預測模型，搭配 SHAP 特徵解釋
+- **球迷網站**：SvelteKit 靜態站 + ECharts，手機優先，每日爬蟲更新後自動重建部署到 GitHub Pages
+- **賽事預測**：基於 XGBoost 的比賽結果預測模型
 
-## 儀表板分頁
-> 🔗 **Live Demo**: [點此查看互動儀表板](https://tvl-analysis-jggmoeky3gnjrdbcc4kzrc.streamlit.app/)
+## 網站
+> 🔗 **Live Demo**: [點此查看網站](https://oldyi317.github.io/TVL-Analysis/)
 
-| 分頁 | 功能 |
+| 頁面 | 功能 |
 |------|------|
-| 球員個人深度 | KPI 卡片、雷達圖、逐場趨勢（依位置自動調整） |
-| 聯盟 PR 值與分佈 | 百分位排名、象限散佈圖（16 種指標可選） |
-| 逐場趨勢 | 熱力資料表、對戰對手績效分佈 |
-| 單場 Box Score | 雙方並列 Box Score、局比分、Top-10 排行 |
-| 賽果預測 | ML 滑桿模擬器、SHAP 戰術診斷圖 |
+| 首頁 | 最新比分卡、戰績摘要 |
+| 賽事 | 列表、月份跳轉、逐局比分與單場數據 |
+| 戰績 | 官方規則排序，手機精簡可展開 |
+| 球隊 | 當季戰績、賽事清單、當週登錄名單 |
+| 球員 | 基本資料、三大項、進階數據：PR 值、同位置分佈、逐場趨勢 |
 
 ## 專案結構
 
 ```
 TVL-Analysis/
 ├── src/
-│   ├── app/
-│   │   ├── main.py            # Streamlit 入口（路由 + sidebar）
-│   │   ├── helpers.py         # 共用函式（DB 查詢、指標計算、外部 API）
-│   │   └── tabs/              # 五個分頁模組
-│   │       ├── player_deep.py
-│   │       ├── league_pr.py
-│   │       ├── match_trend.py
-│   │       ├── box_score.py
-│   │       └── prediction.py
 │   ├── etl/                   # ETL 模組
 │   │   ├── crawler.py         # 球員名單爬蟲
 │   │   ├── stats_crawler.py   # 技術統計爬蟲（支援 --incremental）
 │   │   ├── cleaner.py         # 資料清洗
 │   │   └── db_loader.py       # 資料庫載入
+│   ├── export/                # 靜態站 JSON 匯出
+│   │   ├── site_data.py       # 靜態站 JSON 匯出器
+│   │   └── player_advanced.py # 球員進階數據純函式
 │   ├── models/                # ML 模型
 │   └── utils/
 │       ├── constants.py       # 共用常數（外部系統設定、隊伍對照表）
 │       ├── db_config.py       # SQLite 連線管理
 │       └── logger.py          # 統一日誌設定
+├── web/                       # SvelteKit 靜態站
 ├── data/
 │   ├── raw/                   # 原始爬取資料 (CSV)
 │   ├── processed/             # 清洗後資料
 │   └── db/                    # SQLite 資料庫
-├── notebooks/                 # 探索性分析（01_eda.ipynb）
+├── notebooks/                 # 探索性分析（01_eda.ipynb；需另外安裝 plotly、matplotlib、seaborn，不在 requirements.txt 內）
 ├── sql/
 │   └── schema.sql             # 資料庫 Schema（含效能索引）
 └── requirements.txt
@@ -110,13 +105,7 @@ python -m src.models.train
 
 以真實局數標籤重訓 XGBoost 賽果預測模型，產出 `src/models/match_predictor_v2.pkl`。
 
-### 啟動儀表板
-
-```bash
-streamlit run src/app/main.py
-```
-
-### 靜態站（web/）本機開發三步
+### 啟動網站（本機三步）
 
 靜態站以 SvelteKit 建置，部署在 GitHub Pages（push 到 `main` 由 `.github/workflows/pages.yml` 自動匯出、建置、部署）。本機開發：
 
@@ -150,10 +139,10 @@ npm run build
 
 - **爬蟲**：requests, BeautifulSoup
 - **資料處理**：Pandas, NumPy
-- **儀表板**：Streamlit
-- **視覺化**：Plotly, Matplotlib
+- **前端**：SvelteKit, ECharts
 - **資料庫**：SQLite
-- **ML**：XGBoost, scikit-learn, SHAP
+- **ML**：XGBoost, scikit-learn
+- **部署**：GitHub Pages（push main 自動建置）
 
 ## 資料品質原則
 
@@ -164,4 +153,4 @@ npm run build
 
 ## 開發者
 
-**小易** — 數據工程與儀表板開發
+**小易** — 數據工程與網站開發
