@@ -1,12 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import type { MatchEntry, PlayerEntry, RosterWeek, StandingsEntry } from '#lib/data/types.js';
+import playersJson from '#lib/data/players.json';
+import type {
+	MatchEntry,
+	PlayerEntry,
+	PlayersData,
+	RosterWeek,
+	StandingsEntry
+} from '#lib/data/types.js';
 import {
 	findMatch,
+	findPlayerSeason,
 	findSeason,
 	findTeam,
 	matchesFor,
 	pickLatestWeek,
+	playerDisplayName,
+	playerEntries,
 	playerName,
+	playersByTeam,
 	standingsFor,
 	teamEntries,
 	teamMatches,
@@ -210,5 +221,71 @@ describe('toRosterView', () => {
 		expect(view.week_label).toBe('Week 1');
 		expect(view.players.map((p) => p.name)).toEqual(['王小明', '球員 #2', '球員 #3']);
 		expect(view.players[1]).toMatchObject({ number: null, position: null });
+	});
+});
+
+const realPlayers = (playersJson as PlayersData).players;
+const CUP = 21;
+
+describe('playerEntries', () => {
+	it('每筆都對得到該季該組別的登錄，數量等於所有賽季登錄數', () => {
+		const entries = playerEntries();
+		for (const e of entries) {
+			const cupId = findSeason(e.season)!.cup_id;
+			expect(findPlayerSeason(cupId, e.group, Number(e.player))).toBeDefined();
+		}
+		expect(entries).toHaveLength(realPlayers.reduce((n, p) => n + p.seasons.length, 0));
+	});
+});
+
+describe('playersByTeam', () => {
+	const groups = playersByTeam(CUP, 'men');
+	it('球隊順序照 teams.json，隊內背號升冪且 null 排最後', () => {
+		expect(groups.length).toBeGreaterThan(0);
+		const order = groups.map((g) => teams.indexOf(g.team));
+		expect(order).toEqual([...order].sort((a, b) => a - b));
+		for (const g of groups) {
+			const nums = g.players.map((p) => p.number ?? Infinity);
+			expect(nums).toEqual([...nums].sort((a, b) => a - b));
+		}
+	});
+	it('球員總數等於該季該組別的登錄數', () => {
+		const expected = realPlayers.filter(
+			(p) => p.group === 'men' && p.seasons.some((s) => s.cup_id === CUP)
+		).length;
+		expect(groups.flatMap((g) => g.players)).toHaveLength(expected);
+	});
+	it('沒有登錄的賽季回空陣列', () => {
+		expect(playersByTeam(20, 'men')).toEqual([]);
+	});
+});
+
+describe('findPlayerSeason', () => {
+	const player = realPlayers.find((p) => p.seasons.some((s) => s.cup_id === CUP))!;
+	it('存在時回球員、該季資料與球隊', () => {
+		const found = findPlayerSeason(CUP, player.group, player.player_id);
+		expect(found?.player).toBe(player);
+		expect(found?.season.cup_id).toBe(CUP);
+		expect(found?.team.team_id).toBe(found?.season.team_id);
+	});
+	it('該季沒有登錄回 undefined', () => {
+		expect(findPlayerSeason(20, player.group, player.player_id)).toBeUndefined();
+	});
+	it('同一個 player_id 換組別不會拿到原本那位', () => {
+		const otherGroup = player.group === 'men' ? 'women' : 'men';
+		const other = findPlayerSeason(CUP, otherGroup, player.player_id);
+		expect(other === undefined || (other.player !== player && other.player.group === otherGroup)).toBe(
+			true
+		);
+	});
+	it('沒有這位球員回 undefined', () => {
+		expect(findPlayerSeason(CUP, player.group, -1)).toBeUndefined();
+	});
+});
+
+describe('playerDisplayName', () => {
+	it('有姓名用姓名，null 用備援名稱', () => {
+		expect(playerDisplayName({ player_id: 1, name: '王小明' })).toBe('王小明');
+		expect(playerDisplayName({ player_id: 2, name: null })).toBe('球員 #2');
 	});
 });

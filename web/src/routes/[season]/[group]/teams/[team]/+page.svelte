@@ -3,7 +3,7 @@
 	import BigStat from '#lib/components/BigStat.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import MatchLink from '#lib/components/MatchLink.svelte';
-	import PlayerCard from '#lib/components/PlayerCard.svelte';
+	import PlayerLink from '#lib/components/PlayerLink.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import { stageLabel } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
@@ -73,7 +73,9 @@
 	</p>
 	<ul class="players">
 		{#each data.roster.players as player (player.player_id)}
-			<li><PlayerCard player={{ ...player, team }} /></li>
+			<li>
+				<PlayerLink season={data.season.name} group={data.group} player={{ ...player, team }} />
+			</li>
 		{/each}
 	</ul>
 {:else}
