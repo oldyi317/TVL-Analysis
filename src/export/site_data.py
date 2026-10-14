@@ -5,7 +5,9 @@ import re
 import sqlite3
 from datetime import date
 from pathlib import Path
+from statistics import median
 
+from src.export.player_advanced import compute_advanced, distributions
 from src.utils.db_config import DB_PATH, PROJECT_ROOT, get_connection
 from src.utils.teams import UnknownTeamError, resolve_team
 
@@ -347,6 +349,60 @@ def _players_payload(conn: sqlite3.Connection) -> dict:
     return {"players": players}
 
 
+def _advanced_scopes(conn: sqlite3.Connection) -> list[tuple[int, str, list[dict]]]:
+    """有統計列的球員賽季合計，依 (賽季, 組別) 分池，池內依 player_id 排序。"""
+    genders = dict(conn.execute("SELECT player_id, gender FROM players"))
+    scopes: dict[tuple[int, str], list[dict]] = {}
+    for player_id, seasons in _player_seasons(conn).items():
+        for season in seasons:
+            if season["games"] == 0:
+                continue
+            scopes.setdefault((season["cup_id"], genders[player_id]), []).append({"player_id": player_id, **season})
+    ordered = sorted(scopes, key=lambda scope: (scope[0], GROUP_ORDER.index(GROUP_BY_GENDER[scope[1]])))
+    return [(cup_id, gender, sorted(scopes[(cup_id, gender)], key=lambda r: r["player_id"])) for cup_id, gender in ordered]
+
+
+def _advanced_entry(cup_id: int, group: str, result: dict) -> dict:
+    return {
+        "player_id": result["player_id"],
+        "cup_id": cup_id,
+        "group": group,
+        "position": result["position"],
+        "games": result["games"],
+        "sets_played": result["sets_played"],
+        "insufficient_sets": result["insufficient_sets"],
+        "ratios": {key: round(value, 2) for key, value in result["ratios"].items()},
+        "pr": result["pr"],
+    }
+
+
+def _distribution_entry(cup_id: int, group: str, position: str, metrics: dict[str, list[float]]) -> dict:
+    return {
+        "cup_id": cup_id,
+        "group": group,
+        "position": position,
+        "player_count": len(metrics["attack_success_rate"]),
+        "metrics": {
+            key: {"median": round(median(values), 2), "values": [round(v, 2) for v in values]}
+            for key, values in metrics.items()
+        },
+    }
+
+
+def _player_advanced_payload(conn: sqlite3.Connection) -> dict:
+    players: list[dict] = []
+    dists: list[dict] = []
+    for cup_id, gender, rows in _advanced_scopes(conn):
+        group = GROUP_BY_GENDER[gender]
+        results = compute_advanced(rows)
+        players.extend(_advanced_entry(cup_id, group, r) for r in results)
+        dists.extend(
+            _distribution_entry(cup_id, group, position, metrics)
+            for position, metrics in sorted(distributions(results).items())
+        )
+    return {"players": players, "distributions": dists}
+
+
 def _rosters_payload(conn: sqlite3.Connection) -> dict:
     rows = conn.execute(
         """
@@ -488,6 +544,7 @@ def export_site_data(db_path: Path, out_dir: Path) -> None:
         _write_json(out_dir / "standings.json", _standings_payload(conn))
         _write_json(out_dir / "matches.json", _matches_payload(conn))
         _write_json(out_dir / "players.json", _players_payload(conn))
+        _write_json(out_dir / "player_advanced.json", _player_advanced_payload(conn))
         _write_json(out_dir / "rosters.json", _rosters_payload(conn))
         _write_json(out_dir / "box_scores.json", _box_scores_payload(conn))
     finally:

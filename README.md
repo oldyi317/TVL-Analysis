@@ -122,8 +122,9 @@ streamlit run src/app/main.py
 
 ```bash
 # 1. 匯出 JSON（從 repo 根目錄；輸出到 web/src/lib/data/，不進 git）
-#    產出 seasons、teams、standings、matches、players、rosters、box_scores 七份，
-#    球員 JSON 內含各賽季合計，單場數據以賽事編號為鍵；統計列對不回賽事會印警告並排除
+#    產出 seasons、teams、standings、matches、players、player_advanced、rosters、box_scores 八份，
+#    球員 JSON 內含各賽季合計，進階數據 JSON 含每季比率、同位置 PR 值與分佈，
+#    單場數據以賽事編號為鍵；統計列對不回賽事會印警告並排除
 python3 -m src.export.site_data
 
 # 2. dev server（會先驗證 JSON 符合 web/schema 並產生 TypeScript 型別）
