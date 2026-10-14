@@ -6,6 +6,7 @@ import {
 	findTeam,
 	matchesFor,
 	pickLatestWeek,
+	playerName,
 	standingsFor,
 	teamEntries,
 	teamMatches,
@@ -176,6 +177,16 @@ describe('pickLatestWeek', () => {
 	});
 	it('空陣列回 undefined', () => {
 		expect(pickLatestWeek([])).toBeUndefined();
+	});
+});
+
+describe('playerName', () => {
+	const entries = [{ player_id: 1, group: 'men', name: '王小明' }, { player_id: 2, group: 'men', name: null }] as PlayerEntry[];
+
+	it('依 group 與 player_id 找姓名，找不到或姓名為空用 fallback', () => {
+		expect(playerName('men', 1, entries)).toBe('王小明');
+		expect(playerName('women', 1, entries)).toBe('球員 #1');
+		expect(playerName('men', 2, entries)).toBe('球員 #2');
 	});
 });
 

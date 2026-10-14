@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import BoxScoreTable from '#lib/components/BoxScoreTable.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import MatchCard from '#lib/components/MatchCard.svelte';
+	import type { BoxRow } from '#lib/boxScore.js';
 	import { stageLabel } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
@@ -16,6 +18,13 @@
 		`${resolve('/[season]/[group]/matches', { season: data.season.name, group: data.group })}/#m-${match.date.slice(0, 7)}`
 	);
 </script>
+
+{#snippet sideTables(sides: { home: BoxRow[]; away: BoxRow[] }, suffix: string)}
+	<h3>{match.home.short_name}</h3>
+	<BoxScoreTable rows={sides.home} label="{match.home.short_name} {suffix}" />
+	<h3>{match.away.short_name}</h3>
+	<BoxScoreTable rows={sides.away} label="{match.away.short_name} {suffix}" />
+{/snippet}
 
 <svelte:head>
 	<title>{match.home.short_name} 對 {match.away.short_name} {match.date}｜{data.season.name} {GROUP_LABEL[data.group]} 賽事｜TVL 數據</title>
@@ -67,11 +76,21 @@
 	{#if match.golden_set}
 		<p class="basis">黃金決勝局是總決賽加打的單局，不計入局數與戰績</p>
 	{/if}
+
+	<h2>單場數據</h2>
+	{#if data.boxScore}
+		{@render sideTables(data.boxScore, '單場數據')}
+		<p class="basis">接發、防守、舉球欄為「到位／次數」</p>
+		{#if data.boxScore.golden_set}
+			<h2>黃金決勝局數據</h2>
+			{@render sideTables(data.boxScore.golden_set, '黃金決勝局數據')}
+		{/if}
+	{:else}
+		<EmptyState title="這場沒有單場數據" hint="資料來源沒有提供這場的技術統計" />
+	{/if}
 {:else}
 	<EmptyState title="這場還沒開打" hint="開打後會有逐局比分" />
 {/if}
-
-<!-- 單場數據（第二期）：放在逐局比分下方 -->
 
 <style>
 	.back {
@@ -97,6 +116,12 @@
 		font-size: var(--text-lg);
 		font-weight: 700;
 		margin-block: var(--space-6) var(--space-3);
+	}
+
+	h3 {
+		font-size: var(--text-md);
+		font-weight: 700;
+		margin-block: var(--space-4) var(--space-2);
 	}
 
 	table {

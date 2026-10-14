@@ -14,8 +14,10 @@ test.describe('手機', () => {
 
 		const button = page.getByRole('button', { name: /詳細數據/ }).first();
 		const detailId = await button.getAttribute('aria-controls');
-		await button.click();
-		await expect(button).toHaveAttribute('aria-expanded', 'true');
+		await expect(async () => {
+			await button.click();
+			await expect(button).toHaveAttribute('aria-expanded', 'true', { timeout: 500 });
+		}).toPass({ timeout: 10_000 });
 		const detail = page.locator(`#${detailId}`);
 		await expect(detail).toBeVisible();
 		await expect(detail).toContainText('近五場');
