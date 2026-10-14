@@ -11,11 +11,10 @@
 		{ label: '賽事', href: `${base}matches/`, section: 'matches' },
 		{ label: '戰績', href: `${base}standings/`, section: 'standings' },
 		{ label: '球隊', href: `${base}teams/`, section: 'teams' },
-		{ label: '球員', href: `${base}teams/`, section: 'players' }
+		{ label: '球員', href: `${base}players/`, section: 'players' }
 	]);
 
 	function isCurrent(section: string): boolean {
-		if (section === 'players') return false;
 		const rest = page.url.pathname.slice(base.length);
 		return section === '' ? rest === '' : rest === `${section}/` || rest.startsWith(`${section}/`);
 	}

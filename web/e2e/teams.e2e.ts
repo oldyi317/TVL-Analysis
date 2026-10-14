@@ -1,15 +1,18 @@
-import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { BASE, currentSeason as current, seasonsData } from './helpers.js';
+import {
+	BASE,
+	currentSeason as current,
+	OLD_CUP,
+	OLD_SEASON,
+	readJson,
+	seasonsData
+} from './helpers.js';
 
 type Team = { team_id: number; group: string; is_active: boolean; cup_ids: number[] };
-const readJson = (name: string) => JSON.parse(readFileSync(`src/lib/data/${name}.json`, 'utf8'));
 const teams: Team[] = readJson('teams').teams;
 const matchGroups = readJson('matches').matches;
 const rosters = readJson('rosters').rosters;
 const currentCup: number = seasonsData.current_cup_id;
-const OLD_CUP = 20;
-const OLD_SEASON = '2024-25';
 
 const standings = readJson('standings').standings;
 

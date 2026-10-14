@@ -11,6 +11,7 @@ import type {
 	MatchEntry,
 	MatchesData,
 	PlayerEntry,
+	PlayerSeason,
 	PlayersData,
 	RosterWeek,
 	RostersData,
@@ -161,32 +162,97 @@ export function pickLatestWeek(weeks: readonly RosterWeek[]): RosterWeek | undef
 	}, undefined);
 }
 
+export function playerDisplayName(player: { player_id: number; name: string | null }): string {
+	return player.name ?? `球員 #${player.player_id}`;
+}
+
 export function playerName(
 	group: Group,
 	playerId: number,
-	playerEntries: readonly PlayerEntry[]
+	entries: readonly PlayerEntry[]
 ): string {
-	return (
-		playerEntries.find((e) => e.group === group && e.player_id === playerId)?.name ??
-		`球員 #${playerId}`
-	);
+	const entry = entries.find((e) => e.group === group && e.player_id === playerId);
+	return playerDisplayName(entry ?? { player_id: playerId, name: null });
 }
 
 export function toRosterView(
 	week: RosterWeek,
 	group: Group,
-	playerEntries: readonly PlayerEntry[]
+	entries: readonly PlayerEntry[]
 ): RosterView {
 	return {
 		week_label: week.week_label,
 		week_start_date: week.week_start_date,
 		players: week.players.map((p) => ({
 			player_id: p.player_id,
-			name: playerName(group, p.player_id, playerEntries),
+			name: playerName(group, p.player_id, entries),
 			number: p.jersey_number,
 			position: p.position
 		}))
 	};
+}
+
+function registeredIn(cupId: number, group: Group): PlayerEntry[] {
+	return players.filter((p) => p.group === group && p.seasons.some((s) => s.cup_id === cupId));
+}
+
+export function playerEntries(): { season: string; group: Group; player: string }[] {
+	return seasonGroupEntries().flatMap(({ season, group }) => {
+		const cupId = findSeason(season)?.cup_id;
+		if (cupId === undefined) return [];
+		return registeredIn(cupId, group).map((p) => ({ season, group, player: String(p.player_id) }));
+	});
+}
+
+export function findPlayerSeason(
+	cupId: number,
+	group: Group,
+	playerId: number
+): { player: PlayerEntry; season: PlayerSeason; team: Team } | undefined {
+	const player = players.find((p) => p.group === group && p.player_id === playerId);
+	return player && withSeason(player, cupId);
+}
+
+function withSeason(
+	player: PlayerEntry,
+	cupId: number
+): { player: PlayerEntry; season: PlayerSeason; team: Team } | undefined {
+	const season = player.seasons.find((s) => s.cup_id === cupId);
+	const team = season && teams.find((t) => t.group === player.group && t.team_id === season.team_id);
+	if (!season || !team) return undefined;
+	return { player, season, team };
+}
+
+function byNumberThenName(a: RosterCardPlayer, b: RosterCardPlayer): number {
+	return (
+		(a.number ?? Infinity) - (b.number ?? Infinity) || a.name.localeCompare(b.name, 'zh-Hant')
+	);
+}
+
+export function playersByTeam(
+	cupId: number,
+	group: Group
+): { team: Team; players: RosterCardPlayer[] }[] {
+	const rows = registeredIn(cupId, group).flatMap((p) => {
+		const found = withSeason(p, cupId);
+		if (!found) return [];
+		const card: RosterCardPlayer = {
+			player_id: p.player_id,
+			name: playerDisplayName(p),
+			number: found.season.jersey_number,
+			position: found.season.position
+		};
+		return [{ team: found.team, card }];
+	});
+	return teams
+		.map((team) => ({
+			team,
+			players: rows
+				.filter((r) => r.team === team)
+				.map((r) => r.card)
+				.sort(byNumberThenName)
+		}))
+		.filter((g) => g.players.length > 0);
 }
 
 export function latestRoster(cupId: number, group: Group, teamId: number): RosterView | undefined {
