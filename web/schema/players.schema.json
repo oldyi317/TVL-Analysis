@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "players.schema.json",
+  "title": "PlayersData",
+  "description": "球員身分與各賽季合計（含黃金決勝局列；以 DB 統計列為準）；由 src.export.site_data 產出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["players"],
+  "properties": {
+    "players": {
+      "type": "array",
+      "items": {
+        "title": "PlayerEntry",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["player_id", "group", "name", "dob", "height_cm", "weight_kg", "seasons"],
+        "properties": {
+          "player_id": { "type": "integer" },
+          "group": { "type": "string", "enum": ["men", "women"] },
+          "name": { "type": ["string", "null"] },
+          "dob": { "type": ["string", "null"], "format": "date" },
+          "height_cm": { "type": ["number", "null"] },
+          "weight_kg": { "type": ["number", "null"] },
+          "seasons": {
+            "type": "array",
+            "items": {
+              "title": "PlayerSeason",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "cup_id", "team_id", "jersey_number", "position", "games",
+                "sets_played", "attack_total", "attack_points", "block_points",
+                "serve_total", "serve_points", "receive_total", "receive_excellent",
+                "dig_total", "dig_excellent", "set_total", "set_excellent", "total_points"
+              ],
+              "properties": {
+                "cup_id": { "type": "integer" },
+                "team_id": { "type": "integer" },
+                "jersey_number": { "type": ["integer", "null"], "description": "該季最新一筆登錄的背號" },
+                "position": { "type": ["string", "null"], "description": "該季最新一筆登錄的位置" },
+                "games": { "type": "integer", "minimum": 0, "description": "該季統計列數，黃金決勝局列也算一場" },
+                "sets_played": { "type": "integer" },
+                "attack_total": { "type": "integer" },
+                "attack_points": { "type": "integer" },
+                "block_points": { "type": "integer" },
+                "serve_total": { "type": "integer" },
+                "serve_points": { "type": "integer" },
+                "receive_total": { "type": "integer" },
+                "receive_excellent": { "type": "integer" },
+                "dig_total": { "type": "integer" },
+                "dig_excellent": { "type": "integer" },
+                "set_total": { "type": "integer" },
+                "set_excellent": { "type": "integer" },
+                "total_points": { "type": "integer" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

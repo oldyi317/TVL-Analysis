@@ -122,6 +122,8 @@ streamlit run src/app/main.py
 
 ```bash
 # 1. 匯出 JSON（從 repo 根目錄；輸出到 web/src/lib/data/，不進 git）
+#    產出 seasons、teams、standings、matches、players、rosters、box_scores 七份，
+#    球員 JSON 內含各賽季合計，單場數據以賽事編號為鍵；統計列對不回賽事會印警告並排除
 python3 -m src.export.site_data
 
 # 2. dev server（會先驗證 JSON 符合 web/schema 並產生 TypeScript 型別）
@@ -131,7 +133,7 @@ cd web && npm ci && npm run dev
 npm run build
 ```
 
-其他：`npm run check` 跑型別檢查；`npm run test:e2e` 以手機視窗對建置產物跑 Playwright smoke（第一次先 `npx playwright install chromium`）；匯出器測試 `pytest tests/test_export_site_data.py tests/test_export_standings.py tests/test_export_matches.py`。
+其他：`npm run check` 跑型別檢查；`npm run test:e2e` 以手機視窗對建置產物跑 Playwright smoke（第一次先 `npx playwright install chromium`）；匯出器測試 `pytest tests/test_export_*.py`。
 
 ## 位置代號對照
 

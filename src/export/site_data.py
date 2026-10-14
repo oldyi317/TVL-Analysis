@@ -1,4 +1,5 @@
 import json
+import logging
 import math
 import re
 import sqlite3
@@ -6,6 +7,7 @@ from datetime import date
 from pathlib import Path
 
 from src.utils.db_config import DB_PATH, PROJECT_ROOT, get_connection
+from src.utils.teams import UnknownTeamError, resolve_team
 
 DEFAULT_OUT_DIR = PROJECT_ROOT / "web" / "src" / "lib" / "data"
 GROUP_BY_GENDER = {"M": "men", "F": "women"}
@@ -18,6 +20,13 @@ SET_RECORD_POINTS = {(3, 0): 3, (3, 1): 3, (3, 2): 2, (2, 3): 1}
 SET_RECORD_KEYS = ["3-0", "3-1", "3-2", "2-3", "1-3", "0-3"]
 WEEKDAYS = "一二三四五六日"
 ROUND_NAME = re.compile(r"^(\S+?)\s*Week\s*(\d+)$")
+STAT_FIELDS = [
+    "sets_played", "attack_total", "attack_points", "block_points", "serve_total", "serve_points",
+    "receive_total", "receive_excellent", "dig_total", "dig_excellent", "set_total", "set_excellent",
+    "total_points",
+]
+
+logger = logging.getLogger(__name__)
 
 
 def _seasons_payload(conn: sqlite3.Connection) -> dict:
@@ -279,6 +288,193 @@ def _matches_payload(conn: sqlite3.Connection) -> dict:
     ]}
 
 
+def _player_seasons(conn: sqlite3.Connection) -> dict[int, list[dict]]:
+    sums = ", ".join(f"COALESCE(SUM(s.{f}), 0)" for f in STAT_FIELDS)
+    totals = {
+        (player_id, cup_id): row
+        for player_id, cup_id, *row in conn.execute(
+            f"""
+            SELECT r.player_id, r.cup_id, COUNT(*), {sums}
+            FROM player_match_stats s
+            JOIN roster_registrations r ON r.registration_id = s.registration_id
+            GROUP BY r.player_id, r.cup_id
+            """
+        )
+    }
+    latest = conn.execute(
+        """
+        SELECT player_id, cup_id, team_id, jersey_number, position
+        FROM roster_registrations
+        ORDER BY player_id, cup_id, week_start_date IS NULL, week_start_date DESC, registration_id DESC
+        """
+    ).fetchall()
+    seasons: dict[int, list[dict]] = {}
+    seen: set[tuple[int, int]] = set()
+    for player_id, cup_id, team_id, jersey, position in latest:
+        if (player_id, cup_id) in seen:
+            continue
+        seen.add((player_id, cup_id))
+        games, *stats = totals.get((player_id, cup_id), [0] + [0] * len(STAT_FIELDS))
+        seasons.setdefault(player_id, []).append({
+            "cup_id": cup_id,
+            "team_id": team_id,
+            "jersey_number": jersey,
+            "position": position,
+            "games": games,
+            **dict(zip(STAT_FIELDS, stats)),
+        })
+    return seasons
+
+
+def _players_payload(conn: sqlite3.Connection) -> dict:
+    seasons = _player_seasons(conn)
+    rows = conn.execute(
+        "SELECT player_id, gender, name, dob, height_cm, weight_kg FROM players ORDER BY player_id"
+    ).fetchall()
+    players = [
+        {
+            "player_id": player_id,
+            "group": GROUP_BY_GENDER[gender],
+            "name": name,
+            "dob": dob,
+            "height_cm": height,
+            "weight_kg": weight,
+            "seasons": seasons.get(player_id, []),
+        }
+        for player_id, gender, name, dob, height, weight in rows
+    ]
+    players.sort(key=lambda p: GROUP_ORDER.index(p["group"]))
+    return {"players": players}
+
+
+def _rosters_payload(conn: sqlite3.Connection) -> dict:
+    rows = conn.execute(
+        """
+        SELECT cup_id, gender, team_id, week_label, week_start_date,
+               player_id, jersey_number, position, source
+        FROM roster_registrations
+        ORDER BY cup_id, gender, team_id, week_start_date IS NULL, week_start_date, week_label,
+                 jersey_number IS NULL, jersey_number, player_id
+        """
+    ).fetchall()
+    rosters: dict[tuple, dict] = {}
+    weeks: dict[tuple, dict] = {}
+    for cup_id, gender, team_id, label, start, player_id, jersey, position, source in rows:
+        team_key = (cup_id, gender, team_id)
+        if team_key not in rosters:
+            rosters[team_key] = {
+                "cup_id": cup_id, "group": GROUP_BY_GENDER[gender], "team_id": team_id, "weeks": [],
+            }
+        week_key = (*team_key, label, start)
+        if week_key not in weeks:
+            weeks[week_key] = {"week_label": label, "week_start_date": start, "players": []}
+            rosters[team_key]["weeks"].append(weeks[week_key])
+        weeks[week_key]["players"].append(
+            {"player_id": player_id, "jersey_number": jersey, "position": position, "source": source}
+        )
+    ordered = sorted(rosters.values(), key=lambda r: (r["cup_id"], GROUP_ORDER.index(r["group"]), r["team_id"]))
+    return {"rosters": ordered}
+
+
+def _resolve_opponents(conn: sqlite3.Connection) -> dict[str, tuple[int, str] | None]:
+    names = [r[0] for r in conn.execute("SELECT DISTINCT opponent FROM player_match_stats")]
+    resolved: dict[str, tuple[int, str] | None] = {}
+    for name in names:
+        try:
+            resolved[name] = resolve_team(conn, name)
+        except UnknownTeamError:
+            resolved[name] = None
+    return resolved
+
+
+def _parent_matches(conn: sqlite3.Connection) -> dict[tuple, list[tuple]]:
+    matches: dict[tuple, list[tuple]] = {}
+    for cup_id, game_id, gender, match_date, home_id, away_id in conn.execute(
+        """
+        SELECT cup_id, game_id, gender, match_date, home_team_id, away_team_id
+        FROM matches WHERE is_golden_set = 0 AND home_team_id IS NOT NULL AND away_team_id IS NOT NULL
+        """
+    ):
+        key = (match_date, gender, frozenset((home_id, away_id)))
+        matches.setdefault(key, []).append((cup_id, game_id, match_date, home_id))
+    return matches
+
+
+def _match_for_stat(matches: dict, opponents: dict, match_date: str, team_id: int, gender: str,
+                    opponent: str) -> tuple[tuple | None, str | None]:
+    opp = opponents.get(opponent)
+    if opp is None:
+        return None, "對手隊名無法解析"
+    opp_team_id, opp_gender = opp
+    if opp_gender != gender:
+        return None, "對手組別與登錄組別不符"
+    found = matches.get((match_date, gender, frozenset((team_id, opp_team_id))), [])
+    if len(found) != 1:
+        return None, f"對不回賽事（符合 {len(found)} 場）"
+    return found[0], None
+
+
+def _stat_entry(player_id: int, team_id: int, jersey, position, *values) -> dict:
+    return {
+        "player_id": player_id, "team_id": team_id, "jersey_number": jersey, "position": position,
+        **dict(zip(STAT_FIELDS, values)),
+    }
+
+
+def _side_rows(game: dict, golden: int, side: str) -> list:
+    if not golden:
+        return game[side]
+    if game["golden_set"] is None:
+        game["golden_set"] = {"home": [], "away": []}
+    return game["golden_set"][side]
+
+
+def _box_score_games(conn: sqlite3.Connection) -> dict[tuple[int, str], dict[int, dict]]:
+    matches = _parent_matches(conn)
+    opponents = _resolve_opponents(conn)
+    sums = ", ".join(f"COALESCE(s.{f}, 0)" for f in STAT_FIELDS)
+    stat_rows = conn.execute(
+        f"""
+        SELECT s.stat_id, s.match_date, r.team_id, r.gender, s.opponent, s.is_golden_set,
+               r.player_id, r.jersey_number, r.position, {sums}
+        FROM player_match_stats s
+        JOIN roster_registrations r ON r.registration_id = s.registration_id
+        ORDER BY r.jersey_number IS NULL, r.jersey_number, r.player_id, s.stat_id
+        """
+    ).fetchall()
+    games: dict[tuple[int, str], dict[int, dict]] = {}
+    for stat_id, match_date, team_id, gender, opponent, golden, player_id, *rest in stat_rows:
+        found, reason = _match_for_stat(matches, opponents, match_date, team_id, gender, opponent)
+        if found is None:
+            logger.warning(
+                "統計列排除 stat_id=%s match_date=%s team_id=%s opponent=%s：%s",
+                stat_id, match_date, team_id, opponent, reason,
+            )
+            continue
+        cup_id, game_id, match_date, home_id = found
+        game = games.setdefault((cup_id, gender), {}).setdefault(
+            game_id, {"game_id": game_id, "date": match_date, "home": [], "away": [], "golden_set": None}
+        )
+        side = "home" if team_id == home_id else "away"
+        _side_rows(game, golden, side).append(_stat_entry(player_id, team_id, *rest))
+    return games
+
+
+def _box_scores_payload(conn: sqlite3.Connection) -> dict:
+    cup_ids = [r[0] for r in conn.execute("SELECT cup_id FROM seasons ORDER BY cup_id")]
+    games = _box_score_games(conn)
+    box_scores = []
+    for cup_id in cup_ids:
+        for gender, group in GROUP_BY_GENDER.items():
+            ordered = sorted(games.get((cup_id, gender), {}).values(), key=lambda g: (g["date"], g["game_id"]))
+            box_scores.append({
+                "cup_id": cup_id,
+                "group": group,
+                "games": [{k: v for k, v in g.items() if k != "date"} for g in ordered],
+            })
+    return {"box_scores": box_scores}
+
+
 def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -291,10 +487,14 @@ def export_site_data(db_path: Path, out_dir: Path) -> None:
         _write_json(out_dir / "teams.json", _teams_payload(conn))
         _write_json(out_dir / "standings.json", _standings_payload(conn))
         _write_json(out_dir / "matches.json", _matches_payload(conn))
+        _write_json(out_dir / "players.json", _players_payload(conn))
+        _write_json(out_dir / "rosters.json", _rosters_payload(conn))
+        _write_json(out_dir / "box_scores.json", _box_scores_payload(conn))
     finally:
         conn.close()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.WARNING)
     export_site_data(DB_PATH, DEFAULT_OUT_DIR)
     print(f"已匯出到 {DEFAULT_OUT_DIR}")

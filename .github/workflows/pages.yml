@@ -29,7 +29,7 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - name: 匯出賽季與球隊 JSON
+      - name: 匯出靜態站 JSON（賽季、球隊、戰績、賽事、球員、週登錄、單場數據）
         run: python -m src.export.site_data
       - name: 安裝前端依賴
         working-directory: web

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "box_scores.schema.json",
+  "title": "BoxScoresData",
+  "description": "各賽季各組別逐場球員單場數據（統計列依比賽日、登錄球隊、對手對回賽事；對不回的列不輸出）；由 src.export.site_data 產出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["box_scores"],
+  "properties": {
+    "box_scores": {
+      "type": "array",
+      "items": {
+        "title": "GroupBoxScores",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cup_id", "group", "games"],
+        "properties": {
+          "cup_id": { "type": "integer" },
+          "group": { "type": "string", "enum": ["men", "women"] },
+          "games": {
+            "type": "array",
+            "items": {
+              "title": "GameBoxScore",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["game_id", "home", "away", "golden_set"],
+              "properties": {
+                "game_id": { "type": "integer" },
+                "home": { "type": "array", "items": { "$ref": "#/$defs/StatRow" } },
+                "away": { "type": "array", "items": { "$ref": "#/$defs/StatRow" } },
+                "golden_set": {
+                  "oneOf": [{ "$ref": "#/$defs/GoldenBoxScore" }, { "type": "null" }],
+                  "description": "黃金決勝局單局數據；沒有則 null"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "GoldenBoxScore": {
+      "title": "GoldenBoxScore",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["home", "away"],
+      "properties": {
+        "home": { "type": "array", "items": { "$ref": "#/$defs/StatRow" } },
+        "away": { "type": "array", "items": { "$ref": "#/$defs/StatRow" } }
+      }
+    },
+    "StatRow": {
+      "title": "StatRow",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "player_id", "team_id", "jersey_number", "position",
+        "sets_played", "attack_total", "attack_points", "block_points",
+        "serve_total", "serve_points", "receive_total", "receive_excellent",
+        "dig_total", "dig_excellent", "set_total", "set_excellent", "total_points"
+      ],
+      "properties": {
+        "player_id": { "type": "integer" },
+        "team_id": { "type": "integer" },
+        "jersey_number": { "type": ["integer", "null"], "description": "該統計列自己的登錄背號" },
+        "position": { "type": ["string", "null"] },
+        "sets_played": { "type": "integer" },
+        "attack_total": { "type": "integer" },
+        "attack_points": { "type": "integer" },
+        "block_points": { "type": "integer" },
+        "serve_total": { "type": "integer" },
+        "serve_points": { "type": "integer" },
+        "receive_total": { "type": "integer" },
+        "receive_excellent": { "type": "integer" },
+        "dig_total": { "type": "integer" },
+        "dig_excellent": { "type": "integer" },
+        "set_total": { "type": "integer" },
+        "set_excellent": { "type": "integer" },
+        "total_points": { "type": "integer" }
+      }
+    }
+  }
+}

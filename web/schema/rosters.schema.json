@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rosters.schema.json",
+  "title": "RostersData",
+  "description": "各賽季各組別各隊的週登錄名單（週次與球員已排序）；由 src.export.site_data 產出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rosters"],
+  "properties": {
+    "rosters": {
+      "type": "array",
+      "items": {
+        "title": "TeamRoster",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cup_id", "group", "team_id", "weeks"],
+        "properties": {
+          "cup_id": { "type": "integer" },
+          "group": { "type": "string", "enum": ["men", "women"] },
+          "team_id": { "type": "integer" },
+          "weeks": {
+            "type": "array",
+            "items": {
+              "title": "RosterWeek",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["week_label", "week_start_date", "players"],
+              "properties": {
+                "week_label": { "type": "string" },
+                "week_start_date": { "type": ["string", "null"], "format": "date" },
+                "players": {
+                  "type": "array",
+                  "items": {
+                    "title": "RosterPlayer",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["player_id", "jersey_number", "position", "source"],
+                    "properties": {
+                      "player_id": { "type": "integer" },
+                      "jersey_number": { "type": ["integer", "null"] },
+                      "position": { "type": ["string", "null"] },
+                      "source": { "type": "string", "enum": ["match_page", "backfill"] }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
