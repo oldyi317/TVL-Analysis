@@ -1,9 +1,19 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import { GROUP_LABEL } from '#lib/site.js';
+	import type { Team } from '#lib/data/types.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	function teamHref(team: Team): string {
+		return `${resolve('/[season]/[group]/teams/[team]', {
+			season: data.season.name,
+			group: data.group,
+			team: String(team.team_id)
+		})}/`;
+	}
 </script>
 
 <svelte:head>
@@ -18,8 +28,15 @@
 	<ul class="teams">
 		{#each data.teams as team (team.team_id)}
 			<li>
-				<TeamBadge {team} />
-				<span class="name">{team.name}</span>
+				{#if team.is_active}
+					<a href={teamHref(team)}>
+						<TeamBadge {team} />
+						<span class="name">{team.name}</span>
+					</a>
+				{:else}
+					<TeamBadge {team} />
+					<span class="name">{team.name}</span>
+				{/if}
 			</li>
 		{/each}
 	</ul>
@@ -47,6 +64,30 @@
 		gap: 0.875rem;
 		min-block-size: var(--tap);
 		padding: 0.625rem 1rem;
+	}
+
+	.teams li:has(a) {
+		padding: 0;
+	}
+
+	.teams a {
+		display: flex;
+		align-items: center;
+		gap: 0.875rem;
+		flex: 1;
+		min-block-size: var(--tap);
+		padding: 0.625rem 1rem;
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.teams a:hover {
+		background: var(--line);
+	}
+
+	.teams a:focus-visible {
+		outline: 2px solid var(--focus);
+		outline-offset: -2px;
 	}
 
 	.teams li + li {

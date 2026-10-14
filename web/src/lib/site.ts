@@ -1,4 +1,6 @@
 import matchesJson from '#lib/data/matches.json';
+import playersJson from '#lib/data/players.json';
+import rostersJson from '#lib/data/rosters.json';
 import seasonsJson from '#lib/data/seasons.json';
 import standingsJson from '#lib/data/standings.json';
 import teamsJson from '#lib/data/teams.json';
@@ -8,6 +10,10 @@ import type {
 	GroupStandings,
 	MatchEntry,
 	MatchesData,
+	PlayerEntry,
+	PlayersData,
+	RosterWeek,
+	RostersData,
 	Season,
 	SeasonsData,
 	StandingsData,
@@ -103,4 +109,81 @@ export function matchEntries(): { season: string; group: Group; game: string }[]
 		if (cupId === undefined) return [];
 		return matchesFor(cupId, group).map((m) => ({ season, group, game: String(m.game_id) }));
 	});
+}
+
+export function findTeam(cupId: number, group: Group, teamId: number): Team | undefined {
+	return teams.find(
+		(t) => t.group === group && t.team_id === teamId && t.is_active && t.cup_ids.includes(cupId)
+	);
+}
+
+export function teamEntries(): { season: string; group: Group; team: string }[] {
+	return seasonGroupEntries().flatMap(({ season, group }) => {
+		const cupId = findSeason(season)?.cup_id;
+		if (cupId === undefined) return [];
+		return teamsIn(cupId, group)
+			.filter((t) => findTeam(cupId, group, t.team_id))
+			.map((t) => ({ season, group, team: String(t.team_id) }));
+	});
+}
+
+export function teamStanding(cupId: number, group: Group, teamId: number): StandingsEntry | undefined {
+	return standingsFor(cupId, group)?.rows.find((r) => r.team_id === teamId);
+}
+
+export function teamMatches(cupId: number, group: Group, teamId: number): MatchView[] {
+	return matchesFor(cupId, group)
+		.filter((m) => m.home.team_id === teamId || m.away.team_id === teamId)
+		.sort(
+			(a, b) =>
+				a.date.localeCompare(b.date) || (a.start_time ?? '').localeCompare(b.start_time ?? '')
+		);
+}
+
+export type RosterCardPlayer = {
+	player_id: number;
+	name: string;
+	number: number | null;
+	position: string | null;
+};
+
+export type RosterView = {
+	week_label: string;
+	week_start_date: string | null;
+	players: RosterCardPlayer[];
+};
+
+export function pickLatestWeek(weeks: readonly RosterWeek[]): RosterWeek | undefined {
+	return weeks.reduce<RosterWeek | undefined>((best, w) => {
+		if (!best) return w;
+		return (w.week_start_date ?? '') > (best.week_start_date ?? '') ? w : best;
+	}, undefined);
+}
+
+export function toRosterView(
+	week: RosterWeek,
+	group: Group,
+	playerEntries: readonly PlayerEntry[]
+): RosterView {
+	return {
+		week_label: week.week_label,
+		week_start_date: week.week_start_date,
+		players: week.players.map((p) => ({
+			player_id: p.player_id,
+			name:
+				playerEntries.find((e) => e.group === group && e.player_id === p.player_id)?.name ??
+				`球員 #${p.player_id}`,
+			number: p.jersey_number,
+			position: p.position
+		}))
+	};
+}
+
+export function latestRoster(cupId: number, group: Group, teamId: number): RosterView | undefined {
+	const roster = (rostersJson as RostersData).rosters.find(
+		(r) => r.cup_id === cupId && r.group === group && r.team_id === teamId
+	);
+	const week = roster && pickLatestWeek(roster.weeks);
+	if (!week) return undefined;
+	return toRosterView(week, group, (playersJson as PlayersData).players);
 }

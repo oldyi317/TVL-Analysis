@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import type { MatchEntry, StandingsEntry } from '#lib/data/types.js';
-import { findMatch, matchesFor, standingsFor, teams, toMatchView, toStandingsRow } from './site.js';
+import type { MatchEntry, PlayerEntry, RosterWeek, StandingsEntry } from '#lib/data/types.js';
+import {
+	findMatch,
+	findSeason,
+	findTeam,
+	matchesFor,
+	pickLatestWeek,
+	standingsFor,
+	teamEntries,
+	teamMatches,
+	teams,
+	toMatchView,
+	toRosterView,
+	toStandingsRow
+} from './site.js';
 
 const entry: StandingsEntry = {
 	rank: 1,
@@ -100,5 +113,91 @@ describe('matchesFor / findMatch', () => {
 	it('找不到的賽季回空陣列與 undefined', () => {
 		expect(matchesFor(-1, 'men')).toEqual([]);
 		expect(findMatch(-1, 'men', 1)).toBeUndefined();
+	});
+});
+
+describe('findTeam', () => {
+	const inactive = teams.find((t) => !t.is_active)!;
+	const active = teams.find((t) => t.is_active)!;
+	it('非現役隊回 undefined', () => {
+		expect(findTeam(inactive.cup_ids[0], inactive.group, inactive.team_id)).toBeUndefined();
+	});
+	it('該季不在 cup_ids 回 undefined', () => {
+		expect(findTeam(-1, active.group, active.team_id)).toBeUndefined();
+	});
+	it('現役且該季有的隊會回傳', () => {
+		expect(findTeam(active.cup_ids[0], active.group, active.team_id)).toBe(active);
+	});
+});
+
+describe('teamEntries', () => {
+	it('只含現役且該季有的隊，不含非現役隊', () => {
+		const entries = teamEntries();
+		expect(entries.length).toBeGreaterThan(0);
+		for (const e of entries) {
+			expect(findTeam(findSeason(e.season)!.cup_id, e.group, Number(e.team))).toBeDefined();
+		}
+		const inactive = teams.find((t) => !t.is_active)!;
+		expect(
+			entries.some((e) => e.group === inactive.group && e.team === String(inactive.team_id))
+		).toBe(false);
+	});
+});
+
+describe('teamMatches', () => {
+	it('只含該隊的賽事並依日期、開賽時間排序', () => {
+		const season = findSeason('2025-26')!;
+		const teamId = matchesFor(season.cup_id, 'men')[0].home.team_id;
+		const list = teamMatches(season.cup_id, 'men', teamId);
+		expect(list.length).toBeGreaterThan(0);
+		for (const m of list) expect([m.home.team_id, m.away.team_id]).toContain(teamId);
+		const keys = list.map((m) => `${m.date} ${m.start_time ?? ''}`);
+		expect(keys).toEqual([...keys].sort());
+	});
+});
+
+describe('pickLatestWeek', () => {
+	const week = (label: string, date: string | null): RosterWeek => ({
+		week_label: label,
+		week_start_date: date,
+		players: []
+	});
+	it('取日期最大的週，null 視為最舊', () => {
+		const picked = pickLatestWeek([
+			week('B', '2026-03-01'),
+			week('N', null),
+			week('C', '2026-03-22'),
+			week('A', '2026-02-01')
+		]);
+		expect(picked?.week_label).toBe('C');
+	});
+	it('只有 null 日期時仍回傳第一筆', () => {
+		expect(pickLatestWeek([week('N', null)])?.week_label).toBe('N');
+	});
+	it('空陣列回 undefined', () => {
+		expect(pickLatestWeek([])).toBeUndefined();
+	});
+});
+
+describe('toRosterView', () => {
+	const entries = [
+		{ player_id: 1, group: 'men', name: '王小明' },
+		{ player_id: 2, group: 'men', name: null },
+		{ player_id: 3, group: 'women', name: '女生三' }
+	] as PlayerEntry[];
+	const week: RosterWeek = {
+		week_label: 'Week 1',
+		week_start_date: '2026-01-01',
+		players: [
+			{ player_id: 1, jersey_number: 7, position: 'S', source: 'match_page' },
+			{ player_id: 2, jersey_number: null, position: null, source: 'backfill' },
+			{ player_id: 3, jersey_number: 5, position: 'L', source: 'backfill' }
+		]
+	};
+	it('以 (player_id, group) 對姓名，對不到或姓名為 null 用備援名稱', () => {
+		const view = toRosterView(week, 'men', entries);
+		expect(view.week_label).toBe('Week 1');
+		expect(view.players.map((p) => p.name)).toEqual(['王小明', '球員 #2', '球員 #3']);
+		expect(view.players[1]).toMatchObject({ number: null, position: null });
 	});
 });
