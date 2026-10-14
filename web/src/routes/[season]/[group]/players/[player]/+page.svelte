@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import AdvancedStats from '#lib/components/AdvancedStats.svelte';
 	import BigStat from '#lib/components/BigStat.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
@@ -87,6 +88,8 @@
 		</div>
 	</dl>
 {/if}
+
+<AdvancedStats advanced={data.advanced} distribution={data.distribution} gameLog={data.gameLog} />
 
 <style>
 	.back {

@@ -4,14 +4,14 @@
 	async function loadEcharts() {
 		const echarts = await import('echarts/core');
 		if (registered) return echarts;
-		const [{ LineChart, BarChart }, { GridComponent, TooltipComponent, LegendComponent }, { CanvasRenderer }, { chartTheme }] =
+		const [{ LineChart, BarChart }, { GridComponent, TooltipComponent, LegendComponent, MarkLineComponent }, { CanvasRenderer }, { chartTheme }] =
 			await Promise.all([
 				import('echarts/charts'),
 				import('echarts/components'),
 				import('echarts/renderers'),
 				import('./theme.js')
 			]);
-		echarts.use([LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer]);
+		echarts.use([LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, CanvasRenderer]);
 		echarts.registerTheme('tvl-light', chartTheme('light'));
 		echarts.registerTheme('tvl-dark', chartTheme('dark'));
 		registered = true;
