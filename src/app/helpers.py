@@ -15,9 +15,23 @@ import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 
+from src.export.player_advanced import MIN_SETS, PR_KEYS, compute_advanced
 from src.utils.constants import (
     DEFAULT_YEAR, EXT_BASE, EXT_CUP_ID, EXT_HEADERS, SEASON_YEAR_MAP, OPP_SHORT_TO_TEAM,
 )
+
+# 舊站聚合查詢欄名 ↔ 純函式欄名
+ADVANCED_INPUT_COLUMNS = {
+    "total_sets": "sets_played", "atk_pts": "attack_points", "atk_tot": "attack_total",
+    "blk_pts": "block_points", "srv_pts": "serve_points", "srv_tot": "serve_total",
+    "rcv_exc": "receive_excellent", "rcv_tot": "receive_total", "dig_exc": "dig_excellent",
+    "dig_tot": "dig_total", "set_exc": "set_excellent", "set_tot": "set_total", "n_games": "games",
+}
+ADVANCED_RATIO_COLUMNS = {
+    "asr": "attack_success_rate", "gp_pct": "receive_excellent_rate", "ace_pct": "serve_point_rate",
+    "dig_pct": "dig_excellent_rate", "ppg": "points_per_game", "set_pct": "set_excellent_rate",
+    "blk_per_set": "blocks_per_set", "def_load": "defense_load", "def_pct": "defense_efficiency",
+}
 
 
 # ── 手機 RWD 支援 ────────────────────────────────────────────
@@ -312,29 +326,20 @@ def get_league_aggregated_stats(gender_code: str) -> pd.DataFrame:
         JOIN teams t ON t.team_id = latest.team_id AND t.gender = latest.gender
         WHERE latest.gender = ? AND r.cup_id = ?
         GROUP BY p.player_id
-        HAVING SUM(s.sets_played) >= 5
+        HAVING SUM(s.sets_played) >= ?
         """,
-        (gender_code, EXT_CUP_ID),
+        (gender_code, EXT_CUP_ID, MIN_SETS),
     )
-    # 計算進階比率指標（向量化）—— 以下邏輯完全不變
-    raw["asr"] = vec_pct(raw["atk_pts"], raw["atk_tot"])
-    raw["gp_pct"] = vec_pct(raw["rcv_exc"], raw["rcv_tot"])
-    raw["ace_pct"] = vec_pct(raw["srv_pts"], raw["srv_tot"])
-    raw["dig_pct"] = vec_pct(raw["dig_exc"], raw["dig_tot"])
-    raw["ppg"] = np.where(raw["n_games"] > 0, raw["total_points"] / raw["n_games"], 0.0)
-    raw["set_pct"] = vec_pct(raw["set_exc"], raw["set_tot"])
-    raw["blk_per_set"] = np.where(raw["total_sets"] > 0, raw["blk_pts"] / raw["total_sets"], 0.0)
-    raw["def_load"] = raw["rcv_tot"] + raw["dig_tot"]
-    raw["def_pct"] = vec_pct(raw["rcv_exc"] + raw["dig_exc"], raw["rcv_tot"] + raw["dig_tot"])
-
-    pr_cols = ["asr", "gp_pct", "ace_pct", "dig_pct", "set_pct", "blk_per_set", "def_pct"]
-    for col in pr_cols:
-        raw[f"{col}_pr"] = (
-            raw.groupby("position")[col]
-            .rank(pct=True)
-            .mul(100)
-            .round(1)
-        )
+    # 比率與 PR 值交給匯出器共用的純函式，兩邊算的是同一套
+    rows = raw.rename(columns=ADVANCED_INPUT_COLUMNS).to_dict("records")
+    for row in rows:
+        if pd.isna(row["position"]):
+            row["position"] = None
+    advanced = compute_advanced(rows)
+    for col, key in ADVANCED_RATIO_COLUMNS.items():
+        raw[col] = pd.Series([a["ratios"][key] for a in advanced], index=raw.index)
+        if key in PR_KEYS:
+            raw[f"{col}_pr"] = pd.Series([a["pr"][key] for a in advanced], index=raw.index, dtype="float64")
 
     return raw
 
