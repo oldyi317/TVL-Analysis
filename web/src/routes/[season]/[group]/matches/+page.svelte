@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import EmptyState from '#lib/components/EmptyState.svelte';
-	import MatchCard from '#lib/components/MatchCard.svelte';
+	import MatchLink from '#lib/components/MatchLink.svelte';
 	import { stageLabel } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
@@ -77,9 +77,7 @@
 			<ol class="cards">
 				{#each month.matches as match (match.game_id)}
 					<li>
-						<a class="card-link" href={matchHref(match.game_id)}>
-							<MatchCard {match} stage={stageLabel(match.stage, match.week)} />
-						</a>
+						<MatchLink href={matchHref(match.game_id)} {match} stage={stageLabel(match.stage, match.week)} />
 					</li>
 				{/each}
 			</ol>
@@ -147,28 +145,5 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
-	}
-
-	.card-link {
-		display: block;
-		border-radius: var(--radius-md);
-	}
-
-	.card-link:focus-visible {
-		outline: 2px solid var(--focus);
-		outline-offset: 2px;
-	}
-
-	/* 整張卡是連結：指標停留與按下時外框加深；只動上下與右側，左側隊色條不變 */
-	@media (hover: hover) {
-		.card-link:hover :global(article) {
-			border-block-color: var(--text-muted);
-			border-inline-end-color: var(--text-muted);
-		}
-	}
-
-	.card-link:active :global(article) {
-		border-block-color: var(--text);
-		border-inline-end-color: var(--text);
 	}
 </style>

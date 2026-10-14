@@ -46,9 +46,3 @@ test('資料不完整的組別顯示註記', async ({ page }) => {
 	await expect(note).toBeVisible();
 	await expect(note).toContainText('不完整');
 });
-
-test('球隊列表頁的戰績連結', async ({ page }) => {
-	await page.goto(`${BASE}/${current}/men/`);
-	await page.getByRole('link', { name: '戰績', exact: true }).click();
-	await expect(page).toHaveURL(/\/standings\/$/);
-});

@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { asset } from '$app/paths';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
+	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
 	import { isGroup } from '#lib/site.js';
 	import type { LayoutProps } from './$types';
 
@@ -21,6 +22,10 @@
 	}
 
 	const group = $derived(page.params.group && isGroup(page.params.group) ? page.params.group : undefined);
+
+	$effect(() => {
+		if (group) writeGroup(browserStorage(), group);
+	});
 </script>
 
 <svelte:head>

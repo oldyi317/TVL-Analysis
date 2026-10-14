@@ -27,7 +27,7 @@ web
 - 資料來源：TVL 官網與外部統計系統，每日 GitHub Actions 爬蟲寫入 SQLite 並 commit。
 - 建置時由 Python 匯出器產 JSON，前端只讀 JSON；沒有執行期 API、沒有登入、沒有使用者輸入。
 - 部署在 GitHub Pages 子路徑 `/TVL-Analysis/`，每次 push main 重建。
-- 網址結構 `/<賽季>/<組別>/...`，組別值為 men、women；根路徑導向當季男子組；每頁頂部可切換組別並停留在同一頁面類型。
+- 網址結構 `/<賽季>/<組別>/...`，組別值為 men、women；根路徑導向當季，組別取本機記住的上次選擇（讀不到就男子組）；每頁頂部可切換組別並停留在同一頁面類型。
 - 當季 = seasons.json 的 current_cup_id（匯出器以 cup_id 最大者判定）。
 
 ## Capabilities and Constraints

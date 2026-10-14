@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupByMonth, setsWon, winnerSide } from './match.js';
+import { groupByMonth, latestMatchDay, nextMatch, setsWon, winnerSide } from './match.js';
 
 const sets: [number, number][] = [
 	[25, 20],
@@ -39,5 +39,43 @@ describe('groupByMonth', () => {
 	});
 	it('沒有賽事回空陣列', () => {
 		expect(groupByMonth([])).toEqual([]);
+	});
+});
+
+describe('latestMatchDay', () => {
+	const played = (date: string, id: number) => ({ date, id, sets: [[25, 20]] });
+	const pending = (date: string, id: number) => ({ date, id, sets: [] });
+	it('取最晚比賽日並含該日全部場次', () => {
+		const result = latestMatchDay([played('2026-03-01', 1), played('2026-03-22', 2), played('2026-03-22', 3)]);
+		expect(result?.date).toBe('2026-03-22');
+		expect(result?.matches.map((m) => m.id)).toEqual([2, 3]);
+	});
+	it('忽略未開打場次', () => {
+		const result = latestMatchDay([played('2026-03-01', 1), pending('2026-04-01', 2)]);
+		expect(result?.date).toBe('2026-03-01');
+		expect(result?.matches.map((m) => m.id)).toEqual([1]);
+	});
+	it('沒有已完賽場次回 null', () => {
+		expect(latestMatchDay([])).toBeNull();
+		expect(latestMatchDay([pending('2026-04-01', 1)])).toBeNull();
+	});
+	it('輸入未排序也正確並保持原順序', () => {
+		const result = latestMatchDay([played('2026-03-22', 1), played('2026-03-01', 2), played('2026-03-22', 3)]);
+		expect(result?.matches.map((m) => m.id)).toEqual([1, 3]);
+	});
+});
+
+describe('nextMatch', () => {
+	it('回日期最早的未開打，不依賴輸入順序', () => {
+		const list = [
+			{ date: '2026-03-01', id: 1, sets: [[25, 20]] },
+			{ date: '2026-04-08', id: 3, sets: [] },
+			{ date: '2026-04-01', id: 2, sets: [] }
+		];
+		expect(nextMatch(list)?.id).toBe(2);
+	});
+	it('沒有未開打回 null', () => {
+		expect(nextMatch([{ date: '2026-03-01', sets: [[25, 20]] }])).toBeNull();
+		expect(nextMatch([])).toBeNull();
 	});
 });

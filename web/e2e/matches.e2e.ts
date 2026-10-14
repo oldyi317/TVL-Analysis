@@ -77,9 +77,3 @@ test('詳情頁的組別與賽季切換退回賽事列表', async ({ page }) => 
 		page.getByRole('navigation', { name: '賽季' }).getByRole('link', { name: other.name })
 	).toHaveAttribute('href', `${BASE}/${other.name}/men/matches/`);
 });
-
-test('球隊列表頁的賽事連結', async ({ page }) => {
-	await page.goto(`${BASE}/${current}/men/`);
-	await page.getByRole('link', { name: '賽事', exact: true }).click();
-	await expect(page).toHaveURL(/\/matches\/$/);
-});

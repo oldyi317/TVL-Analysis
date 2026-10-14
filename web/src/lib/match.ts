@@ -62,3 +62,21 @@ export function groupByMonth<T extends { date: string }>(matches: readonly T[]):
 	}
 	return groups;
 }
+
+type Dated = { date: string; sets: readonly unknown[] };
+
+// 最近一個有已完賽場次的比賽日，回該日全部已完賽場次（保持原順序）
+export function latestMatchDay<T extends Dated>(
+	matches: readonly T[]
+): { date: string; matches: T[] } | null {
+	const played = matches.filter((m) => m.sets.length > 0);
+	if (played.length === 0) return null;
+	const date = played.reduce((max, m) => (m.date > max ? m.date : max), played[0].date);
+	return { date, matches: played.filter((m) => m.date === date) };
+}
+
+export function nextMatch<T extends Dated>(matches: readonly T[]): T | null {
+	const unplayed = matches.filter((m) => m.sets.length === 0);
+	if (unplayed.length === 0) return null;
+	return unplayed.reduce((min, m) => (m.date < min.date ? m : min));
+}

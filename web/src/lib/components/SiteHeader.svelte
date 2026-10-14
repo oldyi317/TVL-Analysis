@@ -3,6 +3,7 @@
 	import type { Group } from '#lib/site.js';
 	import GroupSwitch from './GroupSwitch.svelte';
 	import SeasonSwitch from './SeasonSwitch.svelte';
+	import SiteNav from './SiteNav.svelte';
 
 	let {
 		season,
@@ -24,6 +25,7 @@
 		<div class="wrap switches">
 			<GroupSwitch current={group} hrefFor={(g) => hrefFor('group', g)} />
 			<SeasonSwitch current={season} hrefFor={(s) => hrefFor('season', s)} />
+			<SiteNav {season} {group} />
 		</div>
 	{/if}
 </header>
