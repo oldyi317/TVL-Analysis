@@ -87,7 +87,7 @@ RuntimeError: 找不到涵蓋 2026-10-24 的賽季，請在 sql/schema.sql 的 s
 - seasons 多了 22 之後 `seasons.json` 的 `current_cup_id` 變 22，首頁會指向 2026-27；
   web 的 styleguide 樣本改挑「最近有五支男隊的賽季」（`demoSeason`），不再直接用 current。
 - **2026-27 男子組名單未定（開季後再核對）**：首批賽程出現四個 seed 沒有的隊名
-  （三福產業、臺北鳳凰、新竹可利工程師、龍脈建設），2025-26 的獅子王、臺北國北獅、桃園臺產
+  （三福產業、臺北鳳凰、新竹可利工程師、龍邁建設；官網單場頁 `/game/N` 誤植為「龍脈建設」，列表頁 `/schedule/115` 為正確的「龍邁建設」，補 team_seed 時兩個別名都要收），2025-26 的獅子王、臺北國北獅、桃園臺產
   沒出現；官網隊伍頁（`/team/N`）當時全部轉回首頁，查不到名單，無法判斷是改名還是新軍，
   使用者也說官網還在更新。因此**沒有**補 `sql/team_seed.sql`，這些場次在 DB 裡 `home/away_team_id`
   為 NULL（match_crawler 既有行為）；匯出器 `_group_matches` 會略過 team_id 為 NULL 的場次並
