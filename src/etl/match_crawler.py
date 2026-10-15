@@ -122,15 +122,18 @@ def scrape_match_page(prefix: str, game_id: int) -> dict | None:
     home_total = _safe_int(home_cells[6]) if len(home_cells) > 6 else None
     away_total = _safe_int(away_cells[6]) if len(away_cells) > 6 else None
 
-    # 計算勝局數
-    home_sets_won = sum(
-        1 for h, a in zip(home_sets, away_sets)
-        if h is not None and a is not None and h > a
-    )
-    away_sets_won = sum(
-        1 for h, a in zip(home_sets, away_sets)
-        if h is not None and a is not None and a > h
-    )
+    # 計算勝局數；各局全空（未開打）寫 None 而非 0
+    if all(s is None for s in home_sets + away_sets):
+        home_sets_won = away_sets_won = None
+    else:
+        home_sets_won = sum(
+            1 for h, a in zip(home_sets, away_sets)
+            if h is not None and a is not None and h > a
+        )
+        away_sets_won = sum(
+            1 for h, a in zip(home_sets, away_sets)
+            if h is not None and a is not None and a > h
+        )
 
     # ── Game header ─────────────────────────────────────────
     gh = soup.find("div", class_="game_header")
@@ -139,6 +142,9 @@ def scrape_match_page(prefix: str, game_id: int) -> dict | None:
     # 日期: 2026-03-22 16:30:00
     date_m = re.search(r"(\d{4}-\d{2}-\d{2})", gh_text)
     match_date = date_m.group(1) if date_m else None
+
+    time_m = re.search(r"(\d{2}:\d{2}):\d{2}", gh_text)
+    start_time = time_m.group(1) if time_m else None
 
     # 場館
     venue = None
@@ -169,6 +175,7 @@ def scrape_match_page(prefix: str, game_id: int) -> dict | None:
         "game_id": game_id,
         "gender": gender,
         "match_date": match_date,
+        "start_time": start_time,
         "venue": venue,
         "round_name": round_name,
         "game_label": game_label,
@@ -234,15 +241,16 @@ def upsert_match(conn: sqlite3.Connection, match: dict) -> bool:
     if existing:
         conn.execute("""
             UPDATE matches SET
-                cup_id=?, match_date=?, venue=?, round_name=?, game_label=?,
+                cup_id=?, match_date=?, start_time=COALESCE(start_time, ?),
+                venue=COALESCE(venue, ?), round_name=?, game_label=?,
                 is_golden_set=?, home_team=?, away_team=?, home_team_id=?, away_team_id=?,
                 home_set1=?, home_set2=?, home_set3=?, home_set4=?, home_set5=?,
                 home_total=?, away_set1=?, away_set2=?, away_set3=?, away_set4=?,
                 away_set5=?, away_total=?, home_sets_won=?, away_sets_won=?
             WHERE game_id=? AND gender=?
         """, (
-            cup_id, match["match_date"], match["venue"], match["round_name"],
-            match["game_label"], match["is_golden_set"],
+            cup_id, match["match_date"], match.get("start_time"), match["venue"],
+            match["round_name"], match["game_label"], match["is_golden_set"],
             match["home_team"], match["away_team"], home_team_id, away_team_id,
             match["home_set1"], match["home_set2"], match["home_set3"],
             match["home_set4"], match["home_set5"], match["home_total"],
@@ -255,15 +263,15 @@ def upsert_match(conn: sqlite3.Connection, match: dict) -> bool:
     else:
         conn.execute("""
             INSERT INTO matches (
-                game_id, gender, cup_id, match_date, venue, round_name, game_label,
+                game_id, gender, cup_id, match_date, start_time, venue, round_name, game_label,
                 is_golden_set, home_team, away_team, home_team_id, away_team_id,
                 home_set1, home_set2, home_set3, home_set4, home_set5, home_total,
                 away_set1, away_set2, away_set3, away_set4, away_set5, away_total,
                 home_sets_won, away_sets_won
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             match["game_id"], match["gender"], cup_id, match["match_date"],
-            match["venue"], match["round_name"], match["game_label"],
+            match.get("start_time"), match["venue"], match["round_name"], match["game_label"],
             match["is_golden_set"], match["home_team"], match["away_team"],
             home_team_id, away_team_id,
             match["home_set1"], match["home_set2"], match["home_set3"],
