@@ -27,6 +27,8 @@ PYTHON_EOF
 # 爬蟲前記錄 hash
 BEFORE=$(db_hash)
 
+# 賽事列表（ADR 0003）：先寫未開打場次的基本資料；失敗只記 log，不中止每日更新
+"$PYTHON" -m src.etl.schedule_crawler || echo "賽事列表步驟失敗（exit $?），略過。"
 "$PYTHON" -m src.etl.match_crawler
 "$PYTHON" -m src.etl.stats_crawler --rosters
 "$PYTHON" -m src.etl.stats_crawler --incremental

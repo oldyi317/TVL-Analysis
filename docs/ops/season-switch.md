@@ -18,7 +18,9 @@
 - [ ] `SEASON_YEAR_MAP` 與 `DEFAULT_YEAR`（constants.py）：改成新賽季的
       「11、12 月屬 X 年，其餘屬 X+1 年」。
 - [ ] `match_crawler.py` 的 `--range-start`/`--range-end` argparse 預設值：
-      新季 game_id 區間要實際到官網賽程頁確認起始編號。
+      新季 game_id 起點不用再手動到官網確認，`schedule_crawler`（daily_update 第一步）會先把
+      官網列表頁（含「下一年度」頁）的場次寫進 matches，查
+      `SELECT gender, min(game_id), max(game_id) FROM matches WHERE cup_id=<新季> GROUP BY gender` 即可。
 - [ ] 球隊身分（有新隊伍/改名才需要動）：改 `sql/team_seed.sql`（teams 與 team_aliases），
       再套用：`python -c "from src.utils.db_config import get_connection; from src.utils.teams import apply_team_seed; c=get_connection(); apply_team_seed(c); c.commit()"`。
       過渡期相容：`EXT_TEAM_MAP`、`OPP_SHORT_TO_TEAM`、`TEAM_NAME_SHORT`（constants.py）與

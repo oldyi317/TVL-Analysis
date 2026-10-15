@@ -14,14 +14,14 @@ from pathlib import Path
 
 from src.utils.db_config import DB_PATH, get_connection
 from src.utils.logger import get_logger
-from src.utils.constants import EXT_HEADERS as HEADERS
+from src.utils.constants import EXT_HEADERS as HEADERS, TVL_BASE_URL as BASE_URL
 from src.utils.teams import UnknownTeamError, resolve_team
 
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
 
 logger = get_logger(__name__)
 
-BASE_URL = "https://tvl.ctvba.org.tw"
+ROUND_NAME_RE = re.compile(r"(例行賽|挑戰賽|總決賽|季後賽|明星賽)\s*Week\s*\d+")
 
 # 官網隊名 → DB 簡寫對照（官網隊名可能有差異）
 # 過渡期相容：單一來源為 DB 的 teams/team_aliases（sql/team_seed.sql），待改用 resolve_team 後移除。
@@ -154,7 +154,7 @@ def scrape_match_page(prefix: str, game_id: int) -> dict | None:
 
     # 賽事階段 (例行賽/挑戰賽/總決賽)
     round_name = None
-    round_m = re.search(r"(例行賽|挑戰賽|總決賽|季後賽|明星賽)\s*Week\s*\d+", gh_text)
+    round_m = ROUND_NAME_RE.search(gh_text)
     if round_m:
         round_name = round_m.group(0)
 

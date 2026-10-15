@@ -3,6 +3,11 @@ TVL 共用常數模組
 統一管理外部系統連線資訊與隊伍對照表，避免各模組重複定義。
 """
 
+# ── 官網 tvl.ctvba.org.tw ─────────────────────────────────────
+TVL_BASE_URL = "https://tvl.ctvba.org.tw"
+# 賽事列表頁：男子組 /schedule、女子組 /wschedule（/schedule-mix 不納入）
+SCHEDULE_PAGES = {"M": "/schedule", "F": "/wschedule"}
+
 # ── 外部數據系統 (114.35.229.141) ──────────────────────────────
 EXT_BASE = "http://114.35.229.141"
 EXT_CUP_ID = 21

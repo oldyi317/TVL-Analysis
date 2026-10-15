@@ -17,11 +17,10 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 
 from src.utils.logger import get_logger
-from src.utils.constants import POSITION_MAP, EXT_HEADERS as HEADERS, TEAM_NAME_SHORT
+from src.utils.constants import POSITION_MAP, EXT_HEADERS as HEADERS, TEAM_NAME_SHORT, TVL_BASE_URL as BASE_URL
 
 logger = get_logger(__name__)
 
-BASE_URL = "https://tvl.ctvba.org.tw"
 
 
 def fetch_page(url: str, allow_404: bool = False) -> BeautifulSoup | None:
