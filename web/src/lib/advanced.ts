@@ -83,17 +83,27 @@ export function distributionOption(
 	const mark = tied === 1 ? '這位球員' : `與這位球員同值（${tied} 人）`;
 	return {
 		legend: { show: false },
+		grid: { bottom: 28 },
 		tooltip: {
 			trigger: 'item',
 			formatter: (p: { name: string; value: number; data: { isPlayer: boolean } }) =>
 				`由低到高第 ${p.name} 位<br/>${metricLabel}：${p.value}${p.data.isPlayer ? `<br/><b>${mark}</b>` : ''}`
 		},
-		xAxis: { type: 'category', data: dist.values.map((_, i) => String(i + 1)) },
+		xAxis: {
+			type: 'category',
+			data: dist.values.map((_, i) => String(i + 1)),
+			axisLabel: { show: false },
+			axisTick: { show: false },
+			name: `同位置球員 ${dist.values.length} 人，由低到高排列`,
+			nameLocation: 'middle',
+			nameGap: 12
+		},
 		yAxis: { type: 'value' },
 		series: [
 			{
 				type: 'bar',
 				name: metricLabel,
+				barMinHeight: 2,
 				data: dist.values.map((value) => {
 					const isPlayer = value === playerValue;
 					return { value, isPlayer, itemStyle: { opacity: isPlayer ? 1 : 0.35 } };
@@ -102,7 +112,7 @@ export function distributionOption(
 					silent: true,
 					symbol: 'none',
 					lineStyle: { type: 'dashed' },
-					label: { formatter: `中位數 ${dist.median}`, fontSize: 14 },
+					label: { formatter: `中位數 ${dist.median}`, fontSize: 14, position: 'insideStartTop' },
 					data: [{ yAxis: dist.median }]
 				}
 			}

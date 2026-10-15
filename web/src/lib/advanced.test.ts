@@ -112,9 +112,13 @@ describe('distributionOption', () => {
 	type Item = { value: number; isPlayer: boolean };
 	const seriesOf = (o: object) => (o as { series: { data: Item[]; markLine: unknown }[] }).series[0];
 
-	it('x 軸為 1..N 名次，長條值為升冪原始值', () => {
-		const o = distributionOption(dist, 40, '攻擊成功率') as { xAxis: { data: string[] } };
+	it('x 軸為 1..N 名次但不顯示刻度，軸名說明人數與排序；長條值為升冪原始值', () => {
+		const o = distributionOption(dist, 40, '攻擊成功率') as {
+			xAxis: { data: string[]; axisLabel: { show: boolean }; name: string };
+		};
 		expect(o.xAxis.data).toEqual(['1', '2', '3', '4', '5']);
+		expect(o.xAxis.axisLabel.show).toBe(false);
+		expect(o.xAxis.name).toContain('5 人');
 		expect(seriesOf(o).data.map((d) => d.value)).toEqual([10, 20, 30, 40, 50]);
 	});
 

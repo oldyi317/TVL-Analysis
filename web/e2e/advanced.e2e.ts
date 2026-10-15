@@ -59,6 +59,28 @@ test('進階數據預設收合，展開後有 PR 值與兩個圖表', async ({ p
 	).toBeLessThanOrEqual(0);
 });
 
+test('同位置分佈切換指標後圖表會重畫', async ({ page }) => {
+	const a = pick(false);
+	test.skip(!a, '用於比對的賽季沒有局數足夠且有位置的出賽球員');
+	await open(page, a!);
+	const canvas = page.locator('[role="img"]').first().locator('canvas').first();
+	await expect(canvas).toBeVisible();
+	const snapshot = () => canvas.evaluate((c: HTMLCanvasElement) => c.toDataURL());
+	// 等入場動畫結束：連續兩次快照相同
+	let before = await snapshot();
+	await expect(async () => {
+		await page.waitForTimeout(300);
+		const prev = before;
+		before = await snapshot();
+		expect(before).toBe(prev);
+	}).toPass({ timeout: 10000 });
+	await page.getByRole('button', { name: '防守負荷', exact: true }).click();
+	await expect(page.locator('[role="img"]').first()).toHaveAttribute('aria-label', /防守負荷/);
+	await expect(async () => {
+		expect(await canvas.evaluate((c: HTMLCanvasElement) => c.toDataURL())).not.toBe(before);
+	}).toPass({ timeout: 5000 });
+});
+
 test('沒有 PR 值的球員（局數不足或無位置）展開後看到說明', async ({ page }) => {
 	const a = advanced.find(
 		(x) => x.cup_id === cup && (x.insufficient_sets || x.position === null) && played(x)

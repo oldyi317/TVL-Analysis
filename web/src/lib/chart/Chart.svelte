@@ -49,7 +49,9 @@
 	let chart: ECharts | undefined;
 
 	$effect(() => {
-		chart?.setOption(withDefaults(option), true);
+		// 先讀 option 建立依賴；chart 尚未初始化時若用 ?. 短路，effect 會沒有依賴而永不重跑
+		const next = withDefaults(option);
+		chart?.setOption(next, true);
 	});
 
 	onMount(() => {
