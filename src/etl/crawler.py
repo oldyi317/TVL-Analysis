@@ -106,17 +106,14 @@ def parse_player_card(card_div) -> dict:
                 italics = p_tag.find_all("i")
                 texts = [i.get_text(strip=True) for i in italics]
 
-                # 生日（第一個 <i>），格式 2004.07.17 -> 2004-07-17
-                if len(texts) >= 1 and texts[0]:
-                    player["dob"] = texts[0].replace(".", "-")
-
-                # 身高（第二個 <i>），格式 187cm -> 187.0
-                if len(texts) >= 2:
-                    player["height_cm"] = parse_number(texts[1], "cm")
-
-                # 體重（第三個 <i>），格式 80kg -> 80.0
-                if len(texts) >= 3:
-                    player["weight_kg"] = parse_number(texts[2], "kg")
+                # 依內容判斷：2004.07.17 -> dob、187cm -> 身高、80kg -> 體重
+                for text in texts:
+                    if re.fullmatch(r"\d{4}[./-]\d{1,2}[./-]\d{1,2}", text):
+                        player["dob"] = re.sub(r"[./]", "-", text)
+                    elif re.fullmatch(r"[\d.]+\s*cm", text):
+                        player["height_cm"] = parse_number(text, "cm")
+                    elif re.fullmatch(r"[\d.]+\s*kg", text):
+                        player["weight_kg"] = parse_number(text, "kg")
         except Exception as e:
             logger.warning("解析生日/身高/體重失敗: %s", e)
 

@@ -79,7 +79,8 @@ def upsert_player_identity(conn: sqlite3.Connection, df: pd.DataFrame) -> None:
             n_inserted += 1
         else:
             conn.execute(
-                "UPDATE players SET dob = ?, height_cm = ?, weight_kg = ? WHERE player_id = ?",
+                "UPDATE players SET dob = COALESCE(?, dob), height_cm = COALESCE(?, height_cm), "
+                "weight_kg = COALESCE(?, weight_kg) WHERE player_id = ?",
                 (row.dob, row.height_cm, row.weight_kg, existing_id),
             )
             n_updated += 1

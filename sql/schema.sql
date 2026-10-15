@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS teams (
 );
 -- 過渡期 short_name 與 team_name 同值（既有程式仍讀 team_name）；球隊身分種子見 sql/team_seed.sql
 
--- 隊名別名 → 球隊。source 值域：short / official / match / legacy / ext_stats
+-- 隊名別名 → 球隊。source 值域：short / official / match / former（球隊改名前的舊名，仍指向原 team_id）/ legacy / ext_stats
 CREATE TABLE IF NOT EXISTS team_aliases (
     alias   TEXT PRIMARY KEY,
     team_id INTEGER NOT NULL,

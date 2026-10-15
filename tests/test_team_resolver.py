@@ -101,22 +101,26 @@ def test_seed_is_idempotent(conn):
         conn.execute("SELECT COUNT(*) FROM teams").fetchone()[0],
         conn.execute("SELECT COUNT(*) FROM team_aliases").fetchone()[0],
     )
-    assert before == after == (12, 32)
+    assert before == after == (14, 39)
 
 
 def test_alias_count_matches_parametrized_cases():
-    assert len({n for n, _ in ALL_NAME_CASES}) == 23
+    assert len({n for n, _ in ALL_NAME_CASES}) == 29
 
 
-def test_short_name_equals_team_name(conn):
-    assert conn.execute("SELECT COUNT(*) FROM teams WHERE short_name IS NOT team_name").fetchone()[0] == 0
+def test_short_name_fits_badge(conn):
+    rows = conn.execute(
+        "SELECT team_id, gender, short_name FROM teams "
+        "WHERE is_active = 1 AND (short_name IS NULL OR length(short_name) > 6)"
+    ).fetchall()
+    assert rows == []
 
 
 def test_active_teams_official_name_resolves_to_self(conn):
     rows = conn.execute(
         "SELECT team_id, gender, official_name FROM teams WHERE is_active = 1"
     ).fetchall()
-    assert len(rows) == 9
+    assert len(rows) == 10
     for team_id, gender, official in rows:
         assert official is not None
         assert resolve_team(conn, official) == (team_id, gender)
@@ -124,7 +128,7 @@ def test_active_teams_official_name_resolves_to_self(conn):
 
 def test_colors_valid_and_unique_per_gender(conn):
     rows = conn.execute("SELECT gender, color FROM teams").fetchall()
-    assert len(rows) == 12
+    assert len(rows) == 14
     assert all(c and re.fullmatch(r"#[0-9A-Fa-f]{6}", c) for _, c in rows)
     for gender in ("M", "F"):
         colors = [c for g, c in rows if g == gender]

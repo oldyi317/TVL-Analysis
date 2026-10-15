@@ -227,7 +227,7 @@ def test_scrape_pages_end_to_end(conn, caplog):
     assert conn.execute("SELECT count(*) FROM matches WHERE home_sets_won IS NULL").fetchone()[0] == 130
     assert conn.execute("SELECT count(*), min(game_id) FROM matches WHERE cup_id=22 AND gender='M'").fetchone() == (8, 329)
     new_team = conn.execute("SELECT home_team, home_team_id FROM matches WHERE game_id=329 AND gender='M'").fetchone()
-    assert new_team == ("三福產業", None)
+    assert new_team == ("三福產業", 11)
     with patch("src.etl.schedule_crawler.requests.get", side_effect=_fake_get):
         again = scrape_schedule_pages(conn, genders=("M",))
     assert again["M"]["updated"] == 73 and again["M"]["inserted"] == 0

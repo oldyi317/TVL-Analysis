@@ -67,7 +67,7 @@ def _team(payload: dict, group: str, team_id: int) -> dict:
 def test_teams_json_carries_identity_and_season_participation(exported):
     payload = json.loads((exported / "teams.json").read_text(encoding="utf-8"))
     _validate(payload, "teams.schema.json")
-    assert len(payload["teams"]) == 12
+    assert len(payload["teams"]) == 14
     assert _team(payload, "men", 1) == {
         "team_id": 1,
         "group": "men",

@@ -67,9 +67,9 @@ test.describe('淺色', () => {
 		await expect(page.getByRole('img', { name: /趨勢/ })).toBeVisible();
 	});
 
-	test('十二隊名稱都在隊色區塊', async ({ page }) => {
+	test('十四隊名稱都在隊色區塊', async ({ page }) => {
 		await page.goto(URL);
-		expect(teamNames).toHaveLength(12);
+		expect(teamNames).toHaveLength(14);
 		const colors = page.locator('#colors');
 		for (const name of teamNames) {
 			await expect(colors.getByText(name, { exact: true }).first()).toBeVisible();

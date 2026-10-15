@@ -64,6 +64,22 @@ def test_upsert_player_identity_preserves_player_id_on_rerun(conn):
     assert rows[0][0] == first_id
 
 
+def test_upsert_player_identity_none_does_not_overwrite_existing(conn):
+    init_db(conn)
+    upsert_teams(conn, SAMPLE_DF)
+    upsert_player_identity(conn, SAMPLE_DF)
+    blank = SAMPLE_DF.copy().astype(object)
+    blank["dob"] = None
+    blank["height_cm"] = None
+    blank["weight_kg"] = float("nan")
+    upsert_player_identity(conn, blank)
+
+    row = conn.execute(
+        "SELECT dob, height_cm, weight_kg FROM players WHERE name = '測試球員'"
+    ).fetchone()
+    assert row == ("2000-01-01", 190.0, 80.0)
+
+
 def test_init_db_does_not_wipe_existing_registrations(conn):
     init_db(conn)
     upsert_teams(conn, SAMPLE_DF)
@@ -90,4 +106,4 @@ def test_init_db_does_not_wipe_existing_registrations(conn):
 def test_init_db_seeds_team_identity(conn):
     init_db(conn)
     assert conn.execute("SELECT short_name FROM teams WHERE team_id = 3 AND gender = 'F'").fetchone() == ("臺北鯨華",)
-    assert conn.execute("SELECT COUNT(*) FROM team_aliases").fetchone()[0] == 32
+    assert conn.execute("SELECT COUNT(*) FROM team_aliases").fetchone()[0] == 39

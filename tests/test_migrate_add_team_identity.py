@@ -40,6 +40,15 @@ CREATE TABLE seasons (
 );
 """
 
+@pytest.fixture(autouse=True)
+def frozen_seed(monkeypatch):
+    # 一次性遷移對應 2026-27 改名前的種子（12 隊／32 別名）；固定快照，不隨 sql/team_seed.sql 演進
+    monkeypatch.setattr(
+        "src.utils.teams.TEAM_SEED_PATH",
+        Path(__file__).parent / "fixtures" / "team_seed_pre_2026_27.sql",
+    )
+
+
 OLD_TEAMS = [
     (3, "臺北鯨華", "F"), (4, "高雄台電", "F"), (5, "新北中纖", "F"), (7, "義力營造", "F"),
     (1, "屏東台電", "M"), (2, "雲林美津濃", "M"), (4, "臺北國北獅", "M"),

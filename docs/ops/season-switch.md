@@ -15,13 +15,16 @@
       會把新列帶進既有 DB 的 `seasons` 表（只補列，不改既有表結構），也可直接用
       sqlite 對 DB 插入。未插入時 `match_crawler` 會因找不到賽季而報錯。
       （2026-27 已於 2026-10-15 插入 cup_id=22，見下方 daily-crawl 維運紀錄；下季再把本項改回未勾。）
-- [ ] `SEASON_YEAR_MAP` 與 `DEFAULT_YEAR`（constants.py）：改成新賽季的
-      「11、12 月屬 X 年，其餘屬 X+1 年」。
-- [ ] `match_crawler.py` 的 `--range-start`/`--range-end` argparse 預設值：
+- [ ] `SEASON_YEAR_MAP` 與 `DEFAULT_YEAR`（constants.py）：**跟著 `EXT_CUP_ID` 一起改，不跟官網賽季**。
+      這兩個常數只有 `stats_crawler` 用（外部系統的「MM/DD」補年份），改成新季的
+      「11、12 月屬 X 年，其餘屬 X+1 年」要等外部系統建好新季、`EXT_CUP_ID` 切過去的同一次。
+      提前改會讓每日 rosters 步驟把舊季 11、12 月算成下一年，去重鍵（match_date）失效而重複登錄。
+      （2026-10-15：官網已換季但外部系統 CupID=22 仍回 500，兩者都維持 21／2025。）
+- [ ] `match_crawler.py` 的 `--range-start`/`--range-end` argparse 預設值（目前 220–400 已涵蓋 2026-27 開季的 329+／281+，且 `--range-end` 不含端點；不在範圍內才需要改）：
       新季 game_id 起點不用再手動到官網確認，`schedule_crawler`（daily_update 第一步）會先把
       官網列表頁（含「下一年度」頁）的場次寫進 matches，查
       `SELECT gender, min(game_id), max(game_id) FROM matches WHERE cup_id=<新季> GROUP BY gender` 即可。
-- [ ] 球隊身分（有新隊伍/改名才需要動）：改 `sql/team_seed.sql`（teams 與 team_aliases），
+- [x] 球隊身分（有新隊伍/改名才需要動；2026-27 已於 2026-10-15 補：鳳凰／龍邁延續 4／5，三福／可利為新 team_id 11／12，本地 team_id 自此與官網隊伍頁編號脫鉤，下季再把本項改回未勾）：改 `sql/team_seed.sql`（teams 與 team_aliases），
       再套用：`python -c "from src.utils.db_config import get_connection; from src.utils.teams import apply_team_seed; c=get_connection(); apply_team_seed(c); c.commit()"`。
       過渡期相容：`EXT_TEAM_MAP`、`OPP_SHORT_TO_TEAM`、`TEAM_NAME_SHORT`（constants.py）與
       `TEAM_ALIAS`（match_crawler.py）仍被爬蟲使用，需同步修改，直到爬蟲改用 DB。
@@ -33,8 +36,8 @@
 
 ## 季前作業
 
-- [ ] 跑 `python -m src.etl.crawler` 抓新季官網名單 → `data/raw/`。
-- [ ] 跑 `python -m src.etl.db_loader` 更新 players 身分層與 teams。
+- [x] 跑 `python -m src.etl.crawler` 抓新季官網名單 → `data/raw/`。（2026-27 已於 2026-10-15 跑：10 隊 161 人；官網球員卡自本季起無生日欄，dob 全空屬預期，下季再把本項改回未勾）
+- [x] 跑 `python -m src.etl.db_loader` 更新 players 身分層與 teams。（2026-10-15 已跑：players 151→222，dob 以 COALESCE 保留舊值；下季改回未勾）
 - [ ] 到 Actions 頁確認 daily-crawl workflow 未因 60 天不活動被自動停用（被停用則按 Re-enable；GitHub 停用前會寄警告信）。
 - [ ] 手動 `workflow_dispatch` 觸發一次 daily-crawl 驗證整條管道，
       確認新季第一批資料正確落庫（cup_id 應為新季編號）。
