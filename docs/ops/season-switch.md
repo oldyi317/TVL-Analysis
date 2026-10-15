@@ -31,6 +31,8 @@
       `match_crawler` 寫入 matches 時以 `team_aliases`（`source <> 'ext_stats'`）解析 `home_team_id`/`away_team_id`；
       新隊名或新別名未進種子會 log warning 並寫 NULL，記得補 `sql/team_seed.sql`。
 
+- [ ] 隊色：開官網賽程列表（`/schedule`、`/wschedule`），每隊旁色卡是 `<span style="color:#xxxxxx">▇</span>`，
+      逐隊核對 `sql/team_seed.sql` 的 `color`（隊色會跨季變，2025-26→2026-27 美津濃就從淺藍改深藍），有差就改 seed 再套用。
 - [ ] 隊徽（有新隊伍才需要動）：原圖放 `assets/team_logo/<隊名>.png`，縮成最長邊 512px 存到
       `web/static/logos/<men|women>-<team_id>.png`（球隊頁只為現役球隊產生，每支現役隊都要有圖，缺圖會壞圖）。
       縮圖一行：`~/venvs/tvl/bin/python -c "from PIL import Image; im=Image.open('assets/team_logo/X.png').convert('RGBA'); im.thumbnail((512,512)); im.save('web/static/logos/men-N.png', optimize=True)"`。

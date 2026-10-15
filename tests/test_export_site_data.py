@@ -73,7 +73,7 @@ def test_teams_json_carries_identity_and_season_participation(exported):
         "group": "men",
         "name": "屏東台電",
         "short_name": "屏東台電",
-        "color": "#1B9E77",
+        "color": "#0B304B",
         "is_active": True,
         "cup_ids": [20, 21],
     }
