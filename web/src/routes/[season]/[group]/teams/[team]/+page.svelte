@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
+	import { asset, resolve } from '$app/paths';
+	import type { AssetPath } from '$app/types';
 	import BigStat from '#lib/components/BigStat.svelte';
 	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import MatchLink from '#lib/components/MatchLink.svelte';
 	import PlayerLink from '#lib/components/PlayerLink.svelte';
-	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import { stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
@@ -18,6 +18,8 @@
 	);
 
 	const hasUnplayed = $derived(data.matches.some((m) => m.sets.length === 0));
+	// 隊徽放 web/static/logos/<group>-<team_id>.png；球隊頁只為現役球隊產生，每隊都要有圖
+	const logoSrc = $derived(asset(`/logos/${team.group}-${team.team_id}.png` as AssetPath));
 
 	function matchHref(gameId: number): string {
 		return `${resolve('/[season]/[group]/matches/[game]', {
@@ -40,7 +42,7 @@
 </a>
 
 <header>
-	<TeamBadge {team} size="lg" />
+	<img class="logo" src={logoSrc} alt="{team.name}隊徽" width="160" height="160" />
 	<h1>{team.name}</h1>
 </header>
 
@@ -111,6 +113,20 @@
 		align-items: center;
 		gap: var(--space-3);
 		margin-block-end: var(--space-3);
+	}
+
+	.logo {
+		flex: none;
+		inline-size: 160px;
+		block-size: 160px;
+		object-fit: contain;
+	}
+
+	@media (max-width: 480px) {
+		.logo {
+			inline-size: 120px;
+			block-size: 120px;
+		}
 	}
 
 	h1 {

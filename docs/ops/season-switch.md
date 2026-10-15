@@ -31,6 +31,9 @@
       `match_crawler` 寫入 matches 時以 `team_aliases`（`source <> 'ext_stats'`）解析 `home_team_id`/`away_team_id`；
       新隊名或新別名未進種子會 log warning 並寫 NULL，記得補 `sql/team_seed.sql`。
 
+- [ ] 隊徽（有新隊伍才需要動）：原圖放 `assets/team_logo/<隊名>.png`，縮成最長邊 512px 存到
+      `web/static/logos/<men|women>-<team_id>.png`（球隊頁只為現役球隊產生，每支現役隊都要有圖，缺圖會壞圖）。
+      縮圖一行：`~/venvs/tvl/bin/python -c "from PIL import Image; im=Image.open('assets/team_logo/X.png').convert('RGBA'); im.thumbnail((512,512)); im.save('web/static/logos/men-N.png', optimize=True)"`。
 - [ ] `STANDINGS_NOTES`（src/export/site_data.py）：以 `(cup_id, gender)` 標記官網收錄不全的
       戰績（目前只有 2024-25 兩組）。新季正常不用加；若官網缺漏賽事再補一列。
 

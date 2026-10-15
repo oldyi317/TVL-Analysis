@@ -8,7 +8,7 @@ import {
 	seasonsData
 } from './helpers.js';
 
-type Team = { team_id: number; group: string; is_active: boolean; cup_ids: number[] };
+type Team = { team_id: number; group: string; name: string; is_active: boolean; cup_ids: number[] };
 const teams: Team[] = readJson('teams').teams;
 const matchGroups = readJson('matches').matches;
 const rosters = readJson('rosters').rosters;
@@ -95,6 +95,17 @@ test('球隊頁：戰績、賽事、週登錄', async ({ page }) => {
 
 	await page.locator('.card-link').first().click();
 	await expect(page).toHaveURL(new RegExp(`/${current}/men/matches/\\d+/$`));
+});
+
+test('現役球隊頁頁首有隊徽圖且載入成功', async ({ page }) => {
+	const active = menIn(currentCup).filter((t) => t.is_active);
+	expect(active.length).toBeGreaterThan(0);
+	for (const team of active) {
+		await page.goto(`${BASE}/${current}/men/teams/${team.team_id}/`);
+		const logo = page.locator('header img.logo');
+		await expect(logo).toHaveAttribute('alt', `${team.name}隊徽`);
+		expect(await logo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+	}
 });
 
 test('補登球員背號為空仍有姓名卡片', async ({ page }) => {
