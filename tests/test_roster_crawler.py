@@ -14,6 +14,8 @@ FIXTURE = Path(__file__).resolve().parent / "fixtures" / "match_ashx_sample.html
 
 
 class _FakeResponse:
+    status_code = 200
+
     def __init__(self, text: str):
         self.text = text
         self.encoding = "utf-8"
@@ -295,3 +297,72 @@ def test_build_name_to_pid_distinguishes_gender(tmp_db_path):
     assert name_map[("陳大文", "M")] == pid_m
     assert name_map[("陳大文", "F")] == pid_f
     conn.close()
+
+
+def _http_error_response(status_code: int):
+    import requests
+    resp = _FakeResponse("")
+    resp.status_code = status_code
+
+    def _raise():
+        raise requests.HTTPError(f"{status_code} Client Error", response=resp)
+
+    resp.raise_for_status = _raise
+    return resp
+
+
+def test_fetch_match_list_falls_back_to_match_ashx_scan_when_aspx_missing():
+    """
+    外部系統 Match.aspx 自 2026-09-29 起 404（整站 .aspx 頁面消失，_handler/*.ashx 仍在）。
+    fetch_match_list 須改以 Match.ashx 逐號探測列舉 MatchID，並跨過例行賽與季後賽之間的
+    空號區（2025-26 實測：1–108 連續、109–200 皆空、201–210 為季後賽）。
+    """
+    from src.etl.stats_crawler import fetch_match_list, MATCH_ID_SCAN_GAP_LIMIT
+
+    roster_html = FIXTURE.read_text(encoding="utf-8")
+    existing = {1, 2, 108, 201, 210}
+    requested = []
+
+    def fake_get(url, params=None, headers=None, timeout=None):
+        if url.endswith("/Match.aspx"):
+            return _http_error_response(404)
+        requested.append(params["MatchID"])
+        if params["MatchID"] in existing:
+            return _FakeResponse(roster_html)
+        # 查無該場：外部系統回 HTTP 500 的 ASP.NET 未處理例外頁（實測 2026-10-15）
+        missing = _http_error_response(500)
+        missing.text = (
+            "<!DOCTYPE html><html><head><title>並未將物件參考設定為物件的執行個體。</title></head><body></body></html>"
+        )
+        return missing
+
+    with patch("src.etl.stats_crawler.requests.get", side_effect=fake_get), \
+         patch("src.etl.stats_crawler.time.sleep"):
+        result = fetch_match_list(cup_id=21)
+
+    assert [m["match_id"] for m in result] == [1, 2, 108, 201, 210]
+    assert MATCH_ID_SCAN_GAP_LIMIT > 92, "門檻須大於 2025-26 實測的 92 格空號"
+    assert max(requested) == 210 + MATCH_ID_SCAN_GAP_LIMIT, "最後一場之後連續空號達門檻即停"
+
+
+def test_fetch_match_list_scan_refuses_to_report_empty_season():
+    """逐號探測一場都沒找到（外部系統整站 500）要拋錯，不能回空清單讓每日更新誤判「無新資料」。"""
+    from src.etl.stats_crawler import fetch_match_list
+
+    def fake_get(url, params=None, headers=None, timeout=None):
+        return _http_error_response(404 if url.endswith("/Match.aspx") else 500)
+
+    with patch("src.etl.stats_crawler.requests.get", side_effect=fake_get), \
+         patch("src.etl.stats_crawler.time.sleep"):
+        with pytest.raises(RuntimeError, match="外部系統異常"):
+            fetch_match_list(cup_id=21)
+
+
+def test_fetch_match_list_propagates_non_404_errors():
+    """Match.aspx 非 404 的 HTTP 錯誤（如 500）不走掃描備援，照舊拋出。"""
+    import requests
+    from src.etl.stats_crawler import fetch_match_list
+
+    with patch("src.etl.stats_crawler.requests.get", return_value=_http_error_response(500)):
+        with pytest.raises(requests.HTTPError):
+            fetch_match_list(cup_id=21)

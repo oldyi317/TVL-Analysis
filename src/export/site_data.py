@@ -255,7 +255,25 @@ def _attach_golden_sets(entries: list[dict], golden_rows: list[tuple]) -> None:
         parent["golden_set"] = [home_pts, away_pts] if same_side else [away_pts, home_pts]
 
 
+def _warn_unresolved_teams(conn: sqlite3.Connection, cup_id: int, gender: str) -> None:
+    """隊名尚未進 team_seed 的場次 team_id 為 NULL，匯出略過並警告，不插補也不讓 schema 驗證失敗。"""
+    rows = conn.execute(
+        """
+        SELECT game_id, home_team, away_team FROM matches
+        WHERE cup_id = ? AND gender = ? AND (home_team_id IS NULL OR away_team_id IS NULL)
+        ORDER BY game_id
+        """,
+        (cup_id, gender),
+    ).fetchall()
+    for game_id, home, away in rows:
+        logger.warning(
+            "隊伍未解析，略過匯出：cup_id=%s gender=%s game_id=%s %s vs %s（請補 sql/team_seed.sql）",
+            cup_id, gender, game_id, home, away,
+        )
+
+
 def _group_matches(conn: sqlite3.Connection, cup_id: int, gender: str) -> list[dict]:
+    _warn_unresolved_teams(conn, cup_id, gender)
     rows = conn.execute(
         """
         SELECT game_id, match_date, start_time, venue, round_name,
@@ -264,6 +282,7 @@ def _group_matches(conn: sqlite3.Connection, cup_id: int, gender: str) -> list[d
                away_set1, away_set2, away_set3, away_set4, away_set5
         FROM matches
         WHERE cup_id = ? AND gender = ? AND is_golden_set = 0
+          AND home_team_id IS NOT NULL AND away_team_id IS NOT NULL
         ORDER BY match_date, game_id
         """,
         (cup_id, gender),
@@ -274,6 +293,7 @@ def _group_matches(conn: sqlite3.Connection, cup_id: int, gender: str) -> list[d
         SELECT game_id, match_date, home_team_id, away_team_id, home_set1, away_set1
         FROM matches
         WHERE cup_id = ? AND gender = ? AND is_golden_set = 1
+          AND home_team_id IS NOT NULL AND away_team_id IS NOT NULL
         """,
         (cup_id, gender),
     ).fetchall()

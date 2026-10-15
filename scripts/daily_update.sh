@@ -55,3 +55,12 @@ git -c user.name="github-actions[bot]" \
     -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
     commit -m "chore: 每日自動更新 $(date +%F)"
 git push
+
+# 依 GitHub 文件，用 GITHUB_TOKEN push 不會觸發其他 workflow（防遞迴規則；實證紀錄見
+# docs/ops/season-switch.md），要自己點火 pages.yml 重建靜態站；workflow 以 GH_TOKEN 帶入 token，
+# 本機手動跑沒有就略過
+if [ -n "${GH_TOKEN:-}" ]; then
+    gh workflow run pages.yml --ref main
+else
+    echo "未設定 GH_TOKEN，略過觸發 pages.yml。"
+fi

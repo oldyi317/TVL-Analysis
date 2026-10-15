@@ -1,9 +1,12 @@
-import { currentSeason, teamsIn } from '#lib/site.js';
+import { currentSeason, seasons, teamsIn } from '#lib/site.js';
 import type { StandingsRow } from '#lib/components/StandingsTable.svelte';
 import type { StyleMatch } from '#lib/match.js';
 import type { Team } from '#lib/data/types.js';
 
-const men = teamsIn(currentSeason.cup_id, 'men');
+// 樣本要五支男隊；新季剛建、尚無隊伍時退回最近有隊伍的賽季
+export const demoSeason =
+	[...seasons].reverse().find((s) => teamsIn(s.cup_id, 'men').length >= 5) ?? currentSeason;
+const men = teamsIn(demoSeason.cup_id, 'men');
 const women2024 = teamsIn(20, 'women');
 
 export const sampleMatches: StyleMatch[] = [

@@ -82,7 +82,8 @@ CREATE TABLE IF NOT EXISTS seasons (
 
 INSERT OR IGNORE INTO seasons (cup_id, name, start_date, end_date) VALUES
     (20, '2024-25', '2024-07-01', '2025-06-30'),
-    (21, '2025-26', '2025-07-01', '2026-06-30');
+    (21, '2025-26', '2025-07-01', '2026-06-30'),
+    (22, '2026-27', '2026-07-01', '2027-06-30');
 
 CREATE TABLE IF NOT EXISTS matches (
     match_id        INTEGER PRIMARY KEY AUTOINCREMENT,

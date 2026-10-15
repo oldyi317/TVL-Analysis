@@ -8,9 +8,11 @@ on:
     - cron: "23 1 * * *"
   workflow_dispatch:
 
-# GITHUB_TOKEN 預設唯讀，push .db 需要 contents 寫入權限
+# GITHUB_TOKEN 預設唯讀，push .db 需要 contents 寫入權限；
+# push 後要自己 `gh workflow run pages.yml`（GITHUB_TOKEN 的 push 不觸發其他 workflow），需要 actions 寫入權限
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: daily-crawl
@@ -23,4 +25,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: 每日增量更新
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: bash scripts/daily_update.sh

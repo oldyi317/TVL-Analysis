@@ -149,6 +149,8 @@ def test_empty_data_still_lists_every_cup_and_group_with_no_games(export):
         {"cup_id": 20, "group": "women", "games": []},
         {"cup_id": 21, "group": "men", "games": []},
         {"cup_id": 21, "group": "women", "games": []},
+        {"cup_id": 22, "group": "men", "games": []},
+        {"cup_id": 22, "group": "women", "games": []},
     ]
 
 

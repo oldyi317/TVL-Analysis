@@ -59,7 +59,7 @@ def test_migration_assigns_cup_id_and_preserves_data(tmp_db_path):
     try:
         result = run_migration(conn)
 
-        assert conn.execute("SELECT cup_id FROM seasons ORDER BY cup_id").fetchall() == [(20,), (21,)]
+        assert conn.execute("SELECT cup_id FROM seasons ORDER BY cup_id").fetchall() == [(20,), (21,), (22,)]
         assert conn.execute("SELECT COUNT(*) FROM matches").fetchone()[0] == 3
         rows = conn.execute(
             """SELECT m.game_id, m.cup_id, m.match_date, s.start_date, s.end_date

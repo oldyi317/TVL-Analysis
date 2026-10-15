@@ -202,7 +202,7 @@ def test_aggregates_by_team_id_not_name(export_matches):
 def test_groups_cover_every_season_and_group_in_order(export_matches):
     p = export_matches([match(1, 1, 2, 3, 0)])
     assert [(g["cup_id"], g["group"]) for g in p["standings"]] == [
-        (20, "men"), (20, "women"), (21, "men"), (21, "women"),
+        (20, "men"), (20, "women"), (21, "men"), (21, "women"), (22, "men"), (22, "women"),
     ]
     assert group(p, 21, "women")["rows"] == []
 

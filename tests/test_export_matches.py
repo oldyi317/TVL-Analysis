@@ -1,4 +1,5 @@
 import json
+import logging
 import sqlite3
 from pathlib import Path
 
@@ -77,7 +78,7 @@ def test_played_match_json_structure(export_matches):
         "golden_set": None,
     }]
     assert {(g["cup_id"], g["group"]) for g in payload["matches"]} == {
-        (20, "men"), (20, "women"), (21, "men"), (21, "women"),
+        (20, "men"), (20, "women"), (21, "men"), (21, "women"), (22, "men"), (22, "women"),
     }
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
@@ -149,3 +150,16 @@ def test_golden_set_with_two_candidate_parents_fails_loudly(export_matches):
             match(2, 2, 1, [(25, 20)] * 3, date="2026-03-22"),
             match(3, 1, 2, [(15, 9)], date="2026-03-22", golden=1),
         ])
+
+
+def test_match_with_unresolved_team_is_skipped_with_warning(export_matches, caplog):
+    """新季隊名還沒進 team_seed 時 team_id 為 NULL：匯出略過該場並警告，schema 驗證仍過。"""
+    with caplog.at_level(logging.WARNING, logger="src.export.site_data"):
+        payload = export_matches([
+            match(330, None, 1, [], date="2026-10-24", cup=22),
+            match(331, 1, 2, [], date="2026-10-24", cup=22),
+        ])
+    assert [m["game_id"] for m in group(payload, 22)["matches"]] == [331]
+    assert any("隊伍未解析" in r.message and "330" in r.message for r in caplog.records)
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)

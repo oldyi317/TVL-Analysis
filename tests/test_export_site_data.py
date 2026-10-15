@@ -50,8 +50,8 @@ def exported(seeded_db, tmp_path):
 def test_seasons_json_lists_all_seasons_and_marks_latest_as_current(exported):
     payload = json.loads((exported / "seasons.json").read_text(encoding="utf-8"))
     _validate(payload, "seasons.schema.json")
-    assert payload["current_cup_id"] == 21
-    assert [s["name"] for s in payload["seasons"]] == ["2024-25", "2025-26"]
+    assert payload["current_cup_id"] == 22
+    assert [s["name"] for s in payload["seasons"]] == ["2024-25", "2025-26", "2026-27"]
     assert payload["seasons"][1] == {
         "cup_id": 21,
         "name": "2025-26",

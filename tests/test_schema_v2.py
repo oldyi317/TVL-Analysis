@@ -28,7 +28,7 @@ def test_v2_tables_exist(conn):
 def test_schema_is_idempotent_and_seeds_seasons(conn):
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     seasons = conn.execute("SELECT cup_id, name FROM seasons ORDER BY cup_id").fetchall()
-    assert seasons == [(20, "2024-25"), (21, "2025-26")]
+    assert seasons == [(20, "2024-25"), (21, "2025-26"), (22, "2026-27")]
     cols = {row[1] for row in conn.execute("PRAGMA table_info(matches)")}
     assert {"cup_id", "start_time"} <= cols
 

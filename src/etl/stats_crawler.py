@@ -340,14 +340,63 @@ def main(incremental: bool = False):
 
 # ── 出賽名單爬蟲（Phase 2：週次登錄資料來源） ──────────────────
 
+# 逐號探測時連續空號達此數即停；2025-26 實測例行賽 1–108 與季後賽 201–210 之間空 92 格
+MATCH_ID_SCAN_GAP_LIMIT = 120
+
+
+def _match_page_exists(cup_id: int, match_id: int) -> bool:
+    """
+    Match.ashx 有該場資料（標題含「組」）才算存在。
+    查無該場回 HTTP 500 的 ASP.NET 未處理例外頁（NullReference）；資料壞掉的場次
+    （如 2025-26 的 208，DBNull）也回 500，同樣視為不存在，其餘 HTTP 錯誤照拋。
+    """
+    url = f"{EXT_BASE}/_handler/Match.ashx"
+    r = requests.get(
+        url, params={"CupID": cup_id, "MatchID": match_id},
+        headers=HEADERS, timeout=15,
+    )
+    if r.status_code == 500:
+        return False
+    r.raise_for_status()
+    r.encoding = "utf-8"
+    h3 = BeautifulSoup(r.text, "html.parser").find("h3")
+    return h3 is not None and "組" in h3.get_text(" ", strip=True)
+
+
+def _scan_match_ids(cup_id: int) -> list[dict]:
+    """從 MatchID=1 起逐號探測 Match.ashx，連續空號達 MATCH_ID_SCAN_GAP_LIMIT 即停。"""
+    found = []
+    match_id, consecutive_empty = 1, 0
+    while consecutive_empty < MATCH_ID_SCAN_GAP_LIMIT:
+        if _match_page_exists(cup_id, match_id):
+            found.append({"match_id": match_id, "label": ""})
+            consecutive_empty = 0
+        else:
+            consecutive_empty += 1
+        match_id += 1
+        time.sleep(0.2)
+    if not found:
+        raise RuntimeError(f"Match.ashx 逐號探測一場都沒找到（CupID={cup_id}），疑似外部系統異常，不視為無資料")
+    logger.info("Match.ashx 逐號探測完成：CupID=%d 共 %d 場", cup_id, len(found))
+    return found
+
+
 def fetch_match_list(cup_id: int = CUP_ID) -> list[dict]:
     """
     透過 Match.aspx 的下拉選單取得所有 MatchID 清單。
-    MatchID 本身不連續，不可用逐一 range 掃描列舉，必須用此函式。
+    MatchID 不連續（例行賽與季後賽之間有空號區），下拉選單是首選來源。
+    外部系統自 2026-09-29 起所有 .aspx 頁面 404（_handler/*.ashx 仍正常），
+    遇到 404 時退而以 Match.ashx 逐號探測列舉（_scan_match_ids）。
     """
     url = f"{EXT_BASE}/Match.aspx"
     r = requests.get(url, params={"CupID": cup_id}, headers=HEADERS, timeout=15)
-    r.raise_for_status()
+    try:
+        r.raise_for_status()
+    except requests.HTTPError as e:
+        if e.response is not None and e.response.status_code == 404:
+            logger.warning("Match.aspx 回 404，改以 Match.ashx 逐號探測列舉 MatchID（CupID=%d）", cup_id)
+            return _scan_match_ids(cup_id)
+        raise
     r.encoding = "utf-8"
     soup = BeautifulSoup(r.text, "html.parser")
     sel = soup.find("select", id="divSelect")

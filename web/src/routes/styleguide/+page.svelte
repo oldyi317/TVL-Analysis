@@ -11,8 +11,9 @@
 	import { teamStyle } from '#lib/components/teamStyle.js';
 	import Chart from '#lib/chart/Chart.svelte';
 	import { contrastRatio, SURFACE, teamPalette } from '#lib/color.js';
-	import { currentSeason, GROUP_LABEL, teams, teamsIn } from '#lib/site.js';
+	import { GROUP_LABEL, teams, teamsIn } from '#lib/site.js';
 	import {
+		demoSeason,
 		menStandings,
 		sampleMatches,
 		samplePlayers,
@@ -36,7 +37,7 @@
 	const SPACES = [1, 2, 3, 4, 5, 6, 7];
 	const RADII = ['--radius-sm', '--radius-md', '--radius-full'];
 
-	const menTeams = teamsIn(currentSeason.cup_id, 'men');
+	const menTeams = teamsIn(demoSeason.cup_id, 'men');
 
 	let dark = $state(false);
 	let hex = $state<Record<string, string>>({});
@@ -153,7 +154,7 @@
 <section>
 	<h2>頁首</h2>
 	<div class="frame">
-		<SiteHeader season={currentSeason.name} group="men" hrefFor={() => '#'} />
+		<SiteHeader season={demoSeason.name} group="men" hrefFor={() => '#'} />
 	</div>
 </section>
 
@@ -168,7 +169,7 @@
 
 <section>
 	<h2>戰績表列</h2>
-	<h3>{currentSeason.name} {GROUP_LABEL.men}</h3>
+	<h3>{demoSeason.name} {GROUP_LABEL.men}</h3>
 	<StandingsTable rows={menStandings} />
 	<h3>2024-25 {GROUP_LABEL.women}</h3>
 	<StandingsTable

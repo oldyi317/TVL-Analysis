@@ -57,3 +57,8 @@ def test_init_refuses_unmigrated_matches_table(tmp_db_path):
             init_matches_table(connection)
     finally:
         connection.close()
+
+
+def test_resolve_cup_id_covers_2026_27_season(conn):
+    """2026-27 新季（官網標題「企業22年」，cup_id 即屆數）開幕日 2026-10-24 須解析到 22。"""
+    assert resolve_cup_id(conn, "2026-10-24") == 22

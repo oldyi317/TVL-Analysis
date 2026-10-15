@@ -1,5 +1,6 @@
 # 靜態站：push 到 main 時匯出 JSON、建置 SvelteKit、部署到 GitHub Pages。
-# 與 daily-crawl.yml（自架 runner 爬蟲）分開；爬蟲 push .db 後會自然觸發本 workflow 重建。
+# 與 daily-crawl.yml（自架 runner 爬蟲）分開；爬蟲用 GITHUB_TOKEN push .db 不會觸發本 workflow（GitHub 防遞迴規則），
+# 由 daily_update.sh 在 push 後 `gh workflow run pages.yml` 點火。
 name: pages
 
 on:
