@@ -16,7 +16,7 @@ export default defineConfig({
 		})
 	],
 	test: {
-		include: ['src/**/*.test.ts'],
+		include: ['src/**/*.test.ts', 'e2e/**/*.test.ts'],
 		environment: 'node'
 	}
 });

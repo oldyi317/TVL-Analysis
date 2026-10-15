@@ -1,9 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
-import { BASE, currentSeason as current, readJson, seasonsData } from './helpers.js';
+import { BASE, currentSeason, findSeason, readJson } from './helpers.js';
 
 type Adv = { player_id: number; cup_id: number; group: string; position: string | null; insufficient_sets: boolean };
 type Player = { player_id: number; group: string; seasons: { cup_id: number; games: number }[] };
-const cup: number = seasonsData.current_cup_id;
+// 開季初當季還沒有球員數據，退回最近一個有球員的賽季
+const picked = findSeason('players');
+const cup: number = picked?.cupId ?? 0;
+const current = picked?.season ?? currentSeason;
 const advanced: Adv[] = readJson('player_advanced').players;
 const players: Player[] = readJson('players').players;
 type Box = { cup_id: number; group: string; games: { home: { player_id: number }[]; away: { player_id: number }[] }[] };
@@ -46,7 +49,7 @@ const open = async (page: Page, a: Adv) => {
 
 test('進階數據預設收合，展開後有 PR 值與兩個圖表', async ({ page }) => {
 	const a = pick(false);
-	test.skip(!a, '當季沒有局數足夠且有位置的出賽球員');
+	test.skip(!a, '用於比對的賽季沒有局數足夠且有位置的出賽球員');
 	await open(page, a!);
 	const table = page.getByRole('table', { name: 'PR 值' });
 	await expect(table.getByRole('row', { name: /攻擊成功率/ })).toBeVisible();
@@ -60,7 +63,7 @@ test('沒有 PR 值的球員（局數不足或無位置）展開後看到說明'
 	const a = advanced.find(
 		(x) => x.cup_id === cup && (x.insufficient_sets || x.position === null) && played(x)
 	);
-	test.skip(!a, '當季沒有局數不足或無位置的出賽球員');
+	test.skip(!a, '用於比對的賽季沒有局數不足或無位置的出賽球員');
 	await open(page, a!);
 	const reason = a!.insufficient_sets ? '出賽局數不足 5 局' : '本季無登錄位置';
 	await expect(page.getByRole('note').filter({ hasText: reason })).toBeVisible();

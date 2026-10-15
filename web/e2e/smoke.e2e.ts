@@ -1,11 +1,21 @@
 import { expect, test } from '@playwright/test';
-import { BASE, currentSeason as current, seasonsData } from './helpers.js';
+import { BASE, currentSeason as current, findSeason, readJson, seasonsData } from './helpers.js';
+
+// 開季初當季球隊還沒登錄齊，退回最近一個有球隊的賽季
+const teamSeason = findSeason('teams');
+const teamCount: number = teamSeason
+	? readJson('teams').teams.filter(
+			(t: { group: string; cup_ids: number[] }) =>
+				t.group === 'men' && t.cup_ids.includes(teamSeason.cupId)
+		).length
+	: 0;
 
 test('球隊頁列出帶隊色的圓形隊標', async ({ page }) => {
-	await page.goto(`${BASE}/${current}/men/teams/`);
+	test.skip(!teamSeason, '所有賽季的男子組都沒有球隊');
+	await page.goto(`${BASE}/${teamSeason!.season}/men/teams/`);
 	const rows = page.getByRole('list').getByRole('listitem');
 	await expect(rows.first()).toBeVisible();
-	expect(await rows.count()).toBeGreaterThanOrEqual(4);
+	expect(await rows.count()).toBe(teamCount);
 	const badge = rows.first().locator('.badge');
 	await expect(badge).toHaveCSS('border-radius', '50%');
 	expect(await badge.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(

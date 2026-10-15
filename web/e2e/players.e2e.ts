@@ -1,12 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import {
-	BASE,
-	currentSeason as current,
-	OLD_CUP,
-	OLD_SEASON,
-	readJson,
-	seasonsData
-} from './helpers.js';
+import { BASE, currentSeason, findSeason, OLD_CUP, OLD_SEASON, readJson } from './helpers.js';
 
 type Season = { cup_id: number; team_id: number; jersey_number: number | null; games: number };
 type Player = { player_id: number; group: string; name: string | null; seasons: Season[] };
@@ -14,7 +7,11 @@ const players: Player[] = readJson('players').players;
 const teamIds: number[] = readJson('teams')
 	.teams.filter((t: { group: string }) => t.group === 'men')
 	.map((t: { team_id: number }) => t.team_id);
-const currentCup: number = seasonsData.current_cup_id;
+// 開季初當季還沒有球員，退回最近一個有球員的賽季
+const picked = findSeason('players');
+const current = picked?.season ?? currentSeason;
+const currentCup = picked?.cupId ?? 0;
+const noPlayers = '所有賽季的男子組都沒有球員';
 
 const registeredIn = (cup: number, group: string) =>
 	players.filter((p) => p.group === group && p.seasons.some((s) => s.cup_id === cup));
@@ -34,6 +31,7 @@ test('導覽「球員」到球員列表', async ({ page }) => {
 });
 
 test('列表第一張球員卡進球員頁：基本資料與本季數據', async ({ page }) => {
+	test.skip(!picked, noPlayers);
 	await page.goto(`${BASE}/${current}/men/players/`);
 	const card = page.locator('ul.players li a').first();
 	await expect(card).toBeVisible();
@@ -60,7 +58,7 @@ test('列表第一張球員卡進球員頁：基本資料與本季數據', async
 
 test('球員頁大數字等於匯出值', async ({ page }) => {
 	const player = registeredIn(currentCup, 'men').find((p) => seasonOf(p, currentCup).games > 0);
-	test.skip(!player, '當季男子組沒有 games > 0 的球員');
+	test.skip(!player, '用於比對的賽季男子組沒有 games > 0 的球員');
 	await page.goto(`${BASE}/${current}/men/players/${player!.player_id}/`);
 	const s = seasonOf(player!, currentCup) as Season & Record<string, number>;
 	const stats = page.locator('.stats');
@@ -84,13 +82,14 @@ test('球員頁大數字等於匯出值', async ({ page }) => {
 
 test('沒有單場數據的球員顯示空狀態', async ({ page }) => {
 	const player = registeredIn(currentCup, 'men').find((p) => seasonOf(p, currentCup).games === 0);
-	test.skip(!player, '當季男子組沒有 games = 0 的球員');
+	test.skip(!player, '用於比對的賽季男子組沒有 games = 0 的球員');
 	await page.goto(`${BASE}/${current}/men/players/${player!.player_id}/`);
 	await expect(page.getByText('這一季還沒有單場數據')).toBeVisible();
 	await expect(page.locator('.stats')).toHaveCount(0);
 });
 
 test('列表依球隊分組：每隊一個標題，第一張卡是第一隊的第一位', async ({ page }) => {
+	test.skip(!picked, noPlayers);
 	const registered = registeredIn(currentCup, 'men');
 	const firstTeam = teamIds.find((id) => registered.some((p) => seasonOf(p, currentCup).team_id === id))!;
 	const teamCount = teamIds.filter((id) =>
@@ -129,7 +128,10 @@ test('2024-25 球員列表依資料顯示', async ({ page }) => {
 });
 
 test('球隊頁的球員卡連到球員頁', async ({ page }) => {
-	await page.goto(`${BASE}/${current}/men/teams/`);
+	// 球隊頁的球員卡來自週登錄，退回最近一個有週登錄的賽季
+	const rosterSeason = findSeason('rosters');
+	test.skip(!rosterSeason, '所有賽季的男子組都沒有週登錄');
+	await page.goto(`${BASE}/${rosterSeason!.season}/men/teams/`);
 	await page.locator('li a').first().click();
 	const card = page.locator('ul.players li a').first();
 	await expect(card).toHaveAttribute('href', /\/players\/\d+\/$/);
@@ -139,6 +141,7 @@ test('球隊頁的球員卡連到球員頁', async ({ page }) => {
 });
 
 test('球員頁切換組別退回列表', async ({ page }) => {
+	test.skip(!picked, noPlayers);
 	const player = registeredIn(currentCup, 'men')[0];
 	await page.goto(`${BASE}/${current}/men/players/${player.player_id}/`);
 	const href = await page

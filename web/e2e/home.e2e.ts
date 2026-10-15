@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { BASE, currentSeason as current, seasonsData } from './helpers.js';
+import { BASE, currentSeason as current, findSeason, seasonsData } from './helpers.js';
 import { readFileSync } from 'node:fs';
 
 const cupId: number = seasonsData.current_cup_id;
@@ -23,12 +23,6 @@ test('首頁三段：最新比分、戰績、下一場', async ({ page }) => {
 	const latest = page.getByRole('region', { name: '最新比分' });
 	await expect(latest).toBeVisible();
 	await expect(latest.locator('.card-link')).toHaveCount(played.filter((m) => m.date === latestDate).length);
-	if (played.length > 0) {
-		await expect(latest.getByRole('link', { name: '全部賽事' })).toHaveAttribute(
-			'href',
-			`${BASE}/${current}/men/matches/`
-		);
-	}
 
 	const standings = page.getByRole('region', { name: '戰績' });
 	await expect(standings).toBeVisible();
@@ -46,6 +40,16 @@ test('首頁三段：最新比分、戰績、下一場', async ({ page }) => {
 		await expect(next.getByRole('group', { name: '賽前勝率' })).toHaveText(/\d+% – \d+%|資料不足/);
 		await expect(next.getByRole('note')).toBeVisible();
 	} else await expect(next).toHaveCount(0);
+});
+
+test('最新比分有「全部賽事」連結', async ({ page }) => {
+	// 開季初當季沒有已完賽場次，退回最近一個有已完賽場次的賽季
+	const picked = findSeason('played');
+	test.skip(!picked, '所有賽季的男子組都沒有已完賽場次');
+	await page.goto(`${BASE}/${picked!.season}/men/`);
+	await expect(
+		page.getByRole('region', { name: '最新比分' }).getByRole('link', { name: '全部賽事' })
+	).toHaveAttribute('href', `${BASE}/${picked!.season}/men/matches/`);
 });
 
 test('記住上次看的組別', async ({ page }) => {

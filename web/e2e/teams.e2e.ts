@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
 	BASE,
 	currentSeason as current,
+	findSeason,
 	OLD_CUP,
 	OLD_SEASON,
 	readJson,
@@ -13,6 +14,8 @@ const teams: Team[] = readJson('teams').teams;
 const matchGroups = readJson('matches').matches;
 const rosters = readJson('rosters').rosters;
 const currentCup: number = seasonsData.current_cup_id;
+// 開季初當季沒有週登錄，退回最近一個有週登錄的賽季
+const rosterSeason = findSeason('rosters');
 
 const standings = readJson('standings').standings;
 
@@ -56,17 +59,19 @@ test('2024-25 男子組列表：非現役隊不連結', async ({ page }) => {
 });
 
 test('球隊頁：戰績、賽事、週登錄', async ({ page }) => {
-	await page.goto(`${BASE}/${current}/men/teams/`);
-	await page.locator('li a').first().click();
-	await expect(page).toHaveURL(/\/teams\/\d+\/$/);
-	const teamId = Number(page.url().match(/\/teams\/(\d+)\/$/)![1]);
+	test.skip(!rosterSeason, '所有賽季的男子組都沒有週登錄');
+	const { cupId, season } = rosterSeason!;
+	const team = menIn(cupId).find((t) => t.is_active && latestWeekOf(cupId, 'men', t.team_id));
+	test.skip(!team, '用於比對的賽季沒有現役且有週登錄的男子組球隊');
+	const teamId = team!.team_id;
+	await page.goto(`${BASE}/${season}/men/teams/${teamId}/`);
 	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 	for (const name of ['戰績', '賽事', '週登錄']) {
 		await expect(page.getByRole('heading', { level: 2, name })).toBeVisible();
 	}
 
 	const games = matchGroups.find(
-		(g: { cup_id: number; group: string }) => g.cup_id === currentCup && g.group === 'men'
+		(g: { cup_id: number; group: string }) => g.cup_id === cupId && g.group === 'men'
 	).matches;
 	const mine = games.filter(
 		(m: { home_team_id: number; away_team_id: number }) =>
@@ -74,7 +79,7 @@ test('球隊頁：戰績、賽事、週登錄', async ({ page }) => {
 	);
 	await expect(page.locator('.card-link')).toHaveCount(mine.length);
 
-	const standing = standingOf(currentCup, 'men', teamId);
+	const standing = standingOf(cupId, 'men', teamId);
 	expect(standing).toBeDefined();
 	const stats = page.locator('.stats');
 	for (const [label, value] of [
@@ -87,14 +92,14 @@ test('球隊頁：戰績、賽事、週登錄', async ({ page }) => {
 		await expect(stats.getByText(String(value), { exact: true }).first()).toBeVisible();
 	}
 
-	const latest = latestWeekOf(currentCup, 'men', teamId);
+	const latest = latestWeekOf(cupId, 'men', teamId);
 	expect(latest).toBeDefined();
 	await expect(page.locator('.week')).toContainText(latest!.week_label);
 	await expect(page.locator('ul.players li')).toHaveCount(latest!.players.length);
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 
 	await page.locator('.card-link').first().click();
-	await expect(page).toHaveURL(new RegExp(`/${current}/men/matches/\\d+/$`));
+	await expect(page).toHaveURL(new RegExp(`/${season}/men/matches/\\d+/$`));
 });
 
 test('現役球隊頁頁首有隊徽圖且載入成功', async ({ page }) => {
@@ -109,12 +114,14 @@ test('現役球隊頁頁首有隊徽圖且載入成功', async ({ page }) => {
 });
 
 test('補登球員背號為空仍有姓名卡片', async ({ page }) => {
-	const found = menIn(currentCup)
+	test.skip(!rosterSeason, '所有賽季的男子組都沒有週登錄');
+	const { cupId, season } = rosterSeason!;
+	const found = menIn(cupId)
 		.filter((t) => t.is_active)
-		.map((t) => ({ team: t, week: latestWeekOf(currentCup, 'men', t.team_id) }))
+		.map((t) => ({ team: t, week: latestWeekOf(cupId, 'men', t.team_id) }))
 		.find(({ week }) => week?.players.some((p) => p.jersey_number === null));
-	test.skip(!found, '當季男子組最新週次沒有背號為空的球員');
-	await page.goto(`${BASE}/${current}/men/teams/${found!.team.team_id}/`);
+	test.skip(!found, '用於比對的賽季男子組最新週次沒有背號為空的球員');
+	await page.goto(`${BASE}/${season}/men/teams/${found!.team.team_id}/`);
 	const blank = found!.week!.players.filter((p) => p.jersey_number === null);
 	const cards = page.locator('ul.players li').filter({ hasText: '—' });
 	await expect(cards).toHaveCount(blank.length);
