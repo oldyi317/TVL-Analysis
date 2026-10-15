@@ -100,4 +100,8 @@ RuntimeError: 找不到涵蓋 2026-10-24 的賽季，請在 sql/schema.sql 的 s
 `gh workflow run pages.yml --ref main`（workflow 以 `GH_TOKEN: ${{ github.token }}` 帶 token，
 並需 `permissions: actions: write`）。實證方式：手動 `gh workflow run daily-crawl.yml` 後，
 `gh run list --workflow=pages.yml --json event,headSha` 看該 push 的 sha 只有 `workflow_dispatch`、沒有 `push` 事件的 run。
-實證結果：待補（首次 push 實測尚未執行）。
+實證結果（2026-10-15）：手動 `gh workflow run daily-crawl.yml` 成功
+（https://github.com/oldyi317/TVL-Analysis/actions/runs/38665660363，比分新增 12 場、Match.ashx 探測 117 場、
+登錄 3264 筆），runner 以 bot 身分 push `eca6f9b`；pages.yml 對該 sha **只有一個 `workflow_dispatch` 的 run**
+（https://github.com/oldyi317/TVL-Analysis/actions/runs/38666534435，成功部署），沒有 `push` 事件的 run，
+證實 GITHUB_TOKEN 的 push 不觸發 pages、腳本點火有效。
