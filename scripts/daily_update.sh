@@ -30,6 +30,8 @@ BEFORE=$(db_hash)
 "$PYTHON" -m src.etl.match_crawler
 "$PYTHON" -m src.etl.stats_crawler --rosters
 "$PYTHON" -m src.etl.stats_crawler --incremental
+# 賽前勝率（ADR 0003）：失敗只記 log，不中止每日更新與 commit
+"$PYTHON" -m src.models.predict || echo "預測步驟失敗（exit $?），略過。"
 
 # 爬蟲後記錄 hash
 AFTER=$(db_hash)

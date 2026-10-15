@@ -60,14 +60,14 @@ def build_match_labels(matches: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     for _, m in matches.iterrows():
         if m["is_golden_set"] == 1:
             continue
+        if (pd.isna(m["home_sets_won"]) or pd.isna(m["away_sets_won"])
+                or m["home_sets_won"] == m["away_sets_won"]):
+            report["invalid_skipped"] += 1
+            continue
         home = normalize_match_team(m["home_team"])
         away = normalize_match_team(m["away_team"])
         if home in LEGACY_TEAMS or away in LEGACY_TEAMS:
             report["legacy_skipped"] += 1
-            continue
-        if (pd.isna(m["home_sets_won"]) or pd.isna(m["away_sets_won"])
-                or m["home_sets_won"] == m["away_sets_won"]):
-            report["invalid_skipped"] += 1
             continue
         home_tid, home_g = OPP_SHORT_TO_TEAM[home]
         away_tid, away_g = OPP_SHORT_TO_TEAM[away]
@@ -129,12 +129,35 @@ def add_rolling_features(labeled: pd.DataFrame) -> pd.DataFrame:
             .reset_index(drop=True))
 
 
-def build_training_frame(conn) -> tuple[pd.DataFrame, dict]:
+def load_labeled_history(conn) -> tuple[pd.DataFrame, dict]:
+    """所有有技術統計且已有勝負的球隊單場列（訓練與賽前預測共用的歷史）。"""
     team_match = load_team_match_stats(conn)
     matches = pd.read_sql_query("SELECT * FROM matches", conn)
     labels, report = build_match_labels(matches)
     labeled = attach_labels(team_match, labels)
     report["team_match_rows"] = len(labeled)
+    return labeled, report
+
+
+def latest_rolling_features(labeled: pd.DataFrame, team_id: int, gender: str,
+                            cutoff_date: str) -> pd.Series | None:
+    """
+    給定球隊與截止日期，回傳該隊在 cutoff_date 當天賽前的滾動特徵向量；
+    沒有任何 cutoff_date 之前的歷史則回 None。
+    做法是在歷史後面接一列虛擬賽事再走 add_rolling_features，與訓練路徑同一套計算。
+    """
+    hist = labeled[(labeled["team_id"] == team_id) & (labeled["gender"] == gender)
+                   & (labeled["match_date"] < cutoff_date)]
+    if hist.empty:
+        return None
+    sentinel = pd.DataFrame([{"team_id": team_id, "gender": gender,
+                              "match_date": cutoff_date, "opponent": None}])
+    frame = add_rolling_features(pd.concat([hist, sentinel], ignore_index=True))
+    return frame.iloc[-1][ROLLING_FEATURES]
+
+
+def build_training_frame(conn) -> tuple[pd.DataFrame, dict]:
+    labeled, report = load_labeled_history(conn)
     frame = add_rolling_features(labeled)
     report["training_rows"] = len(frame)
     return frame, report

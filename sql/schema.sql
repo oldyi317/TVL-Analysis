@@ -117,6 +117,15 @@ CREATE TABLE IF NOT EXISTS matches (
     UNIQUE (game_id, gender)
 );
 
+-- 賽前勝率（ADR 0003）：每日對未開打賽事重算 upsert；開打後凍結不再改寫
+CREATE TABLE IF NOT EXISTS match_predictions (
+    match_id       INTEGER NOT NULL REFERENCES matches (match_id),
+    model_version  TEXT    NOT NULL,
+    home_win_prob  REAL    NOT NULL,
+    computed_at    TEXT    NOT NULL,
+    UNIQUE (match_id, model_version)
+);
+
 -- 效能索引
 CREATE INDEX IF NOT EXISTS idx_pms_registration_id ON player_match_stats(registration_id);
 CREATE INDEX IF NOT EXISTS idx_pms_match_date       ON player_match_stats(match_date);

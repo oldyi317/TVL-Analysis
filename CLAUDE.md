@@ -21,6 +21,7 @@ python -m src.etl.stats_crawler --rosters        # 出賽名單→roster_registr
 python -m src.etl.db_loader                      # roster CSV → players 身分層
 bash scripts/daily_update.sh                     # 每日增量更新（GitHub Actions 排程同款；DRY_RUN=1 可演練）
 python -m src.models.train                       # 重訓賽果預測模型 → match_predictor_v2.pkl
+python -m src.models.predict                     # 未開打賽事的主隊賽前勝率 → match_predictions 表（daily_update 內含）
 ```
 
 ## 地雷（改動前必讀）

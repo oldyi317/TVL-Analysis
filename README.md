@@ -105,6 +105,16 @@ python -m src.models.train
 
 以真實局數標籤重訓 XGBoost 賽果預測模型，產出 `src/models/match_predictor_v2.pkl`。
 
+### 賽前勝率
+
+```bash
+python -m src.models.predict
+```
+
+對所有未開打賽事（各局比分皆 NULL）以 `match_predictor_v2.pkl` 計算主隊賽前勝率，upsert 進
+`match_predictions` 表；賽事開打後不再重算。`scripts/daily_update.sh` 每日會自動跑這一步
+（ADR 0003）。兩隊各需至少一場有技術統計的歷史賽事，否則該場不寫列。
+
 ### 啟動網站（本機三步）
 
 靜態站以 SvelteKit 建置，部署在 GitHub Pages（push 到 `main` 由 `.github/workflows/pages.yml` 自動匯出、建置、部署）。本機開發：
