@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import MatchLink from '#lib/components/MatchLink.svelte';
 	import StandingsTable from '#lib/components/StandingsTable.svelte';
-	import { stageLabel } from '#lib/match.js';
+	import { stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -50,6 +51,7 @@
 	<section aria-labelledby="h-next">
 		<h2 id="h-next">下一場</h2>
 		<MatchLink href={matchHref(data.next.game_id)} match={data.next} stage={stageLabel(data.next.stage, data.next.week)} />
+		<div class="note"><DataNote text={WIN_PROB_NOTE} /></div>
 	</section>
 {/if}
 
@@ -72,6 +74,10 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
+	}
+
+	.note {
+		margin-block-start: var(--space-3);
 	}
 
 	.more {

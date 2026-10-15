@@ -23,10 +23,12 @@ test('首頁三段：最新比分、戰績、下一場', async ({ page }) => {
 	const latest = page.getByRole('region', { name: '最新比分' });
 	await expect(latest).toBeVisible();
 	await expect(latest.locator('.card-link')).toHaveCount(played.filter((m) => m.date === latestDate).length);
-	await expect(latest.getByRole('link', { name: '全部賽事' })).toHaveAttribute(
-		'href',
-		`${BASE}/${current}/men/matches/`
-	);
+	if (played.length > 0) {
+		await expect(latest.getByRole('link', { name: '全部賽事' })).toHaveAttribute(
+			'href',
+			`${BASE}/${current}/men/matches/`
+		);
+	}
 
 	const standings = page.getByRole('region', { name: '戰績' });
 	await expect(standings).toBeVisible();
@@ -39,8 +41,11 @@ test('首頁三段：最新比分、戰績、下一場', async ({ page }) => {
 	);
 
 	const next = page.getByRole('region', { name: '下一場' });
-	if (hasUpcoming) await expect(next).toBeVisible();
-	else await expect(next).toHaveCount(0);
+	if (hasUpcoming) {
+		await expect(next).toBeVisible();
+		await expect(next.getByRole('group', { name: '賽前勝率' })).toHaveText(/\d+% – \d+%|資料不足/);
+		await expect(next.getByRole('note')).toBeVisible();
+	} else await expect(next).toHaveCount(0);
 });
 
 test('記住上次看的組別', async ({ page }) => {

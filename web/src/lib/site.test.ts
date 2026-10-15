@@ -89,8 +89,12 @@ describe('toMatchView', () => {
 		sets: [[25, 20], [25, 18], [25, 22]],
 		home_sets_won: 3,
 		away_sets_won: 0,
-		golden_set: [13, 15]
+		golden_set: [13, 15],
+		home_win_prob: null
 	};
+	it('帶過主隊賽前勝率', () => {
+		expect(toMatchView({ ...base, home_win_prob: 0.62 }, 'men').home_win_prob).toBe(0.62);
+	});
 	it('以 group + team_id 對回兩隊並帶過比分、階段與黃金決勝局', () => {
 		const men = teams.filter((t) => t.group === 'men');
 		const view = toMatchView({ ...base, home_team_id: men[0].team_id, away_team_id: men[1].team_id }, 'men');

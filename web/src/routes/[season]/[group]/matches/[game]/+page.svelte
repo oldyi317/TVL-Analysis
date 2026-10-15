@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import BoxScoreTable from '#lib/components/BoxScoreTable.svelte';
+	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import MatchCard from '#lib/components/MatchCard.svelte';
 	import type { BoxRow } from '#lib/boxScore.js';
-	import { stageLabel } from '#lib/match.js';
+	import { stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -40,6 +41,10 @@
 <h1>{match.home.short_name} 對 {match.away.short_name}</h1>
 
 <MatchCard {match} stage={stageLabel(match.stage, match.week)} showSets={false} />
+
+{#if !played}
+	<div class="note"><DataNote text={WIN_PROB_NOTE} /></div>
+{/if}
 
 {#if played}
 	<h2>逐局比分</h2>
@@ -93,6 +98,10 @@
 {/if}
 
 <style>
+	.note {
+		margin-block: var(--space-3) 0;
+	}
+
 	.back {
 		display: inline-flex;
 		align-items: center;

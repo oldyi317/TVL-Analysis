@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import MatchLink from '#lib/components/MatchLink.svelte';
-	import { stageLabel } from '#lib/match.js';
+	import { stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -41,6 +42,8 @@
 		window.addEventListener('scroll', onScroll, { passive: true });
 		return () => window.removeEventListener('scroll', onScroll);
 	});
+
+	const hasUnplayed = $derived(data.months.some((month) => month.matches.some((m) => m.sets.length === 0)));
 
 	const matchHref = (game: number) =>
 		`${resolve('/[season]/[group]/matches/[game]', {
@@ -83,6 +86,9 @@
 			</ol>
 		</section>
 	{/each}
+	{#if hasUnplayed}
+		<div class="note"><DataNote text={WIN_PROB_NOTE} /></div>
+	{/if}
 {/if}
 
 <style>
@@ -137,6 +143,10 @@
 		font-size: var(--text-lg);
 		font-weight: 700;
 		margin-block: var(--space-6) var(--space-3);
+	}
+
+	.note {
+		margin-block-start: var(--space-6);
 	}
 
 	.cards {

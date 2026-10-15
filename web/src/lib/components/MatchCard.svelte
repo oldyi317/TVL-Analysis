@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { setsWon, winnerSide, type StyleMatch } from '#lib/match.js';
+	import { setsWon, winnerSide, winProbPercent, type StyleMatch } from '#lib/match.js';
 	import TeamBadge from './TeamBadge.svelte';
 	import { teamStyle } from './teamStyle.js';
 
@@ -12,6 +12,7 @@
 	const played = $derived(match.sets.length > 0);
 	const winner = $derived(winnerSide(match.sets));
 	const [homeSets, awaySets] = $derived(setsWon(match.sets));
+	const prob = $derived(winProbPercent(match.home_win_prob));
 </script>
 
 <article style={teamStyle(match.home)} aria-label="{match.home.short_name} 對 {match.away.short_name}">
@@ -36,6 +37,16 @@
 			<span class="pending">未開打</span>
 		{/if}
 	</div>
+
+	{#if !played}
+		<div class="prob" role="group" aria-label="賽前勝率">
+			{#if prob}
+				{prob[0]}% – {prob[1]}%
+			{:else}
+				資料不足
+			{/if}
+		</div>
+	{/if}
 
 	{#if played && showSets}
 		<p class="sets">
@@ -122,6 +133,15 @@
 		align-items: center;
 		font-size: var(--text-lg);
 		font-weight: 700;
+		color: var(--text-muted);
+	}
+
+	.prob {
+		margin: var(--space-3) 0 0;
+		padding-block-start: var(--space-3);
+		border-block-start: 1px solid var(--line);
+		font-size: var(--text-md);
+		font-weight: 500;
 		color: var(--text-muted);
 	}
 

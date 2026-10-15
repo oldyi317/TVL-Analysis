@@ -39,12 +39,19 @@ def match(game_id, home, away, sets, *, date="2025-11-01", cup=21, gender="M",
 
 @pytest.fixture
 def export_matches(tmp_db_path, tmp_path):
-    def run(rows):
+    def run(rows, predictions=()):
         conn = sqlite3.connect(tmp_db_path)
         conn.executescript(SCHEMA_SQL.read_text(encoding="utf-8"))
         apply_team_seed(conn)
         placeholders = ", ".join(f":{c.strip()}" for c in COLUMNS.split(","))
         conn.executemany(f"INSERT INTO matches ({COLUMNS}) VALUES ({placeholders})", rows)
+        for game_id, version, prob in predictions:
+            (match_id,) = conn.execute("SELECT match_id FROM matches WHERE game_id = ?", (game_id,)).fetchone()
+            conn.execute(
+                "INSERT INTO match_predictions (match_id, model_version, home_win_prob, computed_at) "
+                "VALUES (?, ?, ?, '2026-10-15T00:00:00')",
+                (match_id, version, prob),
+            )
         conn.commit()
         conn.close()
         out_dir = tmp_path / "out"
@@ -76,6 +83,7 @@ def test_played_match_json_structure(export_matches):
         "home_sets_won": 3,
         "away_sets_won": 1,
         "golden_set": None,
+        "home_win_prob": None,
     }]
     assert {(g["cup_id"], g["group"]) for g in payload["matches"]} == {
         (20, "men"), (20, "women"), (21, "men"), (21, "women"), (22, "men"), (22, "women"),
@@ -129,9 +137,49 @@ def test_unplayed_match_has_empty_sets_and_keeps_schedule(export_matches):
         "venue": "臺北體育館", "stage": "例行賽", "week": 1,
         "home_team_id": 5, "away_team_id": 6,
         "sets": [], "home_sets_won": None, "away_sets_won": None, "golden_set": None,
+        "home_win_prob": None,
     }
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+
+
+def test_unplayed_match_exports_home_win_prob(export_matches):
+    payload = export_matches(
+        [match(50, 5, 6, [], date="2026-04-04")],
+        predictions=[(50, "v1", 0.62)],
+    )
+    (entry,) = group(payload)["matches"]
+    assert entry["home_win_prob"] == 0.62
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(payload)
+
+
+def test_match_without_prediction_has_null_home_win_prob(export_matches):
+    payload = export_matches([
+        match(50, 5, 6, [], date="2026-04-04"),
+        match(51, 1, 2, [], date="2026-04-05"),
+    ], predictions=[(51, "v1", 0.4)])
+    by_id = {m["game_id"]: m for m in group(payload)["matches"]}
+    assert by_id[50]["home_win_prob"] is None
+    assert by_id[51]["home_win_prob"] == 0.4
+
+
+def test_latest_model_version_prediction_wins(export_matches):
+    payload = export_matches(
+        [match(50, 5, 6, [], date="2026-04-04")],
+        predictions=[(50, "v9", 0.3), (50, "v10", 0.7)],
+    )
+    (entry,) = group(payload)["matches"]
+    assert entry["home_win_prob"] == 0.7
+
+
+def test_played_match_keeps_frozen_home_win_prob(export_matches):
+    payload = export_matches(
+        [match(10, 1, 2, [(25, 20)] * 3, date="2026-03-28")],
+        predictions=[(10, "v1", 0.55)],
+    )
+    (entry,) = group(payload)["matches"]
+    assert entry["home_win_prob"] == 0.55
 
 
 def test_golden_set_with_swapped_sides_is_flipped_to_parent_order(export_matches):

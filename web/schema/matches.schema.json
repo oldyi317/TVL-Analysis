@@ -25,7 +25,8 @@
               "additionalProperties": false,
               "required": [
                 "game_id", "date", "weekday", "start_time", "venue", "stage", "week",
-                "home_team_id", "away_team_id", "sets", "home_sets_won", "away_sets_won", "golden_set"
+                "home_team_id", "away_team_id", "sets", "home_sets_won", "away_sets_won", "golden_set",
+                "home_win_prob"
               ],
               "properties": {
                 "game_id": { "type": "integer" },
@@ -48,6 +49,12 @@
                 "golden_set": {
                   "oneOf": [{ "$ref": "#/$defs/SetScore" }, { "type": "null" }],
                   "description": "黃金決勝局比分 [主, 客]；沒有則 null"
+                },
+                "home_win_prob": {
+                  "type": ["number", "null"],
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "賽前主隊勝率（match_predictions 最新 model_version）；算不出或無預測則 null"
                 }
               }
             }

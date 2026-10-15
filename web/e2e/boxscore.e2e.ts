@@ -1,16 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { BASE, currentSeason as current, seasonsData } from './helpers.js';
+import { BASE, seasonsData } from './helpers.js';
 
 type Game = {
 	game_id: number;
 	golden_set: unknown;
 	home: { player_id: number; jersey_number: number | null; position: string | null }[];
 };
+// 開季初當季還沒有單場數據，退回最近一個有數據的賽季
 const boxData = JSON.parse(readFileSync('src/lib/data/box_scores.json', 'utf8'));
-const games: Game[] = boxData.box_scores.find(
-	(g: { cup_id: number; group: string }) => g.cup_id === seasonsData.current_cup_id && g.group === 'men'
-).games;
+const boxGroup: { cup_id: number; games: Game[] } = boxData.box_scores
+	.filter((g: { group: string; games: Game[] }) => g.group === 'men' && g.games.length > 0)
+	.reduce((a: { cup_id: number }, b: { cup_id: number }) => (b.cup_id > a.cup_id ? b : a));
+const games = boxGroup.games;
+const season: string = seasonsData.seasons.find((s: { cup_id: number }) => s.cup_id === boxGroup.cup_id).name;
 const sample = games[0];
 const golden = games.find((g) => g.golden_set !== null);
 
@@ -27,7 +30,7 @@ const oldGame: number = matchesData.matches.find(
 	(g: { cup_id: number; group: string }) => g.cup_id === OLD_CUP && g.group === 'men'
 ).matches[0].game_id;
 
-const urlOf = (gameId: number) => `${BASE}/${current}/men/matches/${gameId}/`;
+const urlOf = (gameId: number) => `${BASE}/${season}/men/matches/${gameId}/`;
 
 test.describe('手機', () => {
 	test('雙方單場數據表、精簡欄位、可展開、無橫向捲動', async ({ page }) => {

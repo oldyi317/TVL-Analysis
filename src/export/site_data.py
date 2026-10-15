@@ -221,7 +221,7 @@ def _set_pairs(scores: list) -> list[list[int]]:
 
 def _match_entry(row: tuple) -> dict:
     (game_id, match_date, start_time, venue, round_name,
-     home_id, away_id, home_sets_won, away_sets_won, *scores) = row
+     home_id, away_id, home_sets_won, away_sets_won, home_win_prob, *scores) = row
     stage, week = parse_round_name(round_name)
     return {
         "game_id": game_id,
@@ -237,6 +237,7 @@ def _match_entry(row: tuple) -> dict:
         "home_sets_won": home_sets_won,
         "away_sets_won": away_sets_won,
         "golden_set": None,
+        "home_win_prob": home_win_prob,
     }
 
 
@@ -278,6 +279,8 @@ def _group_matches(conn: sqlite3.Connection, cup_id: int, gender: str) -> list[d
         """
         SELECT game_id, match_date, start_time, venue, round_name,
                home_team_id, away_team_id, home_sets_won, away_sets_won,
+               (SELECT p.home_win_prob FROM match_predictions p WHERE p.match_id = matches.match_id
+                ORDER BY length(p.model_version) DESC, p.model_version DESC, p.computed_at DESC LIMIT 1),
                home_set1, home_set2, home_set3, home_set4, home_set5,
                away_set1, away_set2, away_set3, away_set4, away_set5
         FROM matches

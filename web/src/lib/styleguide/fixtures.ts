@@ -45,7 +45,8 @@ export const sampleMatches: StyleMatch[] = [
 		home: men[4],
 		away: men[0],
 		sets: [],
-		start_time: '19:00'
+		start_time: '19:00',
+		home_win_prob: 0.62
 	}
 ];
 

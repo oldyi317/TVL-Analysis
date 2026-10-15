@@ -90,7 +90,8 @@ export function toMatchView(entry: MatchEntry, group: Group): MatchView {
 		home: teamOf(entry.home_team_id, group, '賽事'),
 		away: teamOf(entry.away_team_id, group, '賽事'),
 		sets: entry.sets.map(([h, a]) => [h, a]),
-		golden_set: entry.golden_set
+		golden_set: entry.golden_set,
+		home_win_prob: entry.home_win_prob
 	};
 }
 

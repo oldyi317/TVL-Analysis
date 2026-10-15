@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupByMonth, latestMatchDay, nextMatch, setsWon, winnerSide } from './match.js';
+import { groupByMonth, latestMatchDay, nextMatch, setsWon, winnerSide, winProbPercent } from './match.js';
 
 const sets: [number, number][] = [
 	[25, 20],
@@ -74,8 +74,35 @@ describe('nextMatch', () => {
 		];
 		expect(nextMatch(list)?.id).toBe(2);
 	});
+	it('同日依開賽時間，已知時間優先於 null，且只回一場', () => {
+		const list = [
+			{ date: '2026-04-01', id: 1, start_time: null, sets: [] },
+			{ date: '2026-04-01', id: 2, start_time: '19:00', sets: [] },
+			{ date: '2026-04-01', id: 3, start_time: '14:00', sets: [] }
+		];
+		expect(nextMatch(list)?.id).toBe(3);
+		expect(nextMatch(list.filter((m) => m.id !== 3))?.id).toBe(2);
+		expect(nextMatch(list.filter((m) => m.id === 1))?.id).toBe(1);
+	});
 	it('沒有未開打回 null', () => {
 		expect(nextMatch([{ date: '2026-03-01', sets: [[25, 20]] }])).toBeNull();
 		expect(nextMatch([])).toBeNull();
+	});
+});
+
+describe('winProbPercent', () => {
+	it('null 與 undefined 回 null', () => {
+		expect(winProbPercent(null)).toBeNull();
+		expect(winProbPercent(undefined)).toBeNull();
+	});
+	it('整數百分比且相加為 100', () => {
+		expect(winProbPercent(0.62)).toEqual([62, 38]);
+		expect(winProbPercent(0.5)).toEqual([50, 50]);
+		expect(winProbPercent(0)).toEqual([0, 100]);
+		expect(winProbPercent(1)).toEqual([100, 0]);
+	});
+	it('四捨五入邊界', () => {
+		expect(winProbPercent(0.615)).toEqual([62, 38]);
+		expect(winProbPercent(0.614)).toEqual([61, 39]);
 	});
 });

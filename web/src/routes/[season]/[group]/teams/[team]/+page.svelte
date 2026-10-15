@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import BigStat from '#lib/components/BigStat.svelte';
+	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import MatchLink from '#lib/components/MatchLink.svelte';
 	import PlayerLink from '#lib/components/PlayerLink.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
-	import { stageLabel } from '#lib/match.js';
+	import { stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -15,6 +16,8 @@
 	const listHref = $derived(
 		`${resolve('/[season]/[group]/teams', { season: data.season.name, group: data.group })}/`
 	);
+
+	const hasUnplayed = $derived(data.matches.some((m) => m.sets.length === 0));
 
 	function matchHref(gameId: number): string {
 		return `${resolve('/[season]/[group]/matches/[game]', {
@@ -64,6 +67,9 @@
 			</li>
 		{/each}
 	</ol>
+	{#if hasUnplayed}
+		<div class="note"><DataNote text={WIN_PROB_NOTE} /></div>
+	{/if}
 {/if}
 
 <h2>週登錄</h2>
@@ -83,6 +89,10 @@
 {/if}
 
 <style>
+	.note {
+		margin-block: var(--space-3) 0;
+	}
+
 	.back {
 		display: inline-flex;
 		align-items: center;
