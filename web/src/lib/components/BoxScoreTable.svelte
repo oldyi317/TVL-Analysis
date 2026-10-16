@@ -1,5 +1,6 @@
 <script module lang="ts">
 	import type { BoxRow } from '#lib/boxScore.js';
+	import { positionLabel } from '#lib/site.js';
 
 	const goodOverTotal = (good: number, total: number) => `${good}／${total}`;
 
@@ -47,7 +48,7 @@
 					<td class="player">
 						<div class="who">
 							<span class="name">{row.name}</span>
-							<span class="pos">{row.position ?? '—'}</span>
+							<span class="pos">{positionLabel(row.position)}</span>
 						</div>
 					</td>
 					<td class="num strong">{row.total_points}</td>

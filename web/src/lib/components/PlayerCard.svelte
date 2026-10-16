@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Team } from '#lib/data/types.js';
+	import { positionLabel } from '#lib/site.js';
 	import { teamStyle } from './teamStyle.js';
 
 	let {
@@ -13,7 +14,7 @@
 	<div class="info">
 		<p class="name">{player.name}</p>
 		{#if player.position}
-			<p class="position">{player.position}</p>
+			<p class="position">{positionLabel(player.position, true)}</p>
 		{/if}
 	</div>
 </article>

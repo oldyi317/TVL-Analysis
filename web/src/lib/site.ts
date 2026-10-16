@@ -167,6 +167,21 @@ export function playerDisplayName(player: { player_id: number; name: string | nu
 	return player.name ?? `球員 #${player.player_id}`;
 }
 
+const POSITION_NAMES: Record<string, string> = {
+	OH: '主攻',
+	MB: '攔中',
+	OP: '副攻',
+	S: '舉球',
+	L: '自由'
+};
+
+export function positionLabel(code: string | null, withCode = false): string {
+	if (code === null) return '—';
+	const name = POSITION_NAMES[code];
+	if (!name) return code;
+	return withCode ? `${name}（${code}）` : name;
+}
+
 export function playerName(
 	group: Group,
 	playerId: number,

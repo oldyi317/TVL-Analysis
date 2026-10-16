@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { BoxScoresData, GameBoxScore, StatRow } from '#lib/data/types.js';
+import type { BoxScoresData, GameBoxScore, PlayerSeason, StatRow } from '#lib/data/types.js';
 import type { MatchView } from '#lib/site.js';
-import { distributionOption, noPrReason, playerGameLog, trendOption, type GameLogEntry } from './advanced.js';
+import {
+	distributionOption,
+	headlineStats,
+	noPrReason,
+	playerGameLog,
+	trendOption,
+	type GameLogEntry
+} from './advanced.js';
 
 const stat = (player_id: number, over: Partial<StatRow> = {}): StatRow => ({
 	player_id,
@@ -226,5 +233,96 @@ describe('邊界案例', () => {
 		const params = (dataIndex: number) => [{ dataIndex, seriesName: '得分', value: 1 }];
 		expect(f(params(0))).not.toContain('此場另有黃金決勝局');
 		expect(f(params(1))).toContain('此場另有黃金決勝局');
+	});
+});
+
+const season = (over: Partial<PlayerSeason> = {}): PlayerSeason => ({
+	cup_id: 21,
+	team_id: 1,
+	jersey_number: 7,
+	position: 'S',
+	games: 10,
+	sets_played: 36,
+	attack_total: 40,
+	attack_points: 18,
+	block_points: 6,
+	serve_total: 90,
+	serve_points: 5,
+	receive_total: 20,
+	receive_excellent: 9,
+	dig_total: 80,
+	dig_excellent: 30,
+	set_total: 480,
+	set_excellent: 312,
+	total_points: 29,
+	...over
+});
+
+describe('headlineStats', () => {
+	it('舉球：舉球到位率、舉球次數、防守到位率，率類附分子／分母', () => {
+		expect(headlineStats(season()).items).toEqual([
+			{ label: '舉球到位率', value: '65.0%', detail: '到位 312／480' },
+			{ label: '舉球次數', value: '480', detail: null },
+			{ label: '防守到位率', value: '37.5%', detail: '到位 30／80' }
+		]);
+	});
+
+	it('分母為 0 的率顯示「—」，不顯示 0%', () => {
+		const [, , dig] = headlineStats(season({ dig_total: 0, dig_excellent: 0 })).items;
+		expect(dig).toEqual({ label: '防守到位率', value: '—', detail: null });
+	});
+
+	const attackRate = {
+		label: '攻擊成功率',
+		value: '45.0%',
+		detail: '得分 18／40'
+	};
+	const receiveRate = {
+		label: '接發球到位率',
+		value: '45.0%',
+		detail: '到位 9／20'
+	};
+
+	it.each([
+		[
+			'L',
+			[
+				receiveRate,
+				{ label: '防守到位率', value: '37.5%', detail: '到位 30／80' },
+				{ label: '防守總次數', value: '100', detail: null }
+			]
+		],
+		['OH', [attackRate, receiveRate, { label: '攻擊得分', value: '18', detail: null }]],
+		[
+			'MB',
+			[
+				{ label: '每局攔網', value: '0.17', detail: '攔網 6／36 局' },
+				attackRate,
+				{ label: '攔網得分', value: '6', detail: null }
+			]
+		],
+		[
+			'OP',
+			[
+				attackRate,
+				{ label: '攻擊得分', value: '18', detail: null },
+				{ label: '發球得分', value: '5', detail: null }
+			]
+		]
+	])('%s 的主卡指標', (position, expected) => {
+		expect(headlineStats(season({ position })).items).toEqual(expected);
+	});
+
+	it('沒有主要位置時退回攻擊／攔網／發球得分', () => {
+		expect(headlineStats(season({ position: null })).items).toEqual([
+			{ label: '攻擊得分', value: '18', detail: null },
+			{ label: '攔網得分', value: '6', detail: null },
+			{ label: '發球得分', value: '5', detail: null }
+		]);
+	});
+
+	it('出賽局數不足 5 局標記樣本少', () => {
+		expect(headlineStats(season({ sets_played: 4 })).fewSets).toBe(true);
+		expect(headlineStats(season({ sets_played: 5 })).fewSets).toBe(false);
 	});
 });

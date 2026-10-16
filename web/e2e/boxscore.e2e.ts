@@ -107,7 +107,8 @@ test.describe('桌機', () => {
 		const firstRow = tables.first().locator('tbody tr.main').first();
 		await expect(firstRow.locator('td.num').first()).toHaveText(String(firstHome!.jersey_number ?? '—'));
 		await expect(firstRow.locator('.name')).toHaveText(firstName);
-		await expect(firstRow.locator('.pos')).toHaveText(firstHome!.position ?? '—');
+		const pos: Record<string, string> = { OH: '主攻', MB: '攔中', OP: '副攻', S: '舉球', L: '自由' };
+		await expect(firstRow.locator('.pos')).toHaveText(pos[firstHome!.position ?? ''] ?? '—');
 
 		await expect(page.getByRole('button', { name: /詳細數據/ }).first()).toBeHidden();
 		await expect(page.locator('tr.detail').first()).toBeHidden();

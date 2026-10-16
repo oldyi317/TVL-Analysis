@@ -15,6 +15,7 @@ import {
 	matchesFor,
 	pickLatestWeek,
 	playerDisplayName,
+	positionLabel,
 	playerEntries,
 	playerName,
 	playersByTeam,
@@ -291,5 +292,20 @@ describe('playerDisplayName', () => {
 	it('有姓名用姓名，null 用備援名稱', () => {
 		expect(playerDisplayName({ player_id: 1, name: '王小明' })).toBe('王小明');
 		expect(playerDisplayName({ player_id: 2, name: null })).toBe('球員 #2');
+	});
+});
+
+describe('positionLabel', () => {
+	it('位置代碼轉兩字簡稱，可附代碼', () => {
+		expect(positionLabel('MB')).toBe('攔中');
+		expect(positionLabel('OP', true)).toBe('副攻（OP）');
+		expect(positionLabel('S')).toBe('舉球');
+		expect(positionLabel('L', true)).toBe('自由（L）');
+		expect(positionLabel('OH')).toBe('主攻');
+	});
+
+	it('沒有位置給「—」，未知代碼照原樣', () => {
+		expect(positionLabel(null)).toBe('—');
+		expect(positionLabel('XX', true)).toBe('XX');
 	});
 });

@@ -1,16 +1,18 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { headlineStats } from '#lib/advanced.js';
 	import AdvancedStats from '#lib/components/AdvancedStats.svelte';
 	import BigStat from '#lib/components/BigStat.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
-	import { findTeam, GROUP_LABEL, playerDisplayName } from '#lib/site.js';
+	import { findTeam, GROUP_LABEL, playerDisplayName, positionLabel } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	const name = $derived(playerDisplayName(data.player));
 	const stats = $derived(data.stats);
+	const headline = $derived(headlineStats(stats));
 	const listHref = $derived(
 		`${resolve('/[season]/[group]/players', { season: data.season.name, group: data.group })}/`
 	);
@@ -25,7 +27,7 @@
 	);
 	const profile = $derived([
 		['背號', stats.jersey_number === null ? '—' : String(stats.jersey_number)],
-		['位置', stats.position ?? '—'],
+		['位置', positionLabel(stats.position, true)],
 		['身高', data.player.height_cm === null ? '—' : `${data.player.height_cm} cm`],
 		['生日', data.player.dob ?? '—']
 	]);
@@ -64,14 +66,19 @@
 	{/each}
 </dl>
 
-<h2>本季數據</h2>
+<div class="stats-head">
+	<h2>本季數據</h2>
+	{#if stats.games > 0 && headline.fewSets}
+		<span class="few-sets">樣本少</span>
+	{/if}
+</div>
 {#if stats.games === 0}
 	<EmptyState title="這一季還沒有單場數據" hint="有單場數據後就會出現" />
 {:else}
 	<div class="stats">
-		<BigStat label="攻擊得分" value={stats.attack_points} />
-		<BigStat label="攔網得分" value={stats.block_points} />
-		<BigStat label="發球得分" value={stats.serve_points} />
+		{#each headline.items as item (item.label)}
+			<BigStat label={item.label} value={item.value} detail={item.detail} />
+		{/each}
 	</div>
 	<dl class="totals">
 		<div>
@@ -155,6 +162,28 @@
 
 	.totals {
 		margin-block-start: var(--space-2);
+	}
+
+	.stats-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+	}
+
+	.stats > :global(div) {
+		container-type: inline-size;
+	}
+
+	.stats :global(p.value) {
+		font-size: min(var(--num-xl), 24cqi);
+	}
+
+	.few-sets {
+		padding-inline: var(--space-2);
+		font-size: var(--text-sm);
+		color: var(--text-muted);
+		border: 1px solid var(--line);
+		border-radius: var(--radius-md);
 	}
 
 	dt {

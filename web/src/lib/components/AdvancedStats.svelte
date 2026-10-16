@@ -5,7 +5,6 @@
 		METRIC_KEYS,
 		METRIC_LABELS,
 		noPrReason as prReason,
-		POSITION_LABELS,
 		PR_METRICS,
 		trendOption,
 		type GameLogEntry,
@@ -14,6 +13,7 @@
 	import Chart from '#lib/chart/Chart.svelte';
 	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import { positionLabel } from '#lib/site.js';
 	import type { PlayerAdvancedEntry, PositionDistribution } from '#lib/data/types.js';
 
 	let {
@@ -31,8 +31,8 @@
 	let open = $state(false);
 	let metric = $state<MetricKey>('attack_success_rate');
 
-	const positionLabel = $derived(
-		advanced?.position ? (POSITION_LABELS[advanced.position] ?? advanced.position) : ''
+	const positionText = $derived(
+		advanced?.position ? positionLabel(advanced.position, true) : ''
 	);
 	const noPrReason = $derived(prReason(advanced));
 	const fmt = (key: MetricKey, value: number) => (isRateMetric(key) ? `${value}%` : String(value));
@@ -58,7 +58,7 @@
 			{#if noPrReason || !advanced?.pr}
 				<DataNote text={noPrReason ?? '本季沒有進階數據'} />
 			{:else}
-				<p class="sub">與本季同組別 {positionLabel} {distribution?.player_count ?? '—'} 位球員比較</p>
+				<p class="sub">與本季同組別 {positionText} {distribution?.player_count ?? '—'} 位球員比較</p>
 				<table aria-label="PR 值">
 					<thead>
 						<tr>

@@ -1,7 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { BASE, currentSeason, findSeason, OLD_CUP, OLD_SEASON, readJson } from './helpers.js';
 
-type Season = { cup_id: number; team_id: number; jersey_number: number | null; games: number };
+type Season = {
+	cup_id: number;
+	team_id: number;
+	jersey_number: number | null;
+	position: string | null;
+	games: number;
+};
 type Player = { player_id: number; group: string; name: string | null; seasons: Season[] };
 const players: Player[] = readJson('players').players;
 const teamIds: number[] = readJson('teams')
@@ -48,27 +54,31 @@ test('列表第一張球員卡進球員頁：基本資料與本季數據', async
 	}
 	await expect(page.getByRole('heading', { level: 2, name: '本季數據' })).toBeVisible();
 	if (seasonOf(player, currentCup).games > 0) {
-		for (const label of ['攻擊得分', '攔網得分', '發球得分']) {
-			await expect(page.locator('.stats').getByText(label, { exact: true })).toBeVisible();
-		}
+		await expect(page.locator('.stats .value')).toHaveCount(3);
 	}
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 	await expect(playerLink(page)).toHaveAttribute('aria-current', 'page');
 });
 
-test('球員頁大數字等於匯出值', async ({ page }) => {
-	const player = registeredIn(currentCup, 'men').find((p) => seasonOf(p, currentCup).games > 0);
-	test.skip(!player, '用於比對的賽季男子組沒有 games > 0 的球員');
+test('舉球員的主卡顯示舉球到位率等匯出值，位置顯示中文簡稱', async ({ page }) => {
+	const player = registeredIn(currentCup, 'men').find((p) => {
+		const s = seasonOf(p, currentCup) as Season & Record<string, number>;
+		return s.games > 0 && s.position === 'S' && s.set_total > 0;
+	});
+	test.skip(!player, '用於比對的賽季男子組沒有有舉球紀錄的舉球員');
 	await page.goto(`${BASE}/${current}/men/players/${player!.player_id}/`);
 	const s = seasonOf(player!, currentCup) as Season & Record<string, number>;
+	const position = page.locator('dl.profile div', { hasText: '位置' }).locator('dd');
+	await expect(position).toHaveText('舉球（S）');
+	const setRate = `${((s.set_excellent / s.set_total) * 100).toFixed(1)}%`;
 	const stats = page.locator('.stats');
-	for (const [label, value] of [
-		['攻擊得分', s.attack_points],
-		['攔網得分', s.block_points],
-		['發球得分', s.serve_points]
+	for (const [label, value, detail] of [
+		['舉球到位率', setRate, `到位 ${s.set_excellent}／${s.set_total}`],
+		['舉球次數', String(s.set_total), null]
 	] as const) {
 		const cell = stats.locator('div', { has: page.getByText(label, { exact: true }) });
-		await expect(cell.locator('.value')).toHaveText(String(value));
+		await expect(cell.locator('.value')).toHaveText(value);
+		if (detail) await expect(cell.locator('.detail')).toHaveText(detail);
 	}
 	const totals = page.locator('dl.totals');
 	for (const [label, value] of [

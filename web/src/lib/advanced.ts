@@ -3,6 +3,7 @@ import type {
 	MetricDistribution,
 	PlayerAdvancedData,
 	PlayerAdvancedEntry,
+	PlayerSeason,
 	PositionDistribution,
 	StatRow
 } from '#lib/data/types.js';
@@ -35,14 +36,6 @@ export const PR_METRICS: readonly PrKey[] = [
 
 export const METRIC_KEYS = Object.keys(METRIC_LABELS) as MetricKey[];
 
-export const POSITION_LABELS: Record<string, string> = {
-	L: '自由球員（L）',
-	MB: '中間手（MB）',
-	OH: '主攻手（OH）',
-	OP: '副攻手（OP）',
-	S: '舉球員（S）'
-};
-
 const RATE_METRICS: ReadonlySet<MetricKey> = new Set([
 	'attack_success_rate',
 	'receive_excellent_rate',
@@ -53,6 +46,77 @@ const RATE_METRICS: ReadonlySet<MetricKey> = new Set([
 ]);
 
 export const isRateMetric = (key: MetricKey) => RATE_METRICS.has(key);
+
+export type HeadlineStat = {
+	label: string;
+	value: string;
+	detail: string | null;
+};
+
+const rate = (label: string, good: number, total: number, goodWord: string): HeadlineStat =>
+	total === 0
+		? { label, value: '—', detail: null }
+		: {
+				label,
+				value: `${((good / total) * 100).toFixed(1)}%`,
+				detail: `${goodWord} ${good}／${total}`
+			};
+
+const excellentRate = (label: string, good: number, total: number) =>
+	rate(label, good, total, '到位');
+
+const count = (label: string, value: number): HeadlineStat => ({
+	label,
+	value: String(value),
+	detail: null
+});
+
+const attackRate = (s: PlayerSeason) => rate('攻擊成功率', s.attack_points, s.attack_total, '得分');
+
+const blocksPerSet = (s: PlayerSeason): HeadlineStat =>
+	s.sets_played === 0
+		? { label: '每局攔網', value: '—', detail: null }
+		: {
+				label: '每局攔網',
+				value: (s.block_points / s.sets_played).toFixed(2),
+				detail: `攔網 ${s.block_points}／${s.sets_played} 局`
+			};
+
+const HEADLINES: Record<string, (s: PlayerSeason) => HeadlineStat[]> = {
+	S: (s) => [
+		excellentRate('舉球到位率', s.set_excellent, s.set_total),
+		count('舉球次數', s.set_total),
+		excellentRate('防守到位率', s.dig_excellent, s.dig_total)
+	],
+	L: (s) => [
+		excellentRate('接發球到位率', s.receive_excellent, s.receive_total),
+		excellentRate('防守到位率', s.dig_excellent, s.dig_total),
+		count('防守總次數', s.receive_total + s.dig_total)
+	],
+	OH: (s) => [
+		attackRate(s),
+		excellentRate('接發球到位率', s.receive_excellent, s.receive_total),
+		count('攻擊得分', s.attack_points)
+	],
+	MB: (s) => [blocksPerSet(s), attackRate(s), count('攔網得分', s.block_points)],
+	OP: (s) => [attackRate(s), count('攻擊得分', s.attack_points), count('發球得分', s.serve_points)]
+};
+
+const scoringHeadlines = (s: PlayerSeason) => [
+	count('攻擊得分', s.attack_points),
+	count('攔網得分', s.block_points),
+	count('發球得分', s.serve_points)
+];
+
+const MIN_SETS = 5;
+
+export function headlineStats(season: PlayerSeason): {
+	items: HeadlineStat[];
+	fewSets: boolean;
+} {
+	const headlines = HEADLINES[season.position ?? ''] ?? scoringHeadlines;
+	return { items: headlines(season), fewSets: season.sets_played < MIN_SETS };
+}
 
 export function findAdvanced(
 	data: PlayerAdvancedData,

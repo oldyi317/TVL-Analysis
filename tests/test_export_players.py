@@ -82,6 +82,25 @@ def test_season_uses_latest_registration_by_week_start_date_then_registration_id
     assert (latest[3]["team_id"], latest[3]["jersey_number"], latest[3]["position"]) == (2, 2, None)
 
 
+def test_season_position_is_main_position_most_registered_ignoring_blank(export):
+    """主要位置：當季週登錄最多次的位置（不計空白），同數取最近；背號與隊伍仍取最近一次登錄。"""
+    def build(conn):
+        seed_player(conn, 1, "多數決")
+        seed_registration(conn, 1, 1, team_id=1, week="W1", week_start="2025-11-01", jersey=7, position="OH")
+        seed_registration(conn, 2, 1, team_id=1, week="W2", week_start="2025-11-08", jersey=7, position="OH")
+        seed_registration(conn, 3, 1, team_id=1, week="W3", week_start="2025-11-15", jersey=8, position="OP")
+        seed_player(conn, 2, "最後一週空白")
+        seed_registration(conn, 4, 2, team_id=1, week="W1", week_start="2025-11-01", jersey=1, position="S")
+        seed_registration(conn, 5, 2, team_id=2, week="W2", week_start="2025-11-08", jersey=2, source="backfill")
+        seed_registration(conn, 6, 2, team_id=2, week="W3", week_start="2025-11-15", jersey=3, source="backfill")
+
+    players = export(build)
+
+    seasons = {p["player_id"]: p["seasons"][0] for p in players}
+    assert (seasons[1]["jersey_number"], seasons[1]["position"]) == (8, "OH")
+    assert (seasons[2]["team_id"], seasons[2]["jersey_number"], seasons[2]["position"]) == (2, 3, "S")
+
+
 def test_player_who_changes_team_mid_season_sums_both_teams_under_latest_team(export):
     def build(conn):
         seed_player(conn, 1, "男甲")

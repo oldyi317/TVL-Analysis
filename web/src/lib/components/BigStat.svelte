@@ -1,10 +1,17 @@
 <script lang="ts">
-	let { label, value }: { label: string; value: number | string | null } = $props();
+	let {
+		label,
+		value,
+		detail = null
+	}: { label: string; value: number | string | null; detail?: string | null } = $props();
 </script>
 
 <div>
 	<p class="label">{label}</p>
 	<p class="value">{value ?? '—'}</p>
+	{#if detail}
+		<p class="detail">{detail}</p>
+	{/if}
 </div>
 
 <style>
@@ -13,6 +20,12 @@
 	}
 
 	.label {
+		font-size: var(--text-sm);
+		color: var(--text-muted);
+	}
+
+	.detail {
+		margin-block-start: var(--space-1);
 		font-size: var(--text-sm);
 		color: var(--text-muted);
 	}

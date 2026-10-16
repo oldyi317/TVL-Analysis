@@ -37,7 +37,7 @@
                 "cup_id": { "type": "integer" },
                 "team_id": { "type": "integer" },
                 "jersey_number": { "type": ["integer", "null"], "description": "該季最新一筆登錄的背號" },
-                "position": { "type": ["string", "null"], "description": "該季最新一筆登錄的位置" },
+                "position": { "type": ["string", "null"], "description": "該季主要位置（週登錄最多次的位置，同數取最近）" },
                 "games": { "type": "integer", "minimum": 0, "description": "該季統計列數，黃金決勝局列也算一場" },
                 "sets_played": { "type": "integer" },
                 "attack_total": { "type": "integer" },

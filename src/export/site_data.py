@@ -334,20 +334,27 @@ def _player_seasons(conn: sqlite3.Connection) -> dict[int, list[dict]]:
         """
     ).fetchall()
     seasons: dict[int, list[dict]] = {}
-    seen: set[tuple[int, int]] = set()
+    position_counts: dict[tuple[int, int], dict[str, int]] = {}
     for player_id, cup_id, team_id, jersey, position in latest:
-        if (player_id, cup_id) in seen:
-            continue
-        seen.add((player_id, cup_id))
-        games, *stats = totals.get((player_id, cup_id), [0] + [0] * len(STAT_FIELDS))
-        seasons.setdefault(player_id, []).append({
-            "cup_id": cup_id,
-            "team_id": team_id,
-            "jersey_number": jersey,
-            "position": position,
-            "games": games,
-            **dict(zip(STAT_FIELDS, stats)),
-        })
+        counts = position_counts.get((player_id, cup_id))
+        if counts is None:
+            counts = position_counts[(player_id, cup_id)] = {}
+            games, *stats = totals.get((player_id, cup_id), [0] + [0] * len(STAT_FIELDS))
+            seasons.setdefault(player_id, []).append({
+                "cup_id": cup_id,
+                "team_id": team_id,
+                "jersey_number": jersey,
+                "position": None,
+                "games": games,
+                **dict(zip(STAT_FIELDS, stats)),
+            })
+        if position is not None:
+            counts[position] = counts.get(position, 0) + 1
+    for player_id, entries in seasons.items():
+        for entry in entries:
+            counts = position_counts[(player_id, entry["cup_id"])]
+            # 依最近登錄優先的順序插入，max 同數時取第一個即最近一次
+            entry["position"] = max(counts, key=counts.get) if counts else None
     return seasons
 
 

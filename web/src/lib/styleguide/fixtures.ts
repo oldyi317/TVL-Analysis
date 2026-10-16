@@ -90,8 +90,8 @@ export const menStandings = standingsRows(men);
 export const womenStandings2024 = standingsRows(women2024);
 
 export const samplePlayers = [
-	{ name: '王小明', number: 7, position: '主攻手', team: men[0] },
-	{ name: '陳大華', number: null, position: '舉球員', team: men[1] },
+	{ name: '王小明', number: 7, position: 'OH', team: men[0] },
+	{ name: '陳大華', number: null, position: 'S', team: men[1] },
 	{ name: '林小美', number: 12, position: null, team: women2024[0] }
 ];
 
