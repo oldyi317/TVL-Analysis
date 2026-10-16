@@ -193,49 +193,127 @@ export function noPrReason(
 	return null;
 }
 
+export type GameStats = Omit<StatRow, 'player_id' | 'team_id' | 'jersey_number' | 'position'>;
+
 export type GameLogEntry = {
 	date: string;
-	points: number;
-	attack_rate: number | null;
 	golden: boolean;
+	stats: GameStats;
 };
+
+export const toGameStats = ({ player_id: _p, team_id: _t, jersey_number: _j, position: _pos, ...stats }: StatRow): GameStats =>
+	stats;
+
+type TrendValue = { value: number | null; detail: string | null };
+
+type TrendDef = {
+	label: string;
+	isRate: boolean;
+	integer?: boolean;
+	compute: (s: GameStats) => TrendValue;
+};
+
+const trendRate =
+	(good: (s: GameStats) => number, total: (s: GameStats) => number, goodWord: string) =>
+	(s: GameStats): TrendValue =>
+		total(s) === 0
+			? { value: null, detail: null }
+			: {
+					value: Math.round((good(s) / total(s)) * 1000) / 10,
+					detail: `${goodWord} ${good(s)}／${total(s)}`
+				};
+
+const TREND_DEFS = {
+	points: { label: '得分', isRate: false, integer: true, compute: (s) => ({ value: s.total_points, detail: null }) },
+	attack_success_rate: {
+		label: METRIC_LABELS.attack_success_rate,
+		isRate: true,
+		compute: trendRate((s) => s.attack_points, (s) => s.attack_total, '得分')
+	},
+	serve_point_rate: {
+		label: METRIC_LABELS.serve_point_rate,
+		isRate: true,
+		compute: trendRate((s) => s.serve_points, (s) => s.serve_total, '得分')
+	},
+	blocks_per_set: {
+		label: METRIC_LABELS.blocks_per_set,
+		isRate: false,
+		compute: (s) =>
+			s.sets_played === 0
+				? { value: null, detail: null }
+				: {
+						value: Math.round((s.block_points / s.sets_played) * 100) / 100,
+						detail: `攔網 ${s.block_points}／${s.sets_played} 局`
+					}
+	},
+	receive_excellent_rate: {
+		label: METRIC_LABELS.receive_excellent_rate,
+		isRate: true,
+		compute: trendRate((s) => s.receive_excellent, (s) => s.receive_total, '到位')
+	},
+	dig_excellent_rate: {
+		label: METRIC_LABELS.dig_excellent_rate,
+		isRate: true,
+		compute: trendRate((s) => s.dig_excellent, (s) => s.dig_total, '到位')
+	},
+	set_excellent_rate: {
+		label: METRIC_LABELS.set_excellent_rate,
+		isRate: true,
+		compute: trendRate((s) => s.set_excellent, (s) => s.set_total, '到位')
+	}
+} satisfies Record<string, TrendDef>;
+
+export type TrendMetric = keyof typeof TREND_DEFS;
+
+export const TREND_METRICS = Object.keys(TREND_DEFS) as TrendMetric[];
+
+export const trendLabel = (metric: TrendMetric) => TREND_DEFS[metric].label;
+
+const DEFAULT_TREND: Record<string, TrendMetric> = {
+	S: 'set_excellent_rate',
+	L: 'receive_excellent_rate',
+	OH: 'attack_success_rate',
+	MB: 'blocks_per_set',
+	OP: 'attack_success_rate'
+};
+
+export const defaultTrendMetric = (position: string | null): TrendMetric =>
+	DEFAULT_TREND[position ?? ''] ?? 'points';
 
 const goldenPoint = (value: number) => ({ value, symbol: 'diamond', symbolSize: 14, golden: true });
 
-export function trendOption(log: GameLogEntry[]): object {
-	const dates = log.map((e) => `${e.date.slice(5, 7)}/${e.date.slice(8, 10)}`);
+export function trendOption(log: GameLogEntry[], metric: TrendMetric): object {
+	const def: TrendDef = TREND_DEFS[metric];
+	const values = log.map((e) => def.compute(e.stats));
+	const unit = def.isRate ? '%' : '';
 	return {
-		legend: { data: ['得分', '攻擊成功率 %'] },
+		legend: { show: false },
 		tooltip: {
 			trigger: 'axis',
-			formatter: (params: { dataIndex: number; seriesName: string; value: number | null }[]) => {
+			formatter: (params: { dataIndex: number }[]) => {
 				const i = params[0].dataIndex;
-				const lines = params.map((p) => `${p.seriesName}：${p.value ?? '—'}`);
+				const { value, detail } = values[i];
+				const shown = value === null ? '—' : `${value}${unit}${detail ? `（${detail}）` : ''}`;
+				const lines = [log[i].date, `${def.label}：${shown}`];
 				if (log[i].golden) lines.push('此場另有黃金決勝局，未計入');
-				return [log[i].date, ...lines].join('<br/>');
+				return lines.join('<br/>');
 			}
 		},
-		xAxis: { type: 'category', data: dates, axisLabel: { interval: 'auto' } },
-		yAxis: [
-			{ type: 'value', name: '得分', minInterval: 1 },
-			{ type: 'value', name: '%', min: 0, max: 100, splitLine: { show: false } }
-		],
+		xAxis: {
+			type: 'category',
+			data: log.map((e) => `${e.date.slice(5, 7)}/${e.date.slice(8, 10)}`),
+			axisLabel: { interval: 'auto' }
+		},
+		yAxis: def.isRate
+			? { type: 'value', name: '%', min: 0, max: 100 }
+			: { type: 'value', name: def.label, min: 0, minInterval: def.integer ? 1 : undefined },
 		series: [
 			{
 				type: 'line',
-				name: '得分',
-				yAxisIndex: 0,
+				name: def.label,
 				connectNulls: false,
-				data: log.map((e) => (e.golden ? goldenPoint(e.points) : e.points))
-			},
-			{
-				type: 'line',
-				name: '攻擊成功率 %',
-				yAxisIndex: 1,
-				connectNulls: false,
-				lineStyle: { type: 'dashed' },
-				data: log.map((e) =>
-					e.golden && e.attack_rate !== null ? goldenPoint(e.attack_rate) : e.attack_rate
+				data: values.map(({ value }, i) =>
+					log[i].golden && value !== null ? goldenPoint(value) : value
 				)
 			}
 		]
@@ -262,13 +340,7 @@ export function playerGameLog(
 		const golden = game.golden_set
 			? inRows(game.golden_set.home, playerId) || inRows(game.golden_set.away, playerId)
 			: false;
-		log.push({
-			date: match.date,
-			points: row.total_points,
-			attack_rate:
-				row.attack_total === 0 ? null : Math.round((row.attack_points / row.attack_total) * 1000) / 10,
-			golden
-		});
+		log.push({ date: match.date, golden, stats: toGameStats(row) });
 	}
 	return log.sort((a, b) => a.date.localeCompare(b.date));
 }

@@ -1,11 +1,14 @@
 <script lang="ts">
 	import {
+		defaultTrendMetric,
 		distributionOption,
 		isRateMetric,
 		METRIC_KEYS,
 		METRIC_LABELS,
 		noPrReason as prReason,
 		PR_METRICS,
+		TREND_METRICS,
+		trendLabel,
 		trendOption,
 		type GameLogEntry,
 		type MetricKey
@@ -41,7 +44,8 @@
 			? distributionOption(distribution.metrics[metric], advanced?.ratios[metric] ?? null, METRIC_LABELS[metric])
 			: null
 	);
-	const trend = $derived(trendOption(gameLog));
+	let trendMetric = $derived(defaultTrendMetric(advanced?.position ?? null));
+	const trend = $derived(trendOption(gameLog, trendMetric));
 </script>
 
 <h2>
@@ -83,7 +87,7 @@
 		{#if distOption}
 			<section>
 				<h3>同位置分佈</h3>
-				<div class="metrics" role="group" aria-label="選擇指標">
+				<div class="metrics" role="group" aria-label="選擇分佈指標">
 					{#each METRIC_KEYS as key (key)}
 						<button type="button" aria-pressed={metric === key ? 'true' : 'false'} onclick={() => (metric = key)}>
 							{METRIC_LABELS[key]}
@@ -98,9 +102,16 @@
 		<section>
 			<h3>逐場趨勢</h3>
 			{#if gameLog.length === 0}
-				<EmptyState title="本季尚無逐場數據" />
+				<EmptyState title="本季尚無單場數據" />
 			{:else}
-				<Chart option={trend} ariaLabel="逐場得分與攻擊成功率趨勢折線圖" />
+				<div class="metrics" role="group" aria-label="選擇逐場趨勢指標">
+					{#each TREND_METRICS as key (key)}
+						<button type="button" aria-pressed={trendMetric === key ? 'true' : 'false'} onclick={() => (trendMetric = key)}>
+							{trendLabel(key)}
+						</button>
+					{/each}
+				</div>
+				<Chart option={trend} ariaLabel="{trendLabel(trendMetric)}逐場趨勢折線圖" />
 				{#if gameLog.some((e) => e.golden)}
 					<p class="sub">菱形標記的場次另有黃金決勝局，其數據未計入。</p>
 				{/if}

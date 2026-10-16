@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import type { BoxScoresData, GameBoxScore, PlayerSeason, StatRow } from '#lib/data/types.js';
 import type { MatchView } from '#lib/site.js';
 import {
+	defaultTrendMetric,
 	distributionOption,
 	headlineStats,
 	noPrReason,
 	playerGameLog,
+	toGameStats,
 	trendOption,
-	type GameLogEntry
+	type GameLogEntry,
+	type TrendMetric
 } from './advanced.js';
 
 const stat = (player_id: number, over: Partial<StatRow> = {}): StatRow => ({
@@ -58,22 +61,33 @@ describe('playerGameLog', () => {
 		match(3, '2026-01-17', 10, 40)
 	];
 
-	it('依日期升冪，各場取該球員正規局的得分與攻擊成功率', () => {
+	it('依日期升冪，各場保留該球員正規局的原始數字', () => {
 		const data = boxes([
-			game(1, { home: [stat(7, { total_points: 15, attack_points: 9, attack_total: 20 })] }),
+			game(1, { home: [stat(7, { total_points: 15 })] }),
 			game(2, { away: [stat(7, { total_points: 8, attack_points: 3, attack_total: 12 })] }),
-			game(3, { home: [stat(7, { total_points: 4, attack_points: 1, attack_total: 4 })] })
+			game(3, { home: [stat(7, { total_points: 4 })] })
 		]);
-		expect(playerGameLog(data, matches, 21, 'men', 7)).toEqual([
-			{ date: '2026-01-03', points: 8, attack_rate: 25, golden: false },
-			{ date: '2026-01-10', points: 15, attack_rate: 45, golden: false },
-			{ date: '2026-01-17', points: 4, attack_rate: 25, golden: false }
+		const log = playerGameLog(data, matches, 21, 'men', 7);
+		expect(log.map((e) => [e.date, e.golden, e.stats.total_points])).toEqual([
+			['2026-01-03', false, 8],
+			['2026-01-10', false, 15],
+			['2026-01-17', false, 4]
 		]);
-	});
-
-	it('attack_total 為 0 時 attack_rate 為 null', () => {
-		const data = boxes([game(1, { home: [stat(7, { attack_total: 0, attack_points: 0 })] })]);
-		expect(playerGameLog(data, matches, 21, 'men', 7)[0].attack_rate).toBeNull();
+		expect(log[0].stats).toEqual({
+			sets_played: 3,
+			attack_total: 12,
+			attack_points: 3,
+			block_points: 2,
+			serve_total: 8,
+			serve_points: 1,
+			receive_total: 12,
+			receive_excellent: 6,
+			dig_total: 9,
+			dig_excellent: 4,
+			set_total: 0,
+			set_excellent: 0,
+			total_points: 8
+		});
 	});
 
 	it('別人的列、別的賽季與組別不算', () => {
@@ -95,7 +109,7 @@ describe('playerGameLog', () => {
 			})
 		]);
 		const log = playerGameLog(data, matches, 21, 'men', 7);
-		expect(log.map((e) => [e.date, e.golden, e.points])).toEqual([
+		expect(log.map((e) => [e.date, e.golden, e.stats.total_points])).toEqual([
 			['2026-01-03', false, 8],
 			['2026-01-10', true, 15]
 		]);
@@ -157,43 +171,100 @@ describe('distributionOption', () => {
 });
 
 describe('trendOption', () => {
-	const entry = (over: Partial<GameLogEntry>): GameLogEntry => ({
-		date: '2026-01-03',
-		points: 8,
-		attack_rate: 25,
-		golden: false,
-		...over
+	const entry = (date: string, over: Partial<StatRow> = {}, golden = false): GameLogEntry => ({
+		date,
+		golden,
+		stats: toGameStats(stat(7, over))
 	});
 	const log = [
-		entry({}),
-		entry({ date: '2026-01-10', points: 15, attack_rate: null, golden: true }),
-		entry({ date: '2026-01-17', points: 4, attack_rate: 50 })
+		entry('2026-01-03', { total_points: 8, attack_points: 3, attack_total: 12 }),
+		entry('2026-01-10', { total_points: 15, attack_points: 0, attack_total: 0 }, true),
+		entry('2026-01-17', { total_points: 4, attack_points: 1, attack_total: 1 })
 	];
-	type S = { name: string; yAxisIndex: number; connectNulls: boolean; data: unknown[] };
-	const build = () => trendOption(log) as { xAxis: { data: string[] }; yAxis: unknown[]; series: S[] };
+	type Fmt = (p: { dataIndex: number }[]) => string;
+	type O = {
+		xAxis: { data: string[] };
+		yAxis: { min?: number; max?: number; name: string };
+		series: { name: string; connectNulls: boolean; data: unknown[] }[];
+		tooltip: { formatter: Fmt };
+	};
+	const build = (metric: TrendMetric) => trendOption(log, metric) as O;
 
-	it('x 軸為 MM/DD，兩條折線各用一個 y 軸', () => {
-		const o = build();
+	it('x 軸為 MM/DD，只畫選定指標一條線、單一 y 軸', () => {
+		const o = build('points');
 		expect(o.xAxis.data).toEqual(['01/03', '01/10', '01/17']);
-		expect(o.yAxis).toHaveLength(2);
-		expect(o.series.map((s) => [s.name, s.yAxisIndex])).toEqual([
-			['得分', 0],
-			['攻擊成功率 %', 1]
-		]);
+		expect(Array.isArray(o.yAxis)).toBe(false);
+		expect(o.series.map((s) => s.name)).toEqual(['得分']);
 	});
 
-	it('攻擊成功率 null 的點保留成空點，不連線', () => {
-		const s = build().series[1];
-		expect(s.data).toEqual([25, null, 50]);
-		expect(s.connectNulls).toBe(false);
+	it('比率指標取一位小數、y 軸固定 0–100；分母為 0 的場次是空點、不連線', () => {
+		const o = build('attack_success_rate');
+		expect(o.yAxis).toMatchObject({ min: 0, max: 100, name: '%' });
+		expect(o.series[0].connectNulls).toBe(false);
+		expect(o.series[0].data).toEqual([25, null, 100]);
+	});
+
+	it('計數指標 y 軸從 0 起、不設上限', () => {
+		const o = build('points');
+		expect(o.yAxis.min).toBe(0);
+		expect(o.yAxis.max).toBeUndefined();
+	});
+
+	it('每局攔網取兩位小數，上場 0 局沒有值', () => {
+		const blocks = [
+			entry('2026-01-03', { block_points: 2, sets_played: 3 }),
+			entry('2026-01-10', { block_points: 0, sets_played: 0 })
+		];
+		const o = trendOption(blocks, 'blocks_per_set') as O;
+		expect(o.series[0].data).toEqual([0.67, null]);
+	});
+
+	it('其餘到位率與發球得分率各取對應的分子分母', () => {
+		const one = [
+			entry('2026-01-03', {
+				serve_points: 1,
+				serve_total: 4,
+				receive_excellent: 3,
+				receive_total: 4,
+				dig_excellent: 1,
+				dig_total: 8,
+				set_excellent: 7,
+				set_total: 10
+			})
+		];
+		const value = (m: TrendMetric) => (trendOption(one, m) as O).series[0].data[0];
+		expect(value('serve_point_rate')).toBe(25);
+		expect(value('receive_excellent_rate')).toBe(75);
+		expect(value('dig_excellent_rate')).toBe(12.5);
+		expect(value('set_excellent_rate')).toBe(70);
 	});
 
 	it('黃金局場次的點是放大的 diamond，其他點維持原值', () => {
-		const data = build().series[0].data;
+		const data = build('points').series[0].data;
 		expect(data[0]).toBe(8);
 		expect(data[2]).toBe(4);
 		expect(data[1]).toMatchObject({ value: 15, symbol: 'diamond', golden: true });
 		expect((data[1] as { symbolSize: number }).symbolSize).toBeGreaterThan(8);
+	});
+
+	it('tooltip 附分子／分母；分母為 0 顯示「—」；只有黃金局場次附註', () => {
+		const f = build('attack_success_rate').tooltip.formatter;
+		expect(f([{ dataIndex: 0 }])).toBe('2026-01-03<br/>攻擊成功率：25%（得分 3／12）');
+		expect(f([{ dataIndex: 2 }])).toBe('2026-01-17<br/>攻擊成功率：100%（得分 1／1）');
+		expect(f([{ dataIndex: 1 }])).toBe('2026-01-10<br/>攻擊成功率：—<br/>此場另有黃金決勝局，未計入');
+		expect(build('points').tooltip.formatter([{ dataIndex: 0 }])).toBe('2026-01-03<br/>得分：8');
+	});
+});
+
+describe('defaultTrendMetric', () => {
+	it('依主要位置對應主卡第一個指標，沒有位置看得分', () => {
+		expect(defaultTrendMetric('S')).toBe('set_excellent_rate');
+		expect(defaultTrendMetric('L')).toBe('receive_excellent_rate');
+		expect(defaultTrendMetric('OH')).toBe('attack_success_rate');
+		expect(defaultTrendMetric('MB')).toBe('blocks_per_set');
+		expect(defaultTrendMetric('OP')).toBe('attack_success_rate');
+		expect(defaultTrendMetric(null)).toBe('points');
+		expect(defaultTrendMetric('X')).toBe('points');
 	});
 });
 
@@ -222,17 +293,6 @@ describe('邊界案例', () => {
 		};
 		expect(o.xAxis.data).toEqual([]);
 		expect(o.series[0].data).toEqual([]);
-	});
-
-	it('trend tooltip 只有黃金局場次附註', () => {
-		const log: GameLogEntry[] = [
-			{ date: '2026-01-03', points: 8, attack_rate: 25, golden: false },
-			{ date: '2026-01-10', points: 15, attack_rate: 40, golden: true }
-		];
-		const f = (trendOption(log) as { tooltip: { formatter: Fmt } }).tooltip.formatter;
-		const params = (dataIndex: number) => [{ dataIndex, seriesName: '得分', value: 1 }];
-		expect(f(params(0))).not.toContain('此場另有黃金決勝局');
-		expect(f(params(1))).toContain('此場另有黃金決勝局');
 	});
 });
 
