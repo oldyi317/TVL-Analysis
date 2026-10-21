@@ -258,7 +258,7 @@
 </section>
 
 <section>
-	<h2>隊標記</h2>
+	<h2>隊色圓標</h2>
 	<ul class="badges card">
 		{#each ['sm', 'md', 'lg', 'xl'] as const as size (size)}
 			<li>

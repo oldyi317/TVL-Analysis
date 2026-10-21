@@ -24,8 +24,8 @@ EXT_HEADERS = {
 # 只有 EXT_TEAM_MAPS、TEAM_NAME_SHORT 仍是手動維護的對照表，其中 EXT_TEAM_MAPS 換季要補。
 # 2024-25 舊隊 team_id 8/9/10：訓練集刻意排除，見 issue #48。
 LEGACY_TEAM_IDS = {8, 9, 10}
-# ── 外部系統 TeamID → 本地 DB (team_id, gender) 對照表（每屆一份，以 cup_id 為鍵）──
-# TeamID 每屆重編；新季要在此加一份，查無該屆時爬蟲會拋錯而不是落回其他賽季。
+# ── 外部系統 TeamID → 本地 DB (team_id, gender) 對照表（每季一份，以 cup_id 為鍵）──
+# TeamID 每季重編；新季要在此加一份，查無該賽季時爬蟲會拋錯而不是落回其他賽季。
 EXT_TEAM_MAPS: dict[int, dict[int, tuple[int, str]]] = {
     20: {
         1: (1, "M"),    # 屏東台電(男)
@@ -69,23 +69,23 @@ VALID_POSITIONS = {"OH", "MB", "OP", "S", "L"}
 VALID_GENDERS = {"M", "F"}
 
 POSITION_MAP = {
-    "主攻手": "OH",
-    "中間手": "MB",
+    "主攻手": "OH",  # 官網原字
+    "中間手": "MB",  # 官網原字
     "副攻手": "OP",
-    "舉球員": "S",
-    "自由球員": "L",
+    "舉球員": "S",  # 官網原字
+    "自由球員": "L",  # 官網原字
 }
 
 # ── 外部統計系統（Match.ashx）位置用語 → 內部代碼 ─────────────
-# 用語與官網 POSITION_MAP 不同（官網：主攻手/中間手/副攻手/舉球員/自由球員），
+# 用語與官網 POSITION_MAP 不同（官網：主攻手/中間手/副攻手/舉球員/自由球員）， # 官網原字
 # 已用資料庫既有球員資料交叉驗證（見 Phase 2 計畫文件）。
 MATCH_POSITION_MAP = {
-    "對角": "OP",
-    "長攻": "OH",
+    "對角": "OP",  # 官網原字
+    "長攻": "OH",  # 官網原字
     "攔中": "MB",
     "舉球": "S",
     "自由": "L",
 }
 
-# 官網 2024-25 賽季把總決賽寫成「總冠軍賽」，兩個爬蟲都正規化為「總決賽」
-ROUND_STAGE_ALIAS = {"總冠軍賽": "總決賽"}
+# 官網 2024-25 賽季把總決賽寫成「總冠軍賽」，兩個爬蟲都正規化為「總決賽」  # 官網原字
+ROUND_STAGE_ALIAS = {"總冠軍賽": "總決賽"}  # 官網原字

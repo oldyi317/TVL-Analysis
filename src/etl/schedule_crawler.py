@@ -99,7 +99,7 @@ def next_year_path(html: str) -> str | None:
 
 
 def upsert_schedule_match(conn: sqlite3.Connection, match: dict, cup_id: int) -> bool:
-    """寫入或更新賽事基本資料，回傳是否為新增。比分欄一律不動；頁面缺值的欄位保留既有值。"""
+    """寫入或更新賽事資料，回傳是否為新增。比分欄一律不動；頁面缺值的欄位保留既有值。"""
     ctx = f"{match['gender']}/{match['game_id']}"
     home_team_id = resolve_team_id(conn, match["home_team"], match["gender"], f"{ctx} home")
     away_team_id = resolve_team_id(conn, match["away_team"], match["gender"], f"{ctx} away")

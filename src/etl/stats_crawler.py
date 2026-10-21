@@ -1,5 +1,5 @@
 """
-TVL 球員逐場數據爬蟲模組
+TVL 球員單場數據爬蟲模組
 從外部數據系統 (114.35.229.141) 抓取球員逐場統計，
 透過球員姓名與本地 DB 關聯後寫入 player_match_stats 事實表。
 """
@@ -170,7 +170,7 @@ class PlayerResolver:
 
 def fetch_player_stats(season: Season, team_id: int, ext_player_id: int) -> list[dict]:
     """
-    抓取單一球員的逐場數據表，回傳字典列表。
+    抓取單一球員的單場數據表，回傳字典列表。
     跳過表頭行與最後的「累計」行。
     """
     url = f"{EXT_BASE}/_handler/Player.ashx"
@@ -284,7 +284,7 @@ def ext_team_map_for(cup_id: int) -> dict:
 
 def main(incremental: bool = False, cup_id: int = CUP_ID):
     """
-    主流程：抓取所有球員逐場數據並寫入 DB。
+    主流程：抓取所有球員單場數據並寫入 DB。
 
     Parameters
     ----------
@@ -328,7 +328,7 @@ def main(incremental: bool = False, cup_id: int = CUP_ID):
             if player_id is None:
                 continue
 
-            # 抓取逐場數據
+            # 抓取單場數據
             try:
                 records = fetch_player_stats(season, ext_team_id, ext_pid)
             except Exception as e:
@@ -501,7 +501,7 @@ def _parse_match_title(title_text: str, season: Season) -> tuple[str, str] | Non
     if match_date is None:
         return None
 
-    round_m = re.search(r"(第\d+週|挑戰賽|總決賽|總冠軍賽|季後賽|明星賽)", title_text)
+    round_m = re.search(r"(第\d+週|挑戰賽|總決賽|總冠軍賽|季後賽|明星賽)", title_text)  # 官網原字
     raw_round_text = round_m.group(1) if round_m else "未知賽別"
     return match_date, ROUND_STAGE_ALIAS.get(raw_round_text, raw_round_text)
 
@@ -721,7 +721,7 @@ def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
 
 def cli(argv=None):
     import argparse
-    parser = argparse.ArgumentParser(description="TVL 球員逐場數據爬蟲")
+    parser = argparse.ArgumentParser(description="TVL 球員單場數據爬蟲")
     parser.add_argument(
         "--incremental", "-i", action="store_true",
         help="增量模式：僅新增尚未存在的比賽紀錄，不清除既有資料",

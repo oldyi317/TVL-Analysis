@@ -21,7 +21,7 @@ SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
 
 logger = get_logger(__name__)
 
-ROUND_NAME_RE = re.compile(r"(例行賽|挑戰賽|總決賽|總冠軍賽|季後賽|明星賽)\s*Week\s*(\d+)")
+ROUND_NAME_RE = re.compile(r"(例行賽|挑戰賽|總決賽|總冠軍賽|季後賽|明星賽)\s*Week\s*(\d+)")  # 官網原字
 
 
 def parse_round_name(text: str) -> str | None:

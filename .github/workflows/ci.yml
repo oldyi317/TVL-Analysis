@@ -1,0 +1,50 @@
+# PR 守門：pytest、svelte-check、vitest。pages.yml 只負責部署（匯出器不裝 pip 套件），本 workflow 才裝 requirements.txt。
+name: ci
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: pytest
+        run: python -m pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: 匯出靜態站 JSON（型別檢查與單元測試都讀它）
+        run: python -m src.export.site_data
+      - name: 安裝前端依賴
+        working-directory: web
+        run: npm ci
+      - name: 型別檢查（含 schema 驗證與型別產生）
+        working-directory: web
+        run: npm run check
+      - name: 單元測試
+        working-directory: web
+        run: npm run test:unit

@@ -13,6 +13,16 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
 
+## Repo quirk: GraphQL `projectCards` is deprecated here
+
+`gh issue view <n>` and `gh pr view <n>` without `--json`, and `gh pr edit`, fail on this repo with `GraphQL: Projects (classic) is being deprecated ... projectCards`. Use the REST or field-scoped forms instead:
+
+- **Read**: `gh issue view <n> --json title,body,comments` / `gh pr view <n> --json title,body,commits`
+- **Edit a PR body**: `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<file>`
+- **Inspect a PR**: `gh api repos/<owner>/<repo>/pulls/<n> --jq '.commits, .body'`
+
+`gh issue create`, `gh pr create`, `gh issue list --json`, `gh pr list --json`, `gh issue comment` and `gh issue close` work as-is.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
