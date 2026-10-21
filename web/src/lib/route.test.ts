@@ -15,8 +15,9 @@ describe('resolveSeasonGroup', () => {
 		expect(resolveSeasonGroup({ season: 'no-such-season', group: 'men' })).toBeUndefined();
 	});
 
-	it('非法組別回傳 undefined', () => {
+	it('非法或缺少的組別回傳 undefined', () => {
 		expect(resolveSeasonGroup({ season: known.name, group: 'mixed' })).toBeUndefined();
+		expect(resolveSeasonGroup({ season: known.name, group: undefined })).toBeUndefined();
 	});
 });
 
@@ -24,6 +25,7 @@ describe('parseId', () => {
 	it('純數字字串轉成數字', () => {
 		expect(parseId('12')).toBe(12);
 		expect(parseId('0')).toBe(0);
+		expect(parseId('007')).toBe(7);
 	});
 
 	it.each(['', '1e2', ' 5 ', 'abc', '-1'])('%j 回傳 undefined', (raw) => {
