@@ -1,5 +1,5 @@
 """
-賽果預測模型訓練（v2）：TimeSeriesSplit + Optuna + XGBoost。
+賽果模型訓練（v2）：TimeSeriesSplit + Optuna + XGBoost。
 用法：python -m src.models.train [--trials 50] [--output src/models/match_predictor_v2.pkl]
 """
 
@@ -88,7 +88,7 @@ def tune_and_train(frame, n_trials, seed=SEED) -> dict:
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="重訓賽果預測模型（v2）")
+    parser = argparse.ArgumentParser(description="重訓賽果模型（v2）")
     parser.add_argument("--trials", type=int, default=50)
     parser.add_argument("--output", type=Path,
                         default=Path("src/models/match_predictor_v2.pkl"))

@@ -36,7 +36,7 @@ test('導覽「球員」到球員列表', async ({ page }) => {
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
-test('列表第一張球員卡進球員頁：基本資料與本季數據', async ({ page }) => {
+test('列表第一張球員卡進球員頁：球員資料與本季數據', async ({ page }) => {
 	test.skip(!picked, noPlayers);
 	await page.goto(`${BASE}/${current}/men/players/`);
 	const card = page.locator('ul.players li a').first();
@@ -48,7 +48,7 @@ test('列表第一張球員卡進球員頁：基本資料與本季數據', async
 	expect(player.seasons.find((s) => s.cup_id === currentCup)).toBeDefined();
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText(player.name ?? `球員 #${id}`);
 
-	await expect(page.getByRole('heading', { level: 2, name: '基本資料' })).toBeVisible();
+	await expect(page.getByRole('heading', { level: 2, name: '球員資料' })).toBeVisible();
 	for (const label of ['背號', '位置', '身高', '體重']) {
 		await expect(page.locator('dl.profile dt', { hasText: label })).toBeVisible();
 	}
@@ -147,7 +147,7 @@ test('球隊頁的球員卡連到球員頁', async ({ page }) => {
 	await expect(card).toHaveAttribute('href', /\/players\/\d+\/$/);
 	await card.click();
 	await expect(page).toHaveURL(/\/men\/players\/\d+\/$/);
-	await expect(page.getByRole('heading', { level: 2, name: '基本資料' })).toBeVisible();
+	await expect(page.getByRole('heading', { level: 2, name: '球員資料' })).toBeVisible();
 });
 
 test('球員頁切換組別退回列表', async ({ page }) => {
