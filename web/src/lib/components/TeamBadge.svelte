@@ -24,6 +24,9 @@
 	const logoSrc = $derived(team.logo === null ? null : asset(team.logo as AssetPath));
 	let failedSrc = $state('');
 	const failed = $derived(logoSrc === null || failedSrc === logoSrc);
+	// 有給 label 才由圓標自己承載名稱；落回縮寫文字時改由外層說明
+	const labelled = $derived(label !== undefined);
+	const describesItself = $derived(labelled && failed);
 </script>
 
 <!-- 沒給 label：隊色圓標是裝飾性的，球隊名稱由旁邊的文字承載，整顆 aria-hidden。
@@ -32,9 +35,9 @@
 	class="badge {size}"
 	class:has-logo={!failed}
 	style={teamStyle(team)}
-	aria-hidden={label === undefined ? 'true' : undefined}
-	role={label !== undefined && failed ? 'img' : undefined}
-	aria-label={label !== undefined && failed ? label : undefined}
+	aria-hidden={labelled ? undefined : 'true'}
+	role={describesItself ? 'img' : undefined}
+	aria-label={describesItself ? label : undefined}
 >
 	{#if failed}
 		{#each parts as part, i (i)}
