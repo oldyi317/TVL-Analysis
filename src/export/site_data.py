@@ -7,7 +7,7 @@ from pathlib import Path
 from statistics import median
 
 from src.export.player_advanced import compute_advanced, distributions
-from src.export.player_seasons import STAT_FIELDS, compute_player_seasons
+from src.export.player_seasons import STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
 from src.export.standings import compute_standings
 from src.utils.db_config import DB_PATH, PROJECT_ROOT, get_connection
 from src.utils.teams import UnknownTeamError, resolve_team
@@ -254,8 +254,8 @@ def _matches_payload(conn: sqlite3.Connection) -> dict:
 def _player_seasons(conn: sqlite3.Connection) -> dict[int, list[dict]]:
     sums = ", ".join(f"COALESCE(SUM(s.{f}), 0)" for f in STAT_FIELDS)
     totals = {
-        (player_id, cup_id): row
-        for player_id, cup_id, *row in conn.execute(
+        (player_id, cup_id): SeasonTotals(games, tuple(stats))
+        for player_id, cup_id, games, *stats in conn.execute(
             f"""
             SELECT r.player_id, r.cup_id, COUNT(*), {sums}
             FROM player_match_stats s
@@ -264,15 +264,19 @@ def _player_seasons(conn: sqlite3.Connection) -> dict[int, list[dict]]:
             """
         )
     }
-    registrations = conn.execute(
-        """
-        SELECT player_id, cup_id, team_id, jersey_number, position, week_start_date, registration_id
-        FROM roster_registrations
-        """
-    ).fetchall()
-    season_rosters = conn.execute(
-        "SELECT player_id, cup_id, team_id, jersey_number, position FROM season_rosters"
-    ).fetchall()
+    registrations = [
+        Registration(*row)
+        for row in conn.execute(
+            """
+            SELECT player_id, cup_id, team_id, jersey_number, position, week_start_date, registration_id
+            FROM roster_registrations
+            """
+        )
+    ]
+    season_rosters = [
+        SeasonRoster(*row)
+        for row in conn.execute("SELECT player_id, cup_id, team_id, jersey_number, position FROM season_rosters")
+    ]
     return compute_player_seasons(totals, registrations, season_rosters)
 
 

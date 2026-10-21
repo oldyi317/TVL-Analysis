@@ -1,8 +1,8 @@
-from src.export.player_seasons import STAT_FIELDS, compute_player_seasons
+from src.export.player_seasons import STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
 
 
 def reg(player, cup, team, jersey, position, week, reg_id):
-    return (player, cup, team, jersey, position, week, reg_id)
+    return Registration(player, cup, team, jersey, position, week, reg_id)
 
 
 def season(registrations, season_rosters=(), totals=None, player=1, cup=1):
@@ -50,7 +50,7 @@ def test_latest_registration_gives_team_and_jersey():
 
 def test_totals_fill_games_and_stats_else_zero():
     regs = [reg(1, 1, 10, 5, "OH", "2026-01-01", 1), reg(1, 2, 10, 5, "OH", "2026-02-01", 2)]
-    totals = {(1, 1): [4] + list(range(1, len(STAT_FIELDS) + 1))}
+    totals = {(1, 1): SeasonTotals(4, tuple(range(1, len(STAT_FIELDS) + 1)))}
     result = compute_player_seasons(totals, regs, [])[1]
     assert [e["cup_id"] for e in result] == [1, 2]
     assert result[0]["games"] == 4 and result[0]["sets_played"] == 1 and result[0]["total_points"] == 13
@@ -59,7 +59,7 @@ def test_totals_fill_games_and_stats_else_zero():
 
 def test_season_roster_fills_missing_jersey_only_for_same_team():
     regs = [reg(1, 1, 10, None, "OH", "2026-01-01", 1), reg(2, 1, 10, None, "OH", "2026-01-01", 2)]
-    rosters = [(1, 1, 10, 8, "MB"), (2, 1, 99, 8, "MB")]
+    rosters = [SeasonRoster(1, 1, 10, 8, "MB"), SeasonRoster(2, 1, 99, 8, "MB")]
     result = compute_player_seasons({}, regs, rosters)
     same, other = result[1][0], result[2][0]
     assert (same["jersey_number"], same["season_roster_position"], same["position"]) == (8, "MB", "OH")
@@ -67,12 +67,12 @@ def test_season_roster_fills_missing_jersey_only_for_same_team():
 
 
 def test_season_roster_does_not_overwrite_existing_jersey():
-    result = compute_player_seasons({}, [reg(1, 1, 10, 5, "OH", "2026-01-01", 1)], [(1, 1, 10, 8, "MB")])
+    result = compute_player_seasons({}, [reg(1, 1, 10, 5, "OH", "2026-01-01", 1)], [SeasonRoster(1, 1, 10, 8, "MB")])
     assert result[1][0]["jersey_number"] == 5
 
 
 def test_roster_only_player_gets_zero_stat_row_with_no_position():
-    result = compute_player_seasons({}, [reg(1, 2, 10, 5, "OH", "2026-02-01", 1)], [(1, 1, 10, 8, "MB"), (3, 1, 11, 2, "OH")])
+    result = compute_player_seasons({}, [reg(1, 2, 10, 5, "OH", "2026-02-01", 1)], [SeasonRoster(1, 1, 10, 8, "MB"), SeasonRoster(3, 1, 11, 2, "OH")])
     assert [e["cup_id"] for e in result[1]] == [1, 2]
     added = result[3][0]
     assert added["games"] == 0 and all(added[f] == 0 for f in STAT_FIELDS)
