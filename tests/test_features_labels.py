@@ -9,11 +9,7 @@ from src.models.features import (
     attach_labels,
     build_match_labels,
     load_team_match_stats,
-    normalize_match_team,
 )
-from src.utils.constants import LEGACY_TEAMS
-from src.utils.teams import load_team_lookup
-from tests.conftest import connect_seeded
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "sql" / "schema.sql"
 
@@ -22,14 +18,6 @@ def _make_db(tmp_db_path) -> sqlite3.Connection:
     conn = sqlite3.connect(tmp_db_path)
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     return conn
-
-
-@pytest.fixture
-def lookup(tmp_path):
-    conn = connect_seeded(tmp_path / "lookup.db")
-    result = load_team_lookup(conn)
-    conn.close()
-    return result
 
 
 def _seed_team(conn, team_id, name, gender):
@@ -58,39 +46,14 @@ def _seed_stat(conn, team_id, gender, match_date, opponent, *,
     conn.commit()
 
 
-def _match_row(home, away, gender, hsw, asw, *, date="2026-01-10",
+def _match_row(home_id, away_id, gender, hsw, asw, *, date="2026-01-10",
                h_total=75, a_total=70, golden=0):
     return {
         "match_date": date, "gender": gender, "is_golden_set": golden,
-        "home_team": home, "away_team": away,
+        "home_team_id": home_id, "away_team_id": away_id,
         "home_total": h_total, "away_total": a_total,
         "home_sets_won": hsw, "away_sets_won": asw,
     }
-
-
-# matches 表實際出現過的 14 種隊名（2026-08-27 實查）
-MATCH_TEAM_NAMES = [
-    "屏東台電", "屏東台電男排", "彰化三大有線", "新北中纖", "桃園臺產",
-    "獅子王", "義力營造", "臺北Conti", "臺北國北獅", "臺北鯨華",
-    "連莊", "雲林美津濃", "高雄台電", "高雄台電女排",
-    "臺北鳳凰", "龍邁建設", "龍脈建設", "三福產業", "新竹可利工程師",
-]
-
-
-def test_all_match_team_names_normalize(lookup):
-    for name in MATCH_TEAM_NAMES:
-        short = normalize_match_team(name, lookup)
-        assert short in lookup or short in LEGACY_TEAMS
-
-
-def test_suffix_variants_map_to_short(lookup):
-    assert normalize_match_team("屏東台電男排", lookup) == "屏東台電"
-    assert normalize_match_team("高雄台電女排", lookup) == "高雄台電"
-
-
-def test_unknown_team_raises(lookup):
-    with pytest.raises(ValueError, match="未知隊名"):
-        normalize_match_team("不存在的隊", lookup)
 
 
 def test_team_match_aggregation_excludes_golden_set(tmp_db_path):
@@ -108,31 +71,33 @@ def test_team_match_aggregation_excludes_golden_set(tmp_db_path):
         assert col in df.columns
 
 
-def test_label_uses_sets_won_not_total_points(lookup):
+def test_label_uses_sets_won_not_total_points():
     # 總得分較高但局數落敗（proxy 會標錯的 13 場型態）
     matches = pd.DataFrame([_match_row(
-        "屏東台電", "獅子王", "M", 2, 3, h_total=110, a_total=105)])
-    labels, _ = build_match_labels(matches, lookup)
+        1, 7, "M", 2, 3, h_total=110, a_total=105)])
+    labels, _ = build_match_labels(matches)
     home = labels[labels["team_id"] == 1].iloc[0]
     away = labels[labels["team_id"] == 7].iloc[0]
     assert home["win"] == 0 and away["win"] == 1
 
 
-def test_labels_skip_golden_set_and_legacy(lookup):
+def test_labels_skip_golden_set_and_legacy():
     matches = pd.DataFrame([
-        _match_row("屏東台電", "獅子王", "M", 3, 1),
-        _match_row("屏東台電", "獅子王", "M", 1, 0, golden=1, date="2026-01-11"),
-        _match_row("臺北Conti", "連莊", "M", 3, 2, date="2024-12-01"),
+        _match_row(1, 7, "M", 3, 1),
+        _match_row(1, 7, "M", 1, 0, golden=1, date="2026-01-11"),
+        _match_row(9, 10, "M", 3, 2, date="2024-12-01"),
     ])
-    labels, report = build_match_labels(matches, lookup)
+    labels, report = build_match_labels(matches)
     assert len(labels) == 2  # 只有第一場的主客兩筆
     assert report["legacy_skipped"] == 1
 
 
-def test_labels_unknown_team_raises(lookup):
-    matches = pd.DataFrame([_match_row("怪隊", "獅子王", "M", 3, 0)])
-    with pytest.raises(ValueError, match="未知隊名"):
-        build_match_labels(matches, lookup)
+def test_labels_skip_null_team_id_as_unresolved():
+    matches = pd.DataFrame([_match_row(None, 7, "M", 3, 0)])
+    labels, report = build_match_labels(matches)
+    assert labels.empty
+    assert report["unresolved_skipped"] == 1
+    assert report["invalid_skipped"] == 0
 
 
 def test_attach_labels_fails_loud_on_missing_score(tmp_db_path):
