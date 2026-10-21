@@ -36,15 +36,17 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
   checkout repo 就跑匯出器建置，靠 repo 內的 `data/db/tvl_database.db`；
   `src/models/match_predictor_v2.pkl` 供第三期賽前勝率匯出使用。
   不要把它們加進 `.gitignore`。artifact 需含 `version`/`feature_cols`，
-  `tests/test_prediction_artifact.py` 鎖住合約（CI 不跑 pytest，本機要跑），重訓務必走 `python -m src.models.train`，不要手動 pickle。
+  `tests/test_prediction_artifact.py` 鎖住合約（pages.yml 不跑 pytest；ci.yml 在 PR 上跑，本機也要跑），重訓務必走 `python -m src.models.train`，不要手動 pickle。
 - **行尾一律 LF**：repo 在 WSL 的 `/mnt/d` 上，Windows 工具容易把檔案轉成 CRLF，
   會製造上萬行假 diff。commit 前用 `git diff --stat -w` 確認沒有純行尾雜訊。
 - **資料來源有兩個**：官網 `tvl.ctvba.org.tw`（名單、比分）與外部統計系統
   `http://114.35.229.141`（明文 HTTP、hardcoded IP，見 `src/utils/constants.py`）。
   後者不可從程式碼推斷格式，改爬蟲前先實際抓一頁看回應。
-- **每週登錄名單會變動**：企業排球每週登錄球員可能不同，`stats_crawler` 遇到
-  名單外的球員現在是「插入身分層 `players` (name, gender) + 建
-  `source='backfill'` 登錄（背號/位置皆 NULL）」，下游計算仍須對缺值防禦。
+- **每週登錄名單會變動**：企業排球每週登錄球員可能不同。`stats_crawler` 遇到
+  週登錄外的球員分兩路：該賽季有賽季報名名單時，依「同隊姓名 → 同隊背號」比對，
+  對不上就略過並 warning，不插入 `players`；整季沒有報名名單（legacy）時才以全域
+  姓名比對、查無就動態新增。比對到人但查無登錄時補一筆 `source='backfill'`
+  登錄（背號/位置皆 NULL），下游計算仍須對缺值防禦。
 - **換季前必跑 `docs/ops/season-switch.md` checklist**：cup_id 已進
   roster_registrations 的 UNIQUE（Phase 3），跨季同名週次不再互相覆寫；但
   `EXT_CUP_ID` 等常數是手動更新的，未更新前爬蟲抓不到新季資料。

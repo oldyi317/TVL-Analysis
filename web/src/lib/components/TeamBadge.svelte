@@ -22,7 +22,7 @@
 	const failed = $derived(logoSrc === null || failedSrc === logoSrc);
 </script>
 
-<!-- 隊標是裝飾性的，球隊名稱由旁邊的文字承載 -->
+<!-- 隊色圓標是裝飾性的，球隊名稱由旁邊的文字承載 -->
 <span class="badge {size}" class:has-logo={!failed} style={teamStyle(team)} aria-hidden="true">
 	{#if failed}
 		{#each parts as part, i (i)}

@@ -58,7 +58,7 @@
 	</p>
 </header>
 
-<h2>基本資料</h2>
+<h2>球員資料</h2>
 <dl class="profile card">
 	{#each profile as [label, value] (label)}
 		<div>

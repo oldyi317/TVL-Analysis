@@ -42,7 +42,7 @@ def fetch_page(url: str, allow_404: bool = False) -> BeautifulSoup | None:
 
 
 def parse_position(raw: str) -> str | None:
-    """從原始字串中比對位置並轉為英文縮寫，例如 '主攻手(隊長)' -> 'OH'。"""
+    """從原始字串中比對位置並轉為英文縮寫，例如 '主攻手(隊長)' -> 'OH'。"""  # 官網原字
     for zh, en in POSITION_MAP.items():
         if zh in raw:
             return en
@@ -84,7 +84,7 @@ def parse_player_card(card_div) -> dict:
         except Exception as e:
             logger.warning("解析背號失敗: %s", e)
 
-        # 姓名與位置：<h3 class="fs16">李元<span>主攻手(隊長)</span></h3>
+        # 姓名與位置：<h3 class="fs16">李元<span>主攻手(隊長)</span></h3>  # 官網原字
         try:
             name_h3 = pc_div.find("h3", class_="fs16")
             if name_h3:

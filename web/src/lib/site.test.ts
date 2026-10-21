@@ -90,7 +90,7 @@ describe('seasonTeam', () => {
 	it('改過名又沒有專用圖就不畫隊徽，不拿現行圖充數', () => {
 		const renamed = {
 			...men4,
-			names_by_cup: { '19': { name: '舊名', short_name: '舊名' } },
+			names_by_cup: { '19': { name: '曾用名', short_name: '曾用名' } },
 			cup_ids: [19]
 		};
 		expect(seasonTeam(renamed, 19).logo).toBeNull();
