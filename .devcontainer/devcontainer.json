@@ -1,0 +1,26 @@
+{
+  "name": "TVL-Analysis",
+  "image": "mcr.microsoft.com/devcontainers/python:3.14-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "24" }
+  },
+  "customizations": {
+    "codespaces": {
+      "openFiles": [
+        "README.md"
+      ]
+    },
+    "vscode": {
+      "settings": {},
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "svelte.svelte-vscode"
+      ]
+    }
+  },
+  "updateContentCommand": "pip3 install --user -r requirements.txt -r requirements-dev.txt && cd web && npm ci",
+  "forwardPorts": [
+    5173
+  ]
+}

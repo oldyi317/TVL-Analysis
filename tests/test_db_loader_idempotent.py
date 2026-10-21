@@ -1,0 +1,114 @@
+import sqlite3
+
+import pandas as pd
+import pytest
+
+from src.etl.db_loader import init_db, upsert_player_identity
+from src.utils.teams import apply_team_seed
+
+
+@pytest.fixture
+def conn(tmp_db_path):
+    connection = sqlite3.connect(tmp_db_path)
+    connection.execute("PRAGMA foreign_keys = ON")
+    yield connection
+    connection.close()
+
+
+SAMPLE_DF = pd.DataFrame([
+    {"team_id": 1, "team_name": "測試隊", "gender": "M",
+     "jersey_number": 10, "name": "測試球員", "position": "OH",
+     "height_cm": 190.0, "weight_kg": 80.0},
+])
+
+
+def test_init_db_is_idempotent(conn):
+    init_db(conn)
+    init_db(conn)
+    tables = {
+        row[0] for row in
+        conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    assert {"teams", "players", "roster_registrations", "player_match_stats", "matches"} <= tables
+
+
+def test_upsert_player_identity_does_not_write_team_or_jersey(conn):
+    init_db(conn)
+    upsert_player_identity(conn, SAMPLE_DF)
+
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(players)")}
+    assert "team_id" not in cols
+    assert "jersey_number" not in cols
+    assert "position" not in cols
+
+    row = conn.execute(
+        "SELECT name, gender, height_cm, weight_kg FROM players WHERE name = '測試球員'"
+    ).fetchone()
+    assert row == ("測試球員", "M", 190.0, 80.0)
+
+
+def test_upsert_player_identity_preserves_player_id_on_rerun(conn):
+    init_db(conn)
+    upsert_player_identity(conn, SAMPLE_DF)
+    first_id = conn.execute(
+        "SELECT player_id FROM players WHERE name = '測試球員'"
+    ).fetchone()[0]
+
+    upsert_player_identity(conn, SAMPLE_DF)
+
+    rows = conn.execute(
+        "SELECT player_id FROM players WHERE name = '測試球員'"
+    ).fetchall()
+    assert len(rows) == 1
+    assert rows[0][0] == first_id
+
+
+def test_upsert_player_identity_none_does_not_overwrite_existing(conn):
+    init_db(conn)
+    upsert_player_identity(conn, SAMPLE_DF)
+    blank = SAMPLE_DF.copy().astype(object)
+    blank["height_cm"] = None
+    blank["weight_kg"] = float("nan")
+    upsert_player_identity(conn, blank)
+
+    row = conn.execute(
+        "SELECT height_cm, weight_kg FROM players WHERE name = '測試球員'"
+    ).fetchone()
+    assert row == (190.0, 80.0)
+
+
+def test_init_db_does_not_wipe_existing_registrations(conn):
+    init_db(conn)
+    upsert_player_identity(conn, SAMPLE_DF)
+    player_id = conn.execute(
+        "SELECT player_id FROM players WHERE name = '測試球員'"
+    ).fetchone()[0]
+    conn.execute(
+        """INSERT INTO roster_registrations
+           (player_id, team_id, gender, cup_id, week_label, jersey_number, position, source)
+           VALUES (?, 1, 'M', 21, '例行賽 Week 1', 10, 'OH', 'match_page')""",
+        (player_id,),
+    )
+    conn.commit()
+
+    init_db(conn)
+    upsert_player_identity(conn, SAMPLE_DF)
+
+    remaining = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0]
+    assert remaining == 1
+
+
+def test_init_db_seeds_team_identity(conn):
+    init_db(conn)
+    assert conn.execute("SELECT short_name FROM teams WHERE team_id = 3 AND gender = 'F'").fetchone() == ("臺北鯨華",)
+    assert conn.execute("SELECT COUNT(*) FROM team_aliases").fetchone()[0] == 39
+
+
+def test_team_season_names_seed_is_idempotent(conn):
+    init_db(conn)
+    query = "SELECT * FROM team_season_names ORDER BY team_id, gender, cup_id"
+    first = conn.execute(query).fetchall()
+    apply_team_seed(conn)
+    apply_team_seed(conn)
+    assert conn.execute(query).fetchall() == first
+    assert len(first) == 3

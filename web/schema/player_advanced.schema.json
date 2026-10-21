@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "player_advanced.schema.json",
+  "title": "PlayerAdvancedData",
+  "description": "球員進階數據：每位球員每賽季的九項比率與七項 PR 值（同組別同位置內計算，0 到 100），以及每組別每位置各指標的分佈；黃金決勝局的統計計入；由 src.export.site_data 產出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["players", "distributions"],
+  "$defs": {
+    "Ratios": {
+      "title": "AdvancedRatios",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
+        "points_per_game", "set_excellent_rate", "blocks_per_set", "defense_load", "defense_efficiency"
+      ],
+      "properties": {
+        "attack_success_rate": { "type": "number", "description": "攻擊成功率（%）" },
+        "receive_excellent_rate": { "type": "number", "description": "好球率：接發到位率（%）" },
+        "serve_point_rate": { "type": "number", "description": "發球得分率（%）" },
+        "dig_excellent_rate": { "type": "number", "description": "防守到位率（%）" },
+        "points_per_game": { "type": "number", "description": "場均得分" },
+        "set_excellent_rate": { "type": "number", "description": "舉球到位率（%）" },
+        "blocks_per_set": { "type": "number", "description": "每局攔網" },
+        "defense_load": { "type": "number", "description": "防守負荷：接發加防守次數" },
+        "defense_efficiency": { "type": "number", "description": "防守效率：接發加防守的到位率（%）" }
+      }
+    },
+    "PercentileRanks": {
+      "title": "AdvancedPercentileRanks",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
+        "set_excellent_rate", "blocks_per_set", "defense_efficiency"
+      ],
+      "properties": {
+        "attack_success_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "receive_excellent_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "serve_point_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "dig_excellent_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "set_excellent_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "blocks_per_set": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "defense_efficiency": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }
+      }
+    },
+    "MetricDistribution": {
+      "title": "MetricDistribution",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["median", "values"],
+      "properties": {
+        "median": { "type": "number" },
+        "values": { "type": "array", "items": { "type": "number" }, "description": "升冪排列，每位球員一筆" }
+      }
+    }
+  },
+  "properties": {
+    "players": {
+      "type": "array",
+      "items": {
+        "title": "PlayerAdvancedEntry",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["player_id", "cup_id", "group", "position", "games", "sets_played", "insufficient_sets", "ratios", "pr"],
+        "properties": {
+          "player_id": { "type": "integer" },
+          "cup_id": { "type": "integer" },
+          "group": { "type": "string", "enum": ["men", "women"] },
+          "position": { "type": ["string", "null"], "description": "該季主要位置（週登錄最多次的位置，同數取最近）；為空者不計算 PR 值" },
+          "games": { "type": "integer", "minimum": 1, "description": "該季統計列數，黃金決勝局列也算一場" },
+          "sets_played": { "type": "integer", "minimum": 0 },
+          "insufficient_sets": { "type": "boolean", "description": "總局數未達 5，PR 值為空，比率照常輸出" },
+          "ratios": { "$ref": "#/$defs/Ratios" },
+          "pr": { "$ref": "#/$defs/PercentileRanks" }
+        }
+      }
+    },
+    "distributions": {
+      "type": "array",
+      "items": {
+        "title": "PositionDistribution",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cup_id", "group", "position", "player_count", "metrics"],
+        "properties": {
+          "cup_id": { "type": "integer" },
+          "group": { "type": "string", "enum": ["men", "women"] },
+          "position": { "type": "string" },
+          "player_count": { "type": "integer", "minimum": 1, "description": "納入 PR 值計算的球員數" },
+          "metrics": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
+              "points_per_game", "set_excellent_rate", "blocks_per_set", "defense_load", "defense_efficiency"
+            ],
+            "properties": {
+              "attack_success_rate": { "$ref": "#/$defs/MetricDistribution" },
+              "receive_excellent_rate": { "$ref": "#/$defs/MetricDistribution" },
+              "serve_point_rate": { "$ref": "#/$defs/MetricDistribution" },
+              "dig_excellent_rate": { "$ref": "#/$defs/MetricDistribution" },
+              "points_per_game": { "$ref": "#/$defs/MetricDistribution" },
+              "set_excellent_rate": { "$ref": "#/$defs/MetricDistribution" },
+              "blocks_per_set": { "$ref": "#/$defs/MetricDistribution" },
+              "defense_load": { "$ref": "#/$defs/MetricDistribution" },
+              "defense_efficiency": { "$ref": "#/$defs/MetricDistribution" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

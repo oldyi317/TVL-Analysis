@@ -1,0 +1,681 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-20T00:00:00+08:00",
+  "title": "Design System: TVL 數據",
+  "extensions": {
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "桌面底",
+        "canonical": "#f3f4f9",
+        "dark": "#12141f",
+        "tonalRamp": [
+          "#191e33",
+          "#2a3255",
+          "#3b4577",
+          "#4c5999",
+          "#6673b3",
+          "#8892c4",
+          "#bbc1dd",
+          "#eeeff7"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "卡面",
+        "canonical": "#ffffff",
+        "dark": "#1b1e2e",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#8c8c8c",
+          "#a6a6a6",
+          "#cccccc",
+          "#f2f2f2"
+        ]
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "內嵌面板",
+        "canonical": "#eef0f8",
+        "dark": "#242838",
+        "tonalRamp": [
+          "#161d36",
+          "#25305a",
+          "#34437e",
+          "#4356a3",
+          "#5c70bc",
+          "#818fcb",
+          "#b7bfe1",
+          "#edeff8"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "深藍黑文字",
+        "canonical": "#262b4a",
+        "dark": "#eceef8",
+        "tonalRamp": [
+          "#1a1d33",
+          "#2b3154",
+          "#3d4576",
+          "#4e5898",
+          "#6772b1",
+          "#8991c2",
+          "#bcc0dc",
+          "#eeeff6"
+        ]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "附註灰",
+        "canonical": "#5f6788",
+        "dark": "#9ba1bc",
+        "tonalRamp": [
+          "#1f222d",
+          "#34394b",
+          "#495069",
+          "#5e6687",
+          "#7880a1",
+          "#969cb6",
+          "#c3c6d5",
+          "#f0f1f5"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "分隔線",
+        "canonical": "#c9cde2",
+        "dark": "#3a405a",
+        "tonalRamp": [
+          "#1b1e32",
+          "#2d3353",
+          "#3e4774",
+          "#505b95",
+          "#6a75af",
+          "#8b93c1",
+          "#bdc2db",
+          "#eef0f6"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "靛藍 Accent",
+        "canonical": "#4f5bd5",
+        "dark": "#7b82f0",
+        "tonalRamp": [
+          "#0f133e",
+          "#192067",
+          "#222c90",
+          "#2c39b9",
+          "#4652d3",
+          "#6f79dd",
+          "#adb2eb",
+          "#eaecfa"
+        ]
+      },
+      "accent-strong": {
+        "role": "primary",
+        "displayName": "靛藍 Strong",
+        "canonical": "#3d48bf",
+        "dark": "#959bf5",
+        "tonalRamp": [
+          "#13163a",
+          "#1f2461",
+          "#2b3387",
+          "#3842ae",
+          "#515bc7",
+          "#7880d4",
+          "#b2b6e6",
+          "#ecedf9"
+        ]
+      },
+      "accent-tint": {
+        "role": "primary",
+        "displayName": "靛藍 Tint",
+        "canonical": "#e9ebfb",
+        "dark": "#262b4a",
+        "tonalRamp": [
+          "#0c1241",
+          "#141d6c",
+          "#1b2997",
+          "#2335c2",
+          "#3d4edc",
+          "#6876e4",
+          "#a9b1ef",
+          "#e9ebfb"
+        ]
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "On Accent",
+        "canonical": "#ffffff",
+        "dark": "#0f1120",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#8c8c8c",
+          "#a6a6a6",
+          "#cccccc",
+          "#f2f2f2"
+        ]
+      },
+      "series-1": {
+        "role": "secondary",
+        "displayName": "序列靛",
+        "canonical": "#5258da",
+        "dark": "#7b82f0",
+        "tonalRamp": [
+          "#0d103f",
+          "#161a69",
+          "#1f2593",
+          "#282fbd",
+          "#4248d7",
+          "#6c71e0",
+          "#abaeed",
+          "#eaebfb"
+        ]
+      },
+      "series-2": {
+        "role": "secondary",
+        "displayName": "序列粉",
+        "canonical": "#e2457f",
+        "dark": "#f66fa0",
+        "tonalRamp": [
+          "#420a1f",
+          "#6e1134",
+          "#9a1848",
+          "#c71f5d",
+          "#e03876",
+          "#e76595",
+          "#f1a7c2",
+          "#fce9f0"
+        ]
+      },
+      "series-3": {
+        "role": "secondary",
+        "displayName": "序列橘",
+        "canonical": "#cc6a00",
+        "dark": "#f8b36a",
+        "tonalRamp": [
+          "#4d2800",
+          "#804200",
+          "#b35d00",
+          "#e67700",
+          "#ff911a",
+          "#ffa94d",
+          "#ffce99",
+          "#fff3e5"
+        ]
+      },
+      "series-4": {
+        "role": "secondary",
+        "displayName": "序列淡靛（圖表限定）",
+        "canonical": "#6b72d4",
+        "dark": "#5f66b8",
+        "tonalRamp": [
+          "#11143b",
+          "#1d2163",
+          "#282f8a",
+          "#343cb2",
+          "#4d56cb",
+          "#757bd7",
+          "#b0b4e8",
+          "#ebecf9"
+        ]
+      },
+      "series-5": {
+        "role": "secondary",
+        "displayName": "序列青（圖表限定）",
+        "canonical": "#0b9279",
+        "dark": "#3fd2b6",
+        "tonalRamp": [
+          "#05473b",
+          "#097762",
+          "#0da68a",
+          "#10d5b1",
+          "#2aefca",
+          "#59f2d6",
+          "#a0f8e8",
+          "#e7fdf9"
+        ]
+      },
+      "win": {
+        "role": "tertiary",
+        "displayName": "勝",
+        "canonical": "#12804f",
+        "dark": "#3ed48e",
+        "tonalRamp": [
+          "#094329",
+          "#107045",
+          "#169c61",
+          "#1cc97c",
+          "#36e396",
+          "#63e9ad",
+          "#a6f2d0",
+          "#e9fcf3"
+        ]
+      },
+      "win-tint": {
+        "role": "tertiary",
+        "displayName": "勝 Tint",
+        "canonical": "#dff5ea",
+        "dark": "#153a2a",
+        "tonalRamp": [
+          "#123a26",
+          "#1e6140",
+          "#2a8859",
+          "#37af73",
+          "#50c88c",
+          "#77d5a6",
+          "#b1e7cc",
+          "#ecf9f2"
+        ]
+      },
+      "loss": {
+        "role": "tertiary",
+        "displayName": "敗",
+        "canonical": "#cc3347",
+        "dark": "#f2728a",
+        "tonalRamp": [
+          "#3d0f15",
+          "#661923",
+          "#8f2432",
+          "#b82e40",
+          "#d14759",
+          "#db707e",
+          "#ebadb5",
+          "#faebed"
+        ]
+      },
+      "loss-tint": {
+        "role": "tertiary",
+        "displayName": "敗 Tint",
+        "canonical": "#fde4e8",
+        "dark": "#3d1c24",
+        "tonalRamp": [
+          "#470510",
+          "#77091a",
+          "#a60c25",
+          "#d6102f",
+          "#ef2949",
+          "#f35971",
+          "#f8a0ae",
+          "#fde7eb"
+        ]
+      },
+      "warn": {
+        "role": "tertiary",
+        "displayName": "警示黃",
+        "canonical": "#b45309",
+        "dark": "#fbbf24",
+        "tonalRamp": [
+          "#492204",
+          "#793806",
+          "#aa4e08",
+          "#db650b",
+          "#f47e24",
+          "#f79b55",
+          "#fac69e",
+          "#fef1e7"
+        ]
+      },
+      "warn-tint": {
+        "role": "tertiary",
+        "displayName": "警示黃 Tint",
+        "canonical": "#fff3c4",
+        "dark": "#3a2a0a",
+        "tonalRamp": [
+          "#4d3d00",
+          "#806600",
+          "#b38e00",
+          "#e6b700",
+          "#ffd01a",
+          "#ffdb4d",
+          "#ffea99",
+          "#fffae5"
+        ]
+      },
+      "warn-ink": {
+        "role": "tertiary",
+        "displayName": "警示黃 Ink",
+        "canonical": "#7a5a00",
+        "dark": "#fde68a",
+        "tonalRamp": [
+          "#4d3800",
+          "#805e00",
+          "#b38400",
+          "#e6a900",
+          "#ffc31a",
+          "#ffd04d",
+          "#ffe499",
+          "#fff8e5"
+        ]
+      },
+      "tile-1": {
+        "role": "secondary",
+        "displayName": "數據磚靛",
+        "canonical": "#5258da",
+        "dark": "#5258da",
+        "tonalRamp": [
+          "#0d103f",
+          "#161a69",
+          "#1f2593",
+          "#282fbd",
+          "#4248d7",
+          "#6c71e0",
+          "#abaeed",
+          "#eaebfb"
+        ]
+      },
+      "tile-2": {
+        "role": "secondary",
+        "displayName": "數據磚粉",
+        "canonical": "#e2457f",
+        "dark": "#e2457f",
+        "tonalRamp": [
+          "#420a1f",
+          "#6e1134",
+          "#9a1848",
+          "#c71f5d",
+          "#e03876",
+          "#e76595",
+          "#f1a7c2",
+          "#fce9f0"
+        ]
+      },
+      "tile-3": {
+        "role": "secondary",
+        "displayName": "數據磚橘",
+        "canonical": "#cc6a00",
+        "dark": "#cc6a00",
+        "tonalRamp": [
+          "#4d2800",
+          "#804200",
+          "#b35d00",
+          "#e67700",
+          "#ff911a",
+          "#ffa94d",
+          "#ffce99",
+          "#fff3e5"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display（h1）",
+        "purpose": "每頁唯一 h1；≥64rem 升到 1.75rem。"
+      },
+      "headline": {
+        "displayName": "Headline（h2）",
+        "purpose": "區塊標題，放在卡片外上方。"
+      },
+      "title": {
+        "displayName": "Title（h3／隊名／導覽）",
+        "purpose": "h3、隊名、球員名、導覽項、分段控制。"
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "正文與表格內容，最小 16px。"
+      },
+      "label": {
+        "displayName": "Label（附註）",
+        "purpose": "日期、場館、欄名、位置、標籤；只給附註。"
+      },
+      "number-md": {
+        "displayName": "Number MD",
+        "purpose": "比分冒號、展開列大數字、甜甜圈中心、單場數據主欄。"
+      },
+      "number-lg": {
+        "displayName": "Number LG",
+        "purpose": "賽事卡局數比、數據磚大數字。"
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-card",
+        "value": "0 6px 20px rgba(38, 43, 74, 0.07), 0 1px 2px rgba(38, 43, 74, 0.05)",
+        "dark": "none",
+        "purpose": "靜止的卡片、手機頁首、分段控制選中項；深色模式改 1px var(--line) 邊線（--card-edge）。"
+      },
+      {
+        "name": "shadow-pop",
+        "value": "0 12px 32px rgba(38, 43, 74, 0.14)",
+        "dark": "0 12px 32px rgba(0, 0, 0, 0.5)",
+        "purpose": "可點卡片 hover 升起（配 translateY(-2px)）、ECharts tooltip。"
+      },
+      {
+        "name": "badge-inset",
+        "value": "inset 0 0 0 1px var(--line)",
+        "purpose": "有隊徽的圓標內描邊。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "hover-transition",
+        "value": "160ms ease-out",
+        "purpose": "背景、文字色、位移、陰影的 hover／focus 過渡。"
+      },
+      {
+        "name": "rise",
+        "value": "240ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 40ms)",
+        "purpose": "首屏卡片一次性錯開進場（opacity 0→1、translateY(8px)→0），--i 最多 6；reduced-motion 停用。"
+      },
+      {
+        "name": "ring-fill",
+        "value": "600ms ease-out",
+        "purpose": "WinRing 載入時 stroke-dashoffset 填入。"
+      },
+      {
+        "name": "reduced-motion",
+        "value": "transition-duration: 0.01ms; animation-duration: 0.01ms; .rise animation: none; hover transform: none",
+        "purpose": "prefers-color-scheme 以外唯一的系統偏好分支。"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "teams-2col",
+        "value": "40rem"
+      },
+      {
+        "name": "standings-wide (container)",
+        "value": "44rem"
+      },
+      {
+        "name": "boxscore-wide",
+        "value": "48rem"
+      },
+      {
+        "name": "sidebar",
+        "value": "64rem"
+      }
+    ],
+    "layout": {
+      "sidebar": "17rem",
+      "contentMax": "72rem",
+      "tap": "2.75rem",
+      "measure": "40rem",
+      "homeColumns": "minmax(0, 1fr) 22rem"
+    },
+    "contrastGate": {
+      "file": "src/lib/tokens.test.ts",
+      "textPairs": "≥4.5:1 — text/text-muted/win/loss/warn/focus 對 bg 與 surface；on-accent 對 accent；warn-ink 對 warn-tint",
+      "lineOnSurface": "≥1.5:1",
+      "chartSeriesOnBg": "≥3:1",
+      "sync": "color.ts SURFACE 與 chart/theme.ts CHART_COLORS 必須等於 app.css；淺深兩套鍵名必須一致"
+    }
+  },
+  "components": [
+    {
+      "name": "卡片 Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "白色 20px 圓角卡；淺色軟陰影、深色 1px 邊線；可點時 hover 升起。",
+      "html": "<a class=\"ds-card\" href=\"#\"><p class=\"ds-card-meta\">2026-03-22 星期日 17:00 · 屏東縣立體育館</p><p class=\"ds-card-title\">卡片標題</p></a>",
+      "css": ".ds-card { display: block; background: var(--surface, #ffffff); color: var(--text, #262b4a); border: 1px solid var(--card-edge, transparent); border-radius: var(--radius-lg, 1.25rem); box-shadow: var(--shadow-card, 0 6px 20px rgba(38,43,74,0.07), 0 1px 2px rgba(38,43,74,0.05)); padding: var(--space-4, 1rem); text-decoration: none; transition: transform 160ms ease-out, box-shadow 160ms ease-out; } .ds-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-pop, 0 12px 32px rgba(38,43,74,0.14)); } .ds-card:focus-visible { outline: 2px solid var(--accent, #4f5bd5); outline-offset: 2px; } .ds-card-meta { margin: 0 0 0.75rem; font-size: 0.875rem; color: var(--text-muted, #5f6788); } .ds-card-title { margin: 0; font-weight: 700; }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "賽季、月份、指標切換用的藥丸形 chip；選中靛藍底白字。",
+      "html": "<nav class=\"ds-chips\"><a class=\"ds-chip\" href=\"#\">2024-25</a><a class=\"ds-chip\" href=\"#\" aria-current=\"page\">2025-26</a><a class=\"ds-chip\" href=\"#\">2026-27</a></nav>",
+      "css": ".ds-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; } .ds-chip { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 0.75rem; border-radius: 999px; background: transparent; color: var(--text-muted, #5f6788); font-weight: 600; text-decoration: none; transition: background-color 160ms ease-out, color 160ms ease-out; } .ds-chip:hover { background: var(--accent-tint, #e9ebfb); } .ds-chip[aria-current] { background: var(--accent, #4f5bd5); color: var(--on-accent, #ffffff); } .ds-chip:focus-visible { outline: 2px solid var(--accent, #4f5bd5); outline-offset: 2px; }"
+    },
+    {
+      "name": "分段控制 GroupSwitch",
+      "kind": "nav",
+      "refersTo": "segment-item",
+      "description": "組別切換：surface-2 軌道，選中項白底浮起、靛藍字。",
+      "html": "<nav class=\"ds-segment\" aria-label=\"組別\"><a href=\"#\" aria-current=\"page\">男子組</a><a href=\"#\">女子組</a></nav>",
+      "css": ".ds-segment { display: flex; width: 100%; gap: 0.25rem; padding: 0.25rem; background: var(--surface-2, #eef0f8); border-radius: 999px; } .ds-segment a { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 2.25rem; font-weight: 700; color: var(--text-muted, #5f6788); border-radius: 999px; text-decoration: none; transition: color 160ms ease-out; } .ds-segment a:hover { color: var(--text, #262b4a); } .ds-segment a[aria-current] { background: var(--surface, #ffffff); color: var(--accent, #4f5bd5); box-shadow: var(--shadow-card, 0 6px 20px rgba(38,43,74,0.07), 0 1px 2px rgba(38,43,74,0.05)); outline: 1px solid var(--card-edge, transparent); outline-offset: -1px; } .ds-segment a:focus-visible { outline: 2px solid var(--accent, #4f5bd5); outline-offset: 2px; }"
+    },
+    {
+      "name": "導覽 SiteNav（手機 pill）",
+      "kind": "nav",
+      "refersTo": "nav-pill",
+      "description": "手機頂部一列可橫捲的頁面 pill；選中靛藍底白字。",
+      "html": "<nav class=\"ds-nav\" aria-label=\"頁面\"><a href=\"#\" aria-current=\"page\">首頁</a><a href=\"#\">賽事</a><a href=\"#\">戰績</a><a href=\"#\">球隊</a><a href=\"#\">球員</a></nav>",
+      "css": ".ds-nav { display: flex; gap: 0.25rem; overflow-x: auto; scrollbar-width: none; } .ds-nav a { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: 0 0.75rem; font-size: 1rem; font-weight: 700; color: var(--text-muted, #5f6788); border-radius: 999px; text-decoration: none; transition: background-color 160ms ease-out, color 160ms ease-out; } .ds-nav a:hover { background: var(--accent-tint, #e9ebfb); } .ds-nav a[aria-current='page'] { background: var(--accent, #4f5bd5); color: var(--on-accent, #ffffff); } .ds-nav a:focus-visible { outline: 2px solid var(--accent, #4f5bd5); outline-offset: 2px; }"
+    },
+    {
+      "name": "導覽 SiteNav（桌面 sidebar）",
+      "kind": "nav",
+      "refersTo": "nav-side-item",
+      "description": "≥64rem 直排導覽：icon + 文字，選中靛藍 tint 底、靛藍字、右緣 3px 指示條。",
+      "html": "<nav class=\"ds-sidenav\" aria-label=\"頁面\"><a href=\"#\" aria-current=\"page\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 11 12 4l8 7\"/><path d=\"M6 9.5V19a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9.5\"/><path d=\"M10 20v-5.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V20\"/></svg><span>首頁</span></a><a href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"5\" width=\"16\" height=\"15\" rx=\"3\"/><path d=\"M4 10h16\"/><path d=\"M8 3v4\"/><path d=\"M16 3v4\"/></svg><span>賽事</span></a><a href=\"#\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M8 4h8v6a4 4 0 0 1-8 0V4Z\"/><path d=\"M8 6H5a1 1 0 0 0-1 1 4 4 0 0 0 4 4\"/><path d=\"M16 6h3a1 1 0 0 1 1 1 4 4 0 0 1-4 4\"/><path d=\"M12 14v3\"/><path d=\"M8.5 20h7\"/><path d=\"M10 17h4l.5 3h-5l.5-3Z\"/></svg><span>戰績</span></a></nav>",
+      "css": ".ds-sidenav { display: flex; flex-direction: column; gap: 0.25rem; width: 14rem; padding-right: 1.5rem; } .ds-sidenav a { position: relative; display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; padding: 0 0.75rem; font-weight: 700; color: var(--text-muted, #5f6788); border-radius: var(--radius-md, 0.875rem); text-decoration: none; transition: background-color 160ms ease-out, color 160ms ease-out; } .ds-sidenav a:hover { background: var(--accent-tint, #e9ebfb); } .ds-sidenav a[aria-current='page'] { background: var(--accent-tint, #e9ebfb); color: var(--accent, #4f5bd5); } .ds-sidenav a[aria-current='page']::after { content: ''; position: absolute; top: 0.5rem; bottom: 0.5rem; right: -1.5rem; width: 3px; border-radius: 999px; background: var(--accent, #4f5bd5); } .ds-sidenav a:focus-visible { outline: 2px solid var(--accent, #4f5bd5); outline-offset: 2px; }"
+    },
+    {
+      "name": "標籤 Tag",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "狀態標籤：階段（灰）、勝（黃）、未開打（靛藍 tint）、近五場 W／L（勝敗語意色）。",
+      "html": "<span class=\"ds-tag\">總決賽 第 19 週</span> <span class=\"ds-tag ds-tag-win\">勝</span> <span class=\"ds-tag ds-tag-pending\">未開打</span> <span class=\"ds-tag ds-tag-w\">勝</span> <span class=\"ds-tag ds-tag-l\">敗</span>",
+      "css": ".ds-tag { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; background: var(--surface-2, #eef0f8); color: var(--text-muted, #5f6788); font-size: 0.875rem; font-weight: 700; line-height: 1.4; white-space: nowrap; } .ds-tag-win { background: var(--warn-tint, #fff3c4); color: var(--warn-ink, #7a5a00); } .ds-tag-pending { background: var(--accent-tint, #e9ebfb); color: var(--accent, #4f5bd5); } .ds-tag-w { padding: 0 0.5rem; background: var(--win-tint, #dff5ea); color: var(--win, #12804f); } .ds-tag-l { padding: 0 0.5rem; background: var(--loss-tint, #fde4e8); color: var(--loss, #cc3347); }"
+    },
+    {
+      "name": "數據磚 StatTile",
+      "kind": "custom",
+      "refersTo": "stat-tile",
+      "description": "三色資料磚：series 底色、白字、兩個半透明白圓；三個以內並列。",
+      "html": "<div class=\"ds-tiles\"><div class=\"ds-tile\" style=\"--tile: var(--series-1, #5258da)\"><p class=\"ds-tile-label\">勝</p><p class=\"ds-tile-value\">22</p></div><div class=\"ds-tile\" style=\"--tile: var(--series-2, #e2457f)\"><p class=\"ds-tile-label\">敗</p><p class=\"ds-tile-value\">2</p></div><div class=\"ds-tile\" style=\"--tile: var(--series-3, #cc6a00)\"><p class=\"ds-tile-label\">積分</p><p class=\"ds-tile-value\">64</p></div></div>",
+      "css": ".ds-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; } .ds-tile { position: relative; overflow: hidden; display: grid; gap: 0.25rem; padding: 1rem; border-radius: var(--radius-lg, 1.25rem); background: var(--tile); color: #ffffff; } .ds-tile::before, .ds-tile::after { content: ''; position: absolute; border-radius: 50%; background: rgba(255,255,255,0.14); pointer-events: none; } .ds-tile::before { width: 6rem; height: 6rem; top: -2rem; right: -1.5rem; } .ds-tile::after { width: 4.5rem; height: 4.5rem; bottom: -2rem; left: -1rem; } .ds-tile > * { position: relative; z-index: 1; margin: 0; } .ds-tile-label { font-size: 0.875rem; font-weight: 700; color: rgba(255,255,255,0.9); } .ds-tile-value { font-size: 2.25rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "甜甜圈 WinRing",
+      "kind": "custom",
+      "refersTo": "stat-tile",
+      "description": "純 SVG 勝率圓環：靛藍 tint 軌道、靛藍進度、圓端點、中心 800 數字。",
+      "html": "<span class=\"ds-ring\" aria-hidden=\"true\"><svg width=\"88\" height=\"88\" viewBox=\"0 0 88 88\"><circle class=\"ds-ring-track\" cx=\"44\" cy=\"44\" r=\"39\" stroke-width=\"10\"/><circle class=\"ds-ring-bar\" cx=\"44\" cy=\"44\" r=\"39\" stroke-width=\"10\" stroke-dasharray=\"245.04\" stroke-dashoffset=\"93.12\" transform=\"rotate(-90 44 44)\"/></svg><span class=\"ds-ring-center\"><b>62%</b><small>主隊</small></span></span>",
+      "css": ".ds-ring { position: relative; display: inline-grid; width: 88px; height: 88px; } .ds-ring svg, .ds-ring-center { grid-area: 1 / 1; } .ds-ring-track, .ds-ring-bar { fill: none; } .ds-ring-track { stroke: var(--accent-tint, #e9ebfb); } .ds-ring-bar { stroke: var(--accent, #4f5bd5); stroke-linecap: round; animation: ds-fill 600ms ease-out both; } @keyframes ds-fill { from { stroke-dashoffset: 245.04; } } .ds-ring-center { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; } .ds-ring-center b { font-size: 1.5rem; font-weight: 800; color: var(--text, #262b4a); font-variant-numeric: tabular-nums; } .ds-ring-center small { font-size: 0.75rem; color: var(--text-muted, #5f6788); }"
+    },
+    {
+      "name": "隊徽圓標 TeamBadge",
+      "kind": "custom",
+      "refersTo": "team-badge",
+      "description": "正圓隊標：有隊徽時白底 1px 內描邊；無隊徽退回隊色填色＋簡稱。",
+      "html": "<span class=\"ds-badge ds-badge-logo\" aria-hidden=\"true\"><svg width=\"40\" height=\"40\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#262b4a\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 3 5 6v5.5c0 4.2 2.9 7.3 7 9.5 4.1-2.2 7-5.3 7-9.5V6l-7-3Z\"/></svg></span> <span class=\"ds-badge\" style=\"--team-fill: #1d4ed8; --team-on-fill: #ffffff\" aria-hidden=\"true\"><span>屏東</span><span>台電</span></span>",
+      "css": ".ds-badge { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 3rem; height: 3rem; border-radius: 50%; background: var(--team-fill); color: var(--team-on-fill); font-size: 0.75rem; font-weight: 600; line-height: 1.1; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; vertical-align: middle; } .ds-badge-logo { background: #ffffff; box-shadow: inset 0 0 0 1px var(--line, #c9cde2); }"
+    },
+    {
+      "name": "賽事卡 MatchCard",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "簽名元件：meta 列 → 左右隊徽與隊名、中間局數比 → 各局比分；整卡可點 hover 升起。",
+      "html": "<a class=\"ds-match\" href=\"#\" aria-label=\"屏東台電 對 雲林美津濃\"><p class=\"ds-match-meta\"><span>2026-03-22 星期日 17:00 · 屏東縣立體育館</span><span class=\"ds-match-tag\">總決賽 第 19 週</span></p><div class=\"ds-match-face\"><div class=\"ds-match-team\"><span class=\"ds-match-badge\" style=\"--team-fill:#1d4ed8;--team-on-fill:#fff\">屏東<br>台電</span><span class=\"ds-match-who\"><span class=\"ds-match-name\">屏東台電</span><span class=\"ds-match-tag ds-match-tag-win\">勝</span></span></div><p class=\"ds-match-result\"><span class=\"ds-match-score\">3</span><span class=\"ds-match-colon\">:</span><span class=\"ds-match-score ds-dim\">0</span></p><div class=\"ds-match-team ds-lose\"><span class=\"ds-match-badge\" style=\"--team-fill:#0f766e;--team-on-fill:#fff\">美津濃</span><span class=\"ds-match-who\"><span class=\"ds-match-name\">雲林美津濃</span></span></div></div><p class=\"ds-match-sets\"><span><b>25</b>-15</span><span><b>25</b>-18</span><span><b>25</b>-14</span></p></a>",
+      "css": ".ds-match { display: block; background: var(--surface, #ffffff); color: var(--text, #262b4a); border: 1px solid var(--card-edge, transparent); border-radius: var(--radius-lg, 1.25rem); box-shadow: var(--shadow-card, 0 6px 20px rgba(38,43,74,0.07), 0 1px 2px rgba(38,43,74,0.05)); padding: 1rem; text-decoration: none; transition: transform 160ms ease-out, box-shadow 160ms ease-out; } .ds-match:hover { transform: translateY(-2px); box-shadow: var(--shadow-pop, 0 12px 32px rgba(38,43,74,0.14)); } .ds-match:focus-visible { outline: 2px solid var(--accent, #4f5bd5); outline-offset: 2px; } .ds-match-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.25rem 0.75rem; margin: 0 0 1rem; font-size: 0.875rem; color: var(--text-muted, #5f6788); } .ds-match-tag { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; background: var(--surface-2, #eef0f8); color: var(--text-muted, #5f6788); font-size: 0.875rem; font-weight: 700; line-height: 1.4; white-space: nowrap; } .ds-match-tag-win { background: var(--warn-tint, #fff3c4); color: var(--warn-ink, #7a5a00); } .ds-match-face { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: start; gap: 0.5rem; } .ds-match-team { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; min-width: 0; text-align: center; } .ds-match-team.ds-lose { color: var(--text-muted, #5f6788); } .ds-match-badge { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 3.5rem; height: 3.5rem; border-radius: 50%; background: var(--team-fill); color: var(--team-on-fill); font-size: 0.75rem; font-weight: 600; line-height: 1.1; } .ds-match-who { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.25rem 0.5rem; } .ds-match-name { font-weight: 700; line-height: 1.3; } .ds-match-result { align-self: center; display: flex; align-items: center; gap: 0.5rem; margin: 0; line-height: 1; min-height: 3.5rem; } .ds-match-score { font-size: 2.25rem; font-weight: 800; color: var(--text, #262b4a); font-variant-numeric: tabular-nums; } .ds-match-score.ds-dim { color: var(--text-muted, #5f6788); } .ds-match-colon { font-size: 1.5rem; font-weight: 800; color: var(--accent, #4f5bd5); } .ds-match-sets { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem 1rem; margin: 1rem 0 0; padding-top: 0.75rem; border-top: 1px solid var(--line, #c9cde2); font-size: 0.875rem; color: var(--text-muted, #5f6788); font-variant-numeric: tabular-nums; } .ds-match-sets b { font-weight: 800; color: var(--text, #262b4a); }"
+    },
+    {
+      "name": "資料備註 DataNote",
+      "kind": "custom",
+      "refersTo": "data-note",
+      "description": "警示黃底的資料備註，14px 圓角、無左邊條。",
+      "html": "<p class=\"ds-note\" role=\"note\">賽季報名名單只補顯示，不進比較。</p>",
+      "css": ".ds-note { margin: 0; padding: 0.75rem 1rem; background: var(--warn-tint, #fff3c4); color: var(--warn-ink, #7a5a00); font-size: 1rem; border-radius: var(--radius-md, 0.875rem); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "賽後看板",
+    "overview": "球迷在看台或客廳拿起手機，想在幾秒內知道誰贏、幾比幾、自己的隊排第幾。整站因此長成一面即時比分看板：淺灰藍的桌面上放著白色大圓角卡片，卡片之間靠底色差與一層極淡的陰影分開，沒有彩色邊條、沒有一頁一樣的垂直清單。靛藍只有一個職責——說「你在哪、可以點哪」：導覽選中、區塊右上的小連結、比分中間的冒號、PR 值進度條。粉、橘、靛三色只給數據本身（數據磚與圖表序列），從不拿來裝飾介面。\n\n密度偏緊但不擠：卡片內距 16px（桌面 24px），列表卡片間距 12px，表格列高 48px，所有可點的東西至少 44px 高。文字一律系統字型（使用者決定，不載網路字型），正文最小 16px，數字用 800 字重加 tabular 數字讓比分與戰績欄對齊。深淺兩套跟隨系統設定，深色模式把卡片陰影換成 1px 邊線。\n\n美學來源是使用者釘定的運動即時比分 dashboard 參考截圖（.impeccable/reference/redesign-2026-10-reference.png）：釘的是卡片、配色、圓角、圖表風格，不是其資訊架構。確認拒絕的預設：灰底單一黑色強調、隊色左邊條卡片、每頁一樣的垂直清單、emoji 或 unicode 符號當 icon。",
+    "keyCharacteristics": [
+      "淺灰藍底 + 白色 20px 圓角卡片，淺色靠軟陰影、深色靠 1px 邊線分層",
+      "靛藍只標「位置與動作」；粉／橘／靛三色只給數據",
+      "系統字型；數字 800 tabular，正文 ≥16px",
+      "全站統一的「對陣式」賽事卡：左右隊徽、中間局數比，整卡可點、hover 升起",
+      "隊徽圓形白底；無隊徽才退回隊色圓標＋簡稱；隊色來自資料庫、不可改",
+      "手機頂部導覽（分段控制、chip、pill 列），桌面 ≥64rem 變左側 17rem sidebar",
+      "對比值由 src/lib/tokens.test.ts 鎖住：文字對 4.5:1、分隔線 1.5:1、圖表序列 3:1"
+    ],
+    "rules": [
+      {
+        "name": "The One Job Rule",
+        "body": "靛藍只出現在「我在哪、可以點什麼」的位置：選中狀態、連結、焦點、進度。它不當裝飾、不當資料色；資料色只從 series-* 拿。",
+        "section": "colors"
+      },
+      {
+        "name": "The Yellow Win Rule",
+        "body": "賽事卡勝方旁的「勝」標籤用 warn-tint／warn-ink（參考截圖的黃色 WIN 標），戰績表近五場的 W／L 才用 win／loss 語意色。兩者不互換。",
+        "section": "colors"
+      },
+      {
+        "name": "The Contrast Gate Rule",
+        "body": "src/lib/tokens.test.ts 直接解析 app.css，淺深兩套各自檢查：text、text-muted、win、loss、warn、focus 對 bg 與 surface、on-accent 對 accent、warn-ink 對 warn-tint 皆 ≥4.5:1；line 對 surface ≥1.5:1；每條 series 對 bg ≥3:1；兩套模式必須定義同一組鍵名。text-muted、line、series-*、win、loss 的值都是為了過這道門而比原始規格更深的，改色先跑 npm run test:unit。",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Copies Rule",
+        "body": "色值只准在三處出現：src/app.css（唯一來源）、src/lib/chart/theme.ts（ECharts 不吃 CSS 變數）、src/lib/color.ts 的 SURFACE（隊色對比計算）。後兩處由 tokens.test.ts 鎖住必須與 app.css 相同；其他檔案一律 var(--token)。",
+        "section": "colors"
+      },
+      {
+        "name": "The Team Colour Rule",
+        "body": "隊色由資料庫 teams.color 給定、不可改。teamPalette() 只衍生四個值：填色、填色上的黑或白字（WCAG 亮度門檻 0.179）、淺色與深色表面上達 4.5:1 的文字色（只動明度、不動色相）。靠隊色區分的地方一定有簡稱文字。",
+        "section": "colors"
+      },
+      {
+        "name": "The Heavy Number Rule",
+        "body": "任何「數字就是結論」的地方（比分、勝敗場、積分、PR 值）用 --weight-num: 800 加 tabular；敗方或次要的數字改 text-muted 而不是減字重。",
+        "section": "typography"
+      },
+      {
+        "name": "The 16px Floor Rule",
+        "body": "正文與表格內容最小 16px；--text-sm（14px）只給日期、場館、欄名、位置這類附註與標籤。",
+        "section": "typography"
+      },
+      {
+        "name": "The Lift-On-Hover Rule",
+        "body": "陰影只在兩個狀態出現：靜止的 Card，與 hover 的 Pop。沒有第三級。hover 升起只在 @media (hover: hover) 與非 reduced-motion 下位移。",
+        "section": "elevation"
+      },
+      {
+        "name": "The No Nesting Rule",
+        "body": "卡片不包卡片。卡片裡要分區就用 --surface-2 面板（radius md）或 1px --line 線。",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do 把區塊 h2 放在卡片外、上方，與卡片間距 12px；右側連結用 14px 700 靛藍。",
+      "Do 用 --surface-2 面板或 1px --line 線做卡內分區；卡片不巢狀。",
+      "Do 數字結論用 800 + tabular；敗方或次要數字改 text-muted。",
+      "Do 改任何色值前跑 npm run test:unit，讓 tokens.test.ts 的 4.5:1／1.5:1／3:1 與 JS 同步檢查過關；兩套模式鍵名要一致。",
+      "Do 新 icon 加進 Icon.svelte，遵守 24 viewBox、stroke 1.75、round cap／join、currentColor。",
+      "Do 隊徽放 static/logos/{group}-{team_id}.png，交給 TeamBadge 退回；顏色區分處一定有簡稱文字。",
+      "Do 可點的東西至少 44px 高（--tap），hover 升起只在 (hover: hover) 下做。"
+    ],
+    "donts": [
+      "Don't 把靛藍拿來當資料色或裝飾；資料色只從 series-* 拿，介面上只用前三條。",
+      "Don't 在卡片上加隊色或任何彩色左邊條。",
+      "Don't 在 app.css、chart/theme.ts、color.ts SURFACE 以外寫死色值；元件一律 var(--token)。",
+      "Don't 載網路字型、加 icon 套件、用 emoji 或 unicode 符號當 icon。",
+      "Don't 讓正文或表格內容小於 16px；--text-sm 只給附註與標籤。",
+      "Don't 用 ECharts 畫甜甜圈，用 WinRing；數據磚超過三個並列就改回白卡清單。",
+      "Don't 改隊色；對比不足時用 teamPalette() 的衍生值處理文字，不換色。",
+      "Don't 為每個區塊加入場動畫；.rise 只給首屏卡片，最多六張。"
+    ]
+  }
+}

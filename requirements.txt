@@ -1,0 +1,8 @@
+beautifulsoup4==4.15.0
+joblib==1.5.3
+numpy==2.5.2
+optuna==4.9.0
+pandas==3.0.5
+requests==2.34.2
+scikit-learn==1.9.0
+xgboost==3.4.1

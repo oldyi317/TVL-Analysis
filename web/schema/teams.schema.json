@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "teams.schema.json",
+  "title": "TeamsData",
+  "description": "球隊身分與各季參賽紀錄；由 src.export.site_data 產出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["teams"],
+  "properties": {
+    "teams": {
+      "type": "array",
+      "items": {
+        "title": "Team",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["team_id", "group", "name", "short_name", "color", "is_active", "cup_ids", "names_by_cup"],
+        "properties": {
+          "team_id": { "type": "integer" },
+          "group": { "type": "string", "enum": ["men", "women"] },
+          "name": { "type": "string", "minLength": 1 },
+          "short_name": { "type": "string", "minLength": 1 },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "is_active": { "type": "boolean" },
+          "cup_ids": { "type": "array", "items": { "type": "integer" }, "uniqueItems": true },
+          "names_by_cup": {
+            "description": "各參賽賽季的當季隊名；鍵為 cup_id 字串，與 cup_ids 一一對應，無改名的季填現行隊名（ADR 0005）",
+            "type": "object",
+            "propertyNames": { "pattern": "^[0-9]+$" },
+            "additionalProperties": {
+              "title": "SeasonName",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "short_name"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "short_name": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

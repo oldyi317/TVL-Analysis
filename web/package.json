@@ -1,0 +1,40 @@
+{
+	"name": "web",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"gen": "node scripts/gen-data.mjs",
+		"dev": "npm run gen && vite dev",
+		"prebuild": "npm run gen",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "npm run gen && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test:e2e": "npm run build && playwright test",
+		"test": "npm run test:unit && npm run test:e2e",
+		"test:unit": "vitest run"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.60.0",
+		"@sveltejs/adapter-static": "^4.0.0",
+		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/vite-plugin-svelte": "^7.2.0",
+		"@types/node": "24.19.2",
+		"ajv": "8.20.0",
+		"ajv-formats": "3.0.1",
+		"json-schema-to-typescript": "16.0.0",
+		"svelte": "^5.57.1",
+		"svelte-check": "^4.6.0",
+		"typescript": "^6.0.3",
+		"vite": "^8.3.0",
+		"vitest": "5.0.4"
+	},
+	"imports": {
+		"#lib/*": "./src/lib/*"
+	},
+	"dependencies": {
+		"echarts": "6.1.0"
+	}
+}
