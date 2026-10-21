@@ -5,7 +5,8 @@
 	import SiteFooter from '#lib/components/SiteFooter.svelte';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
-	import { findPlayerSeason, findSeason, findTeam, isGroup } from '#lib/site.js';
+	import { parseId, resolveSeasonGroup } from '#lib/route.js';
+	import { findPlayerSeason, findTeam, isGroup } from '#lib/site.js';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -37,19 +38,19 @@
 	// player_id 跨組別獨立；跨賽季則看目標賽季有沒有這位球員的登錄
 	function keepPlayerPage(param: 'season' | 'group', value: string, player: string): boolean {
 		if (param !== 'season') return false;
-		const group = page.params.group;
-		const cupId = findSeason(value)?.cup_id;
-		if (!group || !isGroup(group) || cupId === undefined) return false;
-		return findPlayerSeason(cupId, group, Number(player)) !== undefined;
+		const target = resolveSeasonGroup({ season: value, group: page.params.group ?? '' });
+		const id = parseId(player);
+		if (!target || id === undefined) return false;
+		return findPlayerSeason(target.season.cup_id, target.group, id) !== undefined;
 	}
 
 	// team_id 跨組別是不同隊；跨賽季則看目標賽季有沒有這支現役隊
 	function keepTeamPage(param: 'season' | 'group', value: string, team: string): boolean {
 		if (param !== 'season') return false;
-		const group = page.params.group;
-		const cupId = findSeason(value)?.cup_id;
-		if (!group || !isGroup(group) || cupId === undefined) return false;
-		return findTeam(cupId, group, Number(team)) !== undefined;
+		const target = resolveSeasonGroup({ season: value, group: page.params.group ?? '' });
+		const id = parseId(team);
+		if (!target || id === undefined) return false;
+		return findTeam(target.season.cup_id, target.group, id) !== undefined;
 	}
 
 	const group = $derived(page.params.group && isGroup(page.params.group) ? page.params.group : undefined);
