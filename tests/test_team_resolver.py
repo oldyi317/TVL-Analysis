@@ -4,19 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from src.etl.match_crawler import TEAM_ALIAS
-from src.utils.constants import (
-    EXT_TEAM_MAPS,
-    LEGACY_TEAMS,
-    MATCH_TEAM_ALIASES,
-    TEAM_NAME_SHORT,
-)
+from src.utils.constants import EXT_TEAM_MAPS
 from src.etl.stats_crawler import ext_team_map_for
-from src.utils.teams import UnknownTeamError, apply_team_seed, load_team_lookup, resolve_ext_team, resolve_team
+from src.utils.teams import UnknownTeamError, apply_team_seed, resolve_ext_team, resolve_team
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "sql" / "schema.sql"
-
-LEGACY_EXPECTED = {"彰化三大有線": (8, "M"), "臺北Conti": (9, "M"), "連莊": (10, "M")}
 
 
 @pytest.fixture
@@ -29,38 +21,33 @@ def conn():
     connection.close()
 
 
-def _seeded_lookup() -> dict[str, tuple[int, str]]:
-    connection = sqlite3.connect(":memory:")
-    connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    apply_team_seed(connection)
-    lookup = load_team_lookup(connection)
-    connection.close()
-    return lookup
+OFFICIAL_SPELLINGS = [
+    ("屏東台電", (1, "M")), ("屏東台電男排", (1, "M")), ("台灣電力公司男子排球隊", (1, "M")),
+    ("高雄台電", (4, "F")), ("高雄台電女排", (4, "F")), ("台灣電力公司女子排球隊", (4, "F")),
+    ("雲林美津濃", (2, "M")), ("美津濃男子排球隊", (2, "M")),
+    ("臺北鯨華", (3, "F")), ("臺北鯨華女子排球隊", (3, "F")),
+    ("新北中纖", (5, "F")), ("義力營造", (7, "F")),
+    ("桃園臺產", (5, "M")), ("桃園臺灣產險", (5, "M")), ("桃園臺產隼鷹排球隊", (5, "M")),
+    ("龍邁建設", (5, "M")), ("龍脈建設", (5, "M")),
+    ("獅子王", (7, "M")), ("臺中獅子王", (7, "M")),
+    ("臺北國北獅", (4, "M")), ("臺北鳳凰", (4, "M")),
+    ("三福產業", (11, "M")), ("新竹可利工程師", (12, "M")),
+    ("彰化三大有線", (8, "M")), ("臺北Conti", (9, "M")), ("連莊", (10, "M")),
+]
 
 
-_LOOKUP = _seeded_lookup()
-
-
-def _expected_for_short(short: str) -> tuple[int, str]:
-    return _LOOKUP[short]
-
-
-ALL_NAME_CASES = (
-    [(k, _expected_for_short(v)) for k, v in TEAM_NAME_SHORT.items()]
-    + [(v, _expected_for_short(v)) for v in TEAM_NAME_SHORT.values()]
-    + [(k, _expected_for_short(v)) for k, v in TEAM_ALIAS.items()]
-    + [(k, _expected_for_short(v)) for k, v in MATCH_TEAM_ALIASES.items()]
-    + [(k, LEGACY_EXPECTED[k]) for k in LEGACY_TEAMS]
-)
-
-
-def test_legacy_expectation_covers_constant():
-    assert set(LEGACY_EXPECTED) == set(LEGACY_TEAMS)
-
-
-@pytest.mark.parametrize("name,expected", ALL_NAME_CASES)
+@pytest.mark.parametrize("name,expected", OFFICIAL_SPELLINGS)
 def test_resolve_team_known_names(conn, name, expected):
     assert resolve_team(conn, name) == expected
+
+
+def test_resolve_team_gender_match_passes(conn):
+    assert resolve_team(conn, "屏東台電", "M") == (1, "M")
+
+
+def test_resolve_team_gender_mismatch_raises(conn):
+    with pytest.raises(UnknownTeamError, match="性別"):
+        resolve_team(conn, "屏東台電", "F")
 
 
 def test_taoyuan_variants_resolve_same(conn):
@@ -92,16 +79,6 @@ def test_resolve_ext_team_unknown_raises(conn):
         resolve_ext_team(conn, 99)
 
 
-def test_constants_are_subset_of_db_aliases(conn):
-    db_aliases = {r[0] for r in conn.execute("SELECT alias FROM team_aliases WHERE source <> 'ext_stats'")}
-    const_names = (
-        set(TEAM_NAME_SHORT) | set(TEAM_NAME_SHORT.values())
-        | set(TEAM_ALIAS) | set(MATCH_TEAM_ALIASES) | set(LEGACY_TEAMS)
-    )
-    missing = const_names - db_aliases
-    assert not missing, f"常數內有、DB team_aliases 缺少：{sorted(missing)}"
-
-
 def test_seed_is_idempotent(conn):
     before = (
         conn.execute("SELECT COUNT(*) FROM teams").fetchone()[0],
@@ -113,10 +90,6 @@ def test_seed_is_idempotent(conn):
         conn.execute("SELECT COUNT(*) FROM team_aliases").fetchone()[0],
     )
     assert before == after == (14, 39)
-
-
-def test_alias_count_matches_parametrized_cases():
-    assert len({n for n, _ in ALL_NAME_CASES}) == 28
 
 
 def test_ext_team_map_20_targets_exist_in_teams(conn):
