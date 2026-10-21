@@ -5,8 +5,7 @@
 
 import pandas as pd
 
-# 2024 賽季舊隊（彰化三大有線、臺北Conti、連莊）的 team_id：訓練集刻意排除，納入與否見 issue #48。
-LEGACY_TEAM_IDS = {8, 9, 10}
+from src.utils.constants import LEGACY_TEAM_IDS
 
 
 GAME_STAT_COLS = ["ASR", "GP_pct", "DIG_pct", "BLK_per_set", "ACE_pct"]
@@ -49,7 +48,7 @@ def load_team_match_stats(conn) -> pd.DataFrame:
 
 
 def build_match_labels(matches: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
-    report = {"legacy_skipped": 0, "invalid_skipped": 0}
+    report = {"legacy_skipped": 0, "invalid_skipped": 0, "unresolved_skipped": 0}
     rows = []
     for _, m in matches.iterrows():
         if m["is_golden_set"] == 1:
@@ -59,7 +58,7 @@ def build_match_labels(matches: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
             report["invalid_skipped"] += 1
             continue
         if pd.isna(m["home_team_id"]) or pd.isna(m["away_team_id"]):
-            report["invalid_skipped"] += 1
+            report["unresolved_skipped"] += 1
             continue
         home_tid, away_tid = int(m["home_team_id"]), int(m["away_team_id"])
         if home_tid in LEGACY_TEAM_IDS or away_tid in LEGACY_TEAM_IDS:

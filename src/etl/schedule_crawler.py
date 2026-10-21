@@ -17,7 +17,7 @@ from src.etl.match_crawler import parse_round_name, resolve_cup_id
 from src.utils.constants import EXT_HEADERS as HEADERS, SCHEDULE_PAGES, TVL_BASE_URL
 from src.utils.db_config import get_connection
 from src.utils.logger import get_logger
-from src.utils.teams import resolve_match_team_id
+from src.utils.teams import resolve_team_id
 
 logger = get_logger(__name__)
 
@@ -100,8 +100,9 @@ def next_year_path(html: str) -> str | None:
 
 def upsert_schedule_match(conn: sqlite3.Connection, match: dict, cup_id: int) -> bool:
     """寫入或更新賽事基本資料，回傳是否為新增。比分欄一律不動；頁面缺值的欄位保留既有值。"""
-    home_team_id = resolve_match_team_id(conn, match, "home")
-    away_team_id = resolve_match_team_id(conn, match, "away")
+    ctx = f"{match['gender']}/{match['game_id']}"
+    home_team_id = resolve_team_id(conn, match["home_team"], match["gender"], f"{ctx} home")
+    away_team_id = resolve_team_id(conn, match["away_team"], match["gender"], f"{ctx} away")
     existing = conn.execute(
         "SELECT match_id FROM matches WHERE game_id = ? AND gender = ?",
         (match["game_id"], match["gender"]),

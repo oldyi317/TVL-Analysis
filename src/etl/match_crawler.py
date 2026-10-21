@@ -15,7 +15,7 @@ from pathlib import Path
 from src.utils.db_config import DB_PATH, get_connection
 from src.utils.logger import get_logger
 from src.utils.constants import EXT_HEADERS as HEADERS, ROUND_STAGE_ALIAS, TVL_BASE_URL as BASE_URL
-from src.utils.teams import resolve_match_team_id
+from src.utils.teams import resolve_team_id
 
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
 
@@ -205,8 +205,9 @@ def upsert_match(conn: sqlite3.Connection, match: dict) -> bool:
         (match["game_id"], match["gender"]),
     ).fetchone()
     cup_id = resolve_cup_id(conn, match["match_date"])
-    home_team_id = resolve_match_team_id(conn, match, "home")
-    away_team_id = resolve_match_team_id(conn, match, "away")
+    ctx = f"{match['gender']}/{match['game_id']}"
+    home_team_id = resolve_team_id(conn, match["home_team"], match["gender"], f"{ctx} home")
+    away_team_id = resolve_team_id(conn, match["away_team"], match["gender"], f"{ctx} away")
 
     if existing:
         conn.execute("""

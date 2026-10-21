@@ -92,11 +92,12 @@ def test_labels_skip_golden_set_and_legacy():
     assert report["legacy_skipped"] == 1
 
 
-def test_labels_skip_null_team_id_as_invalid():
+def test_labels_skip_null_team_id_as_unresolved():
     matches = pd.DataFrame([_match_row(None, 7, "M", 3, 0)])
     labels, report = build_match_labels(matches)
     assert labels.empty
-    assert report["invalid_skipped"] == 1
+    assert report["unresolved_skipped"] == 1
+    assert report["invalid_skipped"] == 0
 
 
 def test_attach_labels_fails_loud_on_missing_score(tmp_db_path):

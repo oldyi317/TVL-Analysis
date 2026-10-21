@@ -41,12 +41,11 @@ def resolve_team(conn: sqlite3.Connection, name: str, gender: str | None = None)
     return result
 
 
-def resolve_match_team_id(conn: sqlite3.Connection, match: dict, side: str) -> int | None:
-    name = match[f"{side}_team"]
+def resolve_team_id(conn: sqlite3.Connection, name: str, gender: str, context: str = "") -> int | None:
     try:
-        return resolve_team(conn, name, match["gender"])[0]
+        return resolve_team(conn, name, gender)[0]
     except UnknownTeamError as e:
-        logger.warning("[%s/%s] %s 隊 team_id 寫 NULL：%s", match["gender"], match["game_id"], side, e)
+        logger.warning("[%s] team_id 寫 NULL：%s", context, e)
         return None
 
 
