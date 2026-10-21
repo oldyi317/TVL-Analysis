@@ -5,15 +5,8 @@
 
 import pandas as pd
 
-from src.utils.constants import LEGACY_TEAMS, MATCH_TEAM_ALIASES
-from src.utils.teams import load_team_lookup
-
-
-def normalize_match_team(name: str, team_lookup: dict) -> str:
-    short = MATCH_TEAM_ALIASES.get(name, name)
-    if short in team_lookup or short in LEGACY_TEAMS:
-        return short
-    raise ValueError(f"未知隊名：{name}（請補 constants.MATCH_TEAM_ALIASES）")
+# 2024 賽季舊隊（彰化三大有線、臺北Conti、連莊）的 team_id：訓練集刻意排除，納入與否見 issue #48。
+LEGACY_TEAM_IDS = {8, 9, 10}
 
 
 GAME_STAT_COLS = ["ASR", "GP_pct", "DIG_pct", "BLK_per_set", "ACE_pct"]
@@ -55,7 +48,7 @@ def load_team_match_stats(conn) -> pd.DataFrame:
     return df
 
 
-def build_match_labels(matches: pd.DataFrame, team_lookup: dict) -> tuple[pd.DataFrame, dict]:
+def build_match_labels(matches: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     report = {"legacy_skipped": 0, "invalid_skipped": 0}
     rows = []
     for _, m in matches.iterrows():
@@ -65,19 +58,16 @@ def build_match_labels(matches: pd.DataFrame, team_lookup: dict) -> tuple[pd.Dat
                 or m["home_sets_won"] == m["away_sets_won"]):
             report["invalid_skipped"] += 1
             continue
-        home = normalize_match_team(m["home_team"], team_lookup)
-        away = normalize_match_team(m["away_team"], team_lookup)
-        if home in LEGACY_TEAMS or away in LEGACY_TEAMS:
+        if pd.isna(m["home_team_id"]) or pd.isna(m["away_team_id"]):
+            report["invalid_skipped"] += 1
+            continue
+        home_tid, away_tid = int(m["home_team_id"]), int(m["away_team_id"])
+        if home_tid in LEGACY_TEAM_IDS or away_tid in LEGACY_TEAM_IDS:
             report["legacy_skipped"] += 1
             continue
-        home_tid, home_g = team_lookup[home]
-        away_tid, away_g = team_lookup[away]
-        if home_g != m["gender"] or away_g != m["gender"]:
-            raise ValueError(
-                f"隊伍性別對不上 matches.gender：{m['home_team']} vs {m['away_team']}（{m['gender']}）")
         home_win = int(m["home_sets_won"] > m["away_sets_won"])
-        rows.append((m["match_date"], home_tid, home_g, home_win))
-        rows.append((m["match_date"], away_tid, away_g, 1 - home_win))
+        rows.append((m["match_date"], home_tid, m["gender"], home_win))
+        rows.append((m["match_date"], away_tid, m["gender"], 1 - home_win))
     labels = pd.DataFrame(rows, columns=["match_date", "team_id", "gender", "win"])
     dup = labels.duplicated(["match_date", "team_id", "gender"], keep=False)
     if dup.any():
@@ -134,7 +124,7 @@ def load_labeled_history(conn) -> tuple[pd.DataFrame, dict]:
     """所有有技術統計且已有勝負的球隊單場列（訓練與賽前預測共用的歷史）。"""
     team_match = load_team_match_stats(conn)
     matches = pd.read_sql_query("SELECT * FROM matches", conn)
-    labels, report = build_match_labels(matches, load_team_lookup(conn))
+    labels, report = build_match_labels(matches)
     labeled = attach_labels(team_match, labels)
     report["team_match_rows"] = len(labeled)
     return labeled, report

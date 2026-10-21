@@ -1,6 +1,9 @@
 import sqlite3
 
 from src.utils.db_config import PROJECT_ROOT
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 TEAM_SEED_PATH = PROJECT_ROOT / "sql" / "team_seed.sql"
 
@@ -28,17 +31,23 @@ def _lookup(conn: sqlite3.Connection, alias: str, source_cond: str) -> tuple[int
     return (row[0], row[1]) if row else None
 
 
-def resolve_team(conn: sqlite3.Connection, name: str) -> tuple[int, str]:
+def resolve_team(conn: sqlite3.Connection, name: str, gender: str | None = None) -> tuple[int, str]:
     key = name.strip() if isinstance(name, str) else ""
     result = _lookup(conn, key, _NAME_SOURCE_COND)
     if result is None:
         raise UnknownTeamError(f"未知隊名：{name!r}（請補 sql/team_seed.sql 的 team_aliases）")
+    if gender is not None and result[1] != gender:
+        raise UnknownTeamError(f"隊名 {name!r} 性別為 {result[1]}，與預期的 {gender} 不符")
     return result
 
 
-def load_team_lookup(conn: sqlite3.Connection) -> dict[str, tuple[int, str]]:
-    rows = conn.execute(f"SELECT alias, team_id, gender FROM team_aliases WHERE {_NAME_SOURCE_COND}")
-    return {alias: (team_id, gender) for alias, team_id, gender in rows}
+def resolve_match_team_id(conn: sqlite3.Connection, match: dict, side: str) -> int | None:
+    name = match[f"{side}_team"]
+    try:
+        return resolve_team(conn, name, match["gender"])[0]
+    except UnknownTeamError as e:
+        logger.warning("[%s/%s] %s 隊 team_id 寫 NULL：%s", match["gender"], match["game_id"], side, e)
+        return None
 
 
 def resolve_ext_team(conn: sqlite3.Connection, ext_team_id: int) -> tuple[int, str]:

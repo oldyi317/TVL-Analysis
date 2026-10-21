@@ -7,7 +7,7 @@ from src.models.features import (
     load_labeled_history,
 )
 from src.models.predict import run_predictions
-from src.utils.teams import UnknownTeamError, load_team_lookup, resolve_team
+from src.utils.teams import UnknownTeamError, resolve_team
 from tests.conftest import connect_seeded
 
 MATCH_COLS = (
@@ -159,12 +159,12 @@ def test_rerun_upserts_without_duplicates(db):
     assert _rows(db)[0][2] == pytest.approx(0.55 / 0.90)
 
 
-def test_labels_skip_unplayed_unknown_team_before_normalizing(db):
+def test_labels_skip_unplayed_match(db):
     matches = pd.DataFrame([{
         "match_date": "2026-10-24", "gender": "M", "is_golden_set": 0,
-        "home_team": "三福產業", "away_team": "臺北鳳凰",
+        "home_team_id": 11, "away_team_id": 4,
         "home_sets_won": None, "away_sets_won": None,
     }])
-    labels, report = build_match_labels(matches, load_team_lookup(db))
+    labels, report = build_match_labels(matches)
     assert labels.empty
     assert report["invalid_skipped"] == 1

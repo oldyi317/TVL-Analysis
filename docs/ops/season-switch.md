@@ -21,8 +21,8 @@
       `SELECT gender, min(game_id), max(game_id) FROM matches WHERE cup_id=<新季> GROUP BY gender` 即可。
 - [x] 球隊身分（有新隊伍/改名才需要動；2026-27 已於 2026-10-15 補：鳳凰／龍邁延續 4／5，三福／可利為新 team_id 11／12，本地 team_id 自此與官網隊伍頁編號脫鉤，下季再把本項改回未勾）：改 `sql/team_seed.sql`（teams 與 team_aliases），
       再套用：`python -c "from src.utils.db_config import get_connection; from src.utils.teams import apply_team_seed; c=get_connection(); apply_team_seed(c); c.commit()"`。
-      過渡期相容：`EXT_TEAM_MAPS`（constants.py，每屆一份，新季要加一份）、`TEAM_NAME_SHORT`（constants.py）與
-      `TEAM_ALIAS`（match_crawler.py）仍被爬蟲使用；`OPP_SHORT_TO_TEAM` 已廢除，單場出賽名單隊名改走 team_aliases。
+      過渡期相容：`EXT_TEAM_MAPS`（constants.py，每屆一份，新季要加一份）與
+      `TEAM_NAME_SHORT`（constants.py）仍被爬蟲使用；官網隊名的別名只補 `sql/team_seed.sql` 的 team_aliases；`OPP_SHORT_TO_TEAM` 已廢除，單場出賽名單隊名改走 team_aliases。
       `match_crawler` 寫入 matches 時以 `team_aliases`（`source <> 'ext_stats'`）解析 `home_team_id`/`away_team_id`；
       新隊名或新別名未進種子會 log warning 並寫 NULL，記得補 `sql/team_seed.sql`。
 

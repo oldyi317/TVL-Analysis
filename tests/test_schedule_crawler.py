@@ -95,9 +95,9 @@ def test_round_name_parsed_when_page_shows_it():
     assert rows[1]["round_name"] is None
 
 
-def test_team_names_normalized_like_match_crawler():
+def test_team_names_kept_as_official_labels():
     row = _men_rows()[265]
-    assert (row["home_team"], row["away_team"]) == ("桃園臺產", "獅子王")
+    assert (row["home_team"], row["away_team"]) == ("桃園臺灣產險", "獅子王")
 
 
 def test_golden_set_row_from_label():

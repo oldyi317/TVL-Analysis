@@ -21,7 +21,7 @@ EXT_HEADERS = {
 }
 
 # 過渡期相容：球隊身分單一來源為 DB 的 teams/team_aliases（種子 sql/team_seed.sql，解析用 src/utils/teams.resolve_team）；
-# 下列常數 EXT_TEAM_MAPS、TEAM_NAME_SHORT、MATCH_TEAM_ALIASES、LEGACY_TEAMS
+# 下列常數 EXT_TEAM_MAPS、TEAM_NAME_SHORT
 # 待各爬蟲改用 DB 後移除。
 # ── 外部系統 TeamID → 本地 DB (team_id, gender) 對照表（每屆一份，以 cup_id 為鍵）──
 # TeamID 每屆重編；新季要在此加一份，查無該屆時爬蟲會拋錯而不是落回其他賽季。
@@ -62,17 +62,6 @@ TEAM_NAME_SHORT = {
     "桃園臺產隼鷹排球隊": "桃園臺產",
     "臺北鳳凰男子排球隊": "臺北鳳凰",
 }
-
-# ── matches 表隊名別名（官網比分頁的後綴變體）→ 簡稱 ──────────
-MATCH_TEAM_ALIASES = {
-    "屏東台電男排": "屏東台電",
-    "高雄台電女排": "高雄台電",
-    "龍脈建設": "龍邁建設",  # 官網單場頁誤植，列表頁與隊頁為龍邁建設
-    "桃園臺灣產險": "桃園臺產",
-}
-
-# 2024 賽季舊隊：比分留存於 matches，但已不在 teams 表、無逐場統計
-LEGACY_TEAMS = {"彰化三大有線", "臺北Conti", "連莊"}
 
 # ── 位置相關 ──────────────────────────────────────────────────
 VALID_POSITIONS = {"OH", "MB", "OP", "S", "L"}
