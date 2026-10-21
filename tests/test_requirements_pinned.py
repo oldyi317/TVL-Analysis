@@ -23,16 +23,11 @@ def test_requirements_txt_no_genai():
     assert "genai" not in source.lower()
 
 
-def test_requirements_dev_pinned():
-    for line in _lines(ROOT / "requirements-dev.txt"):
-        assert PIN_PATTERN.match(line), f"未釘版本：{line}"
-
-
 def test_optuna_in_requirements():
     source = (ROOT / "requirements.txt").read_text(encoding="utf-8").lower()
     assert "optuna" in source
 
 
-def test_optuna_not_in_dev_requirements():
-    source = (ROOT / "requirements-dev.txt").read_text(encoding="utf-8").lower()
-    assert "optuna" not in source
+def test_pytest_in_requirements():
+    source = (ROOT / "requirements.txt").read_text(encoding="utf-8").lower()
+    assert "pytest" in source

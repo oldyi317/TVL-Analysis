@@ -58,8 +58,8 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
   不要裸用 `sqlite3.connect()`。
 - Schema DDL 的唯一來源是 `sql/schema.sql`，爬蟲內不要重寫 CREATE TABLE。
 - UI 文案、註解、commit message 用繁體中文。
-- Python 依賴：`requirements.txt` 只服務自架 runner 的爬蟲與模型重訓；pages.yml
-  的匯出器只用標準庫、不裝 pip 套件，改匯出器時不要引入第三方套件。前端依賴在
+- Python 依賴：只有一份 `requirements.txt`（爬蟲、模型重訓、pytest 全在裡面，裝在自架
+  runner 與本機）；pages.yml 的匯出器只用標準庫、不裝 pip 套件，改匯出器時不要引入第三方套件。前端依賴在
   `web/package.json`，改動要考慮 pages.yml 的 npm ci。
 
 ## 資料品質原則

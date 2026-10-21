@@ -19,7 +19,7 @@
       ]
     }
   },
-  "updateContentCommand": "pip3 install --user -r requirements.txt -r requirements-dev.txt && cd web && npm ci",
+  "updateContentCommand": "pip3 install --user -r requirements.txt && cd web && npm ci",
   "forwardPorts": [
     5173
   ]
