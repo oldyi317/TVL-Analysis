@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { asset, resolve } from '$app/paths';
-	import type { AssetPath } from '$app/types';
+	import { resolve } from '$app/paths';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import BigStat from '#lib/components/BigStat.svelte';
 	import DataNote from '#lib/components/DataNote.svelte';
@@ -22,10 +21,6 @@
 	);
 
 	const hasUnplayed = $derived(data.matches.some((m) => m.sets.length === 0));
-	const logoSrc = $derived(
-		data.currentSeasonTeam.logo === null ? null : asset(data.currentSeasonTeam.logo as AssetPath)
-	);
-	let failedSrc = $state('');
 
 	function matchHref(gameId: number): string {
 		return `${resolve('/[season]/[group]/matches/[game]', {
@@ -46,18 +41,7 @@
 </a>
 
 <header class="rise">
-	{#if logoSrc !== null && failedSrc !== logoSrc}
-		<img
-			class="logo"
-			src={logoSrc}
-			alt="{team.name}隊徽"
-			width="96"
-			height="96"
-			onerror={() => (failedSrc = logoSrc)}
-		/>
-	{:else}
-		<TeamBadge team={data.currentSeasonTeam} size="xl" />
-	{/if}
+	<TeamBadge team={data.currentSeasonTeam} size="xl" label="{team.name}隊徽" />
 	<div class="title">
 		<h1>{team.name}</h1>
 		<p class="sub">{team.short_name === team.name ? '' : `${team.short_name}・`}{GROUP_LABEL[data.group]}</p>
@@ -180,17 +164,6 @@
 		align-items: center;
 		gap: var(--space-4);
 		margin-block: var(--space-2) var(--space-4);
-	}
-
-	.logo {
-		flex: none;
-		inline-size: 96px;
-		block-size: 96px;
-		padding: var(--space-2);
-		object-fit: contain;
-		border-radius: 50%;
-		background: #ffffff;
-		border: 1px solid var(--line);
 	}
 
 	.title {
