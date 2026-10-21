@@ -3,7 +3,7 @@
 用法：python -m src.models.predict [--model src/models/match_predictor_v2.pkl]
 
 模型是單隊視角（給一隊的近況特徵 → 該隊勝率），主隊勝率取兩隊各自勝率的正規化：p_home / (p_home + p_away)，
-兩隊相加恰為 1。未開打 = 各局比分皆 NULL；已開打賽事不在查詢範圍內，既有預測自然凍結。
+兩隊相加恰為 1。未開打 = 各局比分皆 NULL；已開打賽事不在查詢範圍內，既有賽前勝率自然凍結。
 """
 
 import argparse

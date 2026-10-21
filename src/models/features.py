@@ -131,7 +131,7 @@ def add_rolling_features(labeled: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_labeled_history(conn) -> tuple[pd.DataFrame, dict]:
-    """所有有技術統計且已有勝負的球隊單場列（訓練與賽前預測共用的歷史）。"""
+    """所有有技術統計且已有勝負的球隊單場列（訓練與賽前勝率共用的歷史）。"""
     team_match = load_team_match_stats(conn)
     matches = pd.read_sql_query("SELECT * FROM matches", conn)
     labels, report = build_match_labels(matches, load_team_lookup(conn))

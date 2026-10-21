@@ -13,3 +13,6 @@ data/db/*
 
 # 靜態站匯出資料與產生的型別（由 src.export.site_data 與 web/ 的 gen 腳本產生）
 web/src/lib/data/
+
+# 匯出快照基準（scripts/export_snapshot.sh）
+.snapshots/

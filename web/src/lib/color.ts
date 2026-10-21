@@ -25,7 +25,7 @@ export function contrastRatio(a: string, b: string): number {
 	return (hi + 0.05) / (lo + 0.05);
 }
 
-// 依 WCAG 相對亮度決定隊標上的文字用黑或白；0.179 這個門檻讓兩者皆至少 4.5:1
+// 依 WCAG 相對亮度決定隊色圓標上的文字用黑或白；0.179 這個門檻讓兩者皆至少 4.5:1
 export function textColorOn(hex: string): '#000000' | '#ffffff' {
 	return luminance(hex) > 0.179 ? '#000000' : '#ffffff';
 }

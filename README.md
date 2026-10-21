@@ -146,6 +146,8 @@ npm run dev                      # 2. dev server（先驗證 JSON 符合 web/sch
 npm run build                    # 3. 建置到 web/build/
 ```
 
+重構匯出器時的行為鎖：改前 `bash scripts/export_snapshot.sh save`，改後 `bash scripts/export_snapshot.sh diff`（逐檔 cmp，有差異以非 0 結束；基準放 `.snapshots/export`，不進 git）。
+
 ### 測試
 
 ```bash
