@@ -81,7 +81,7 @@ def _standings_row(rank: int, team_id: int, tally: dict) -> dict:
 
 
 def compute_standings(team_ids: Iterable[int], results: Iterable[Sequence]) -> list[dict]:
-    """一組別一賽季的例行賽戰績，回傳已排名的列。
+    """一組別一賽季的例行賽戰績，回傳依官方規則排好序、附 rank 的列。
 
     results 每筆為 (主隊 id, 客隊 id, 主隊局數, 客隊局數, *主隊五局分數, *客隊五局分數)，
     分數允許 None。呼叫者須依 match_date、game_id 由舊到新排好：last5 取自這個順序。
