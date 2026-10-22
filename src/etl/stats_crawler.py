@@ -283,23 +283,21 @@ def ext_team_map_for(cup_id: int) -> dict:
 
 
 def collect_player_rows(
-    conn: sqlite3.Connection,
     season: Season,
     resolver: PlayerResolver,
     ext_team_id: int,
     db_team_id: int,
     gender: str,
-    p: dict,
-    cup_id: int,
+    player: dict,
 ) -> tuple[list[tuple], int]:
     """單一球員：解析身分 → 抓單場數據 → 去重 → 反查登錄，回傳 (待寫入 rows, 已存在而跳過的筆數)。"""
-    name = p["name"]
-    player_id = resolver.resolve(db_team_id, gender, name, p.get("jersey_number"))
+    name = player["name"]
+    player_id = resolver.resolve(db_team_id, gender, name, player.get("jersey_number"))
     if player_id is None:
         return [], 0
 
     try:
-        records = fetch_player_stats(season, ext_team_id, p["ext_player_id"])
+        records = fetch_player_stats(season, ext_team_id, player["ext_player_id"])
     except Exception as e:
         logger.error("抓取球員 [%s] 數據失敗: %s", name, e)
         return [], 0
@@ -308,14 +306,14 @@ def collect_player_rows(
         return [], 0
 
     # 去重：不論全量或增量，皆只插入尚未存在的紀錄（含黃金局區分）
-    new_records = filter_new_records(conn, player_id, records)
+    new_records = filter_new_records(resolver.conn, player_id, records)
     skipped = len(records) - len(new_records)
 
     # 逐筆解析 registration_id（Phase 2：player_match_stats 改掛
     # registration_id，不同筆記錄可能落在不同週次，須逐筆反查）
     rows = [
         (
-            resolve_registration_for_stats(conn, player_id, db_team_id, gender, r["match_date"], cup_id),
+            resolve_registration_for_stats(resolver.conn, player_id, db_team_id, gender, r["match_date"], resolver.cup_id),
             r["match_date"], r["opponent"], r["sets_played"],
             r["attack_total"], r["attack_points"], r["block_points"],
             r["serve_total"], r["serve_points"],
@@ -420,9 +418,9 @@ def main(incremental: bool = False, cup_id: int = CUP_ID):
         )
         db_team_id, gender = ext_team_map[ext_team_id]
 
-        for p in players:
+        for player in players:
             rows, skipped = collect_player_rows(
-                conn, season, resolver, ext_team_id, db_team_id, gender, p, cup_id
+                season, resolver, ext_team_id, db_team_id, gender, player
             )
             total_skipped += skipped
             if not rows:

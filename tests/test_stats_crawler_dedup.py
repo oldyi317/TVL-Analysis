@@ -62,7 +62,7 @@ def test_filter_new_records_prevents_duplicate_insert_on_rerun(tmp_db_path, monk
         p = {"ext_player_id": 1, "name": "測試球員", "jersey_number": 5}
 
         def run_once():
-            rows, skipped = collect_player_rows(conn, None, resolver, 1, 1, "M", p, 21)
+            rows, skipped = collect_player_rows(None, resolver, 1, 1, "M", p)
             insert_stat_rows(conn, rows)
             conn.commit()
             return rows, skipped
