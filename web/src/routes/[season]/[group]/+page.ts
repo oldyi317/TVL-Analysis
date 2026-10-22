@@ -1,8 +1,6 @@
-import { error } from '@sveltejs/kit';
 import { latestMatchDay, nextMatch } from '#lib/match.js';
+import { requireSeasonGroup } from '#lib/route.js';
 import {
-	findSeason,
-	isGroup,
 	matchesFor,
 	seasonGroupEntries,
 	standingsFor,
@@ -13,9 +11,7 @@ import type { EntryGenerator, PageLoad } from './$types';
 export const entries: EntryGenerator = seasonGroupEntries;
 
 export const load: PageLoad = ({ params }) => {
-	const season = findSeason(params.season);
-	if (!season || !isGroup(params.group)) error(404, '找不到這個賽季或組別');
-	const group = params.group;
+	const { season, group } = requireSeasonGroup(params);
 	const matches = matchesFor(season.cup_id, group);
 	const standings = standingsFor(season.cup_id, group);
 	return {

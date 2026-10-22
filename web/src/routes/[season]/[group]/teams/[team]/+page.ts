@@ -1,10 +1,9 @@
 import { error } from '@sveltejs/kit';
+import { parseId, requireSeasonGroup } from '#lib/route.js';
 import {
 	currentSeason,
-	findSeason,
 	findTeam,
 	formerNames,
-	isGroup,
 	latestRoster,
 	seasonTeam,
 	teamEntries,
@@ -16,20 +15,19 @@ import type { EntryGenerator, PageLoad } from './$types';
 export const entries: EntryGenerator = teamEntries;
 
 export const load: PageLoad = ({ params }) => {
-	const season = findSeason(params.season);
-	if (!season || !isGroup(params.group)) error(404, '找不到這個賽季或組別');
-	const teamId = Number(params.team);
-	const team = findTeam(season.cup_id, params.group, teamId);
+	const { season, group } = requireSeasonGroup(params);
+	const teamId = parseId(params.team);
+	const team = teamId === undefined ? undefined : findTeam(season.cup_id, group, teamId);
 	if (!team) error(404, '這一季沒有這支球隊');
 	return {
 		season,
-		group: params.group,
+		group,
 		team,
 		currentSeasonTeam: seasonTeam(team, currentSeason.cup_id),
 		seasonTeam: seasonTeam(team, season.cup_id),
 		formerNames: formerNames(team),
-		standing: teamStanding(season.cup_id, params.group, teamId),
-		matches: teamMatches(season.cup_id, params.group, teamId),
-		roster: latestRoster(season.cup_id, params.group, teamId)
+		standing: teamStanding(season.cup_id, group, team.team_id),
+		matches: teamMatches(season.cup_id, group, team.team_id),
+		roster: latestRoster(season.cup_id, group, team.team_id)
 	};
 };
