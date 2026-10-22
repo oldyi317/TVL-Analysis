@@ -32,6 +32,7 @@ BEFORE=$(db_hash)
 # 賽季報名名單（ADR 0004）：排在賽事列表後，新季賽程寫入當天就歸到新季；失敗只記 log
 { "$PYTHON" -m src.etl.crawler && "$PYTHON" -m src.etl.db_loader; } || echo "賽季報名名單步驟失敗（exit $?），略過。"
 "$PYTHON" -m src.etl.match_crawler
+# stats_crawler 讀 matches.round_name 決定 week_label，必須排在 match_crawler 之後（ADR 0008）
 "$PYTHON" -m src.etl.stats_crawler --rosters
 "$PYTHON" -m src.etl.stats_crawler --incremental
 # 賽前勝率（ADR 0003）：失敗只記 log，不中止每日更新與 commit
