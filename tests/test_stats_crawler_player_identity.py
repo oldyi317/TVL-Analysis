@@ -45,7 +45,7 @@ def _seed(db_path, cup_id, roster):
 
 @pytest.fixture
 def run_main(tmp_db_path, monkeypatch):
-    def run(cup_id, external):
+    def run(cup_id, external, fetch=None):
         monkeypatch.setattr(stats_crawler, "get_connection", lambda: sqlite3.connect(tmp_db_path))
         ext_team = EXT_TEAM_F_ZHONGXIAN[cup_id]
         monkeypatch.setattr(
@@ -61,7 +61,7 @@ def run_main(tmp_db_path, monkeypatch):
             assert season.cup_id == cup_id
             return [_record(date)]
 
-        monkeypatch.setattr(stats_crawler, "fetch_player_stats", fetch_stats)
+        monkeypatch.setattr(stats_crawler, "fetch_player_stats", fetch or fetch_stats)
         monkeypatch.setattr(stats_crawler.time, "sleep", lambda s: None)
         stats_crawler.main(cup_id=cup_id)
     return run
@@ -203,3 +203,20 @@ def test_fetch_player_list_parses_jersey_and_name(monkeypatch, label, name, jers
         {"ext_player_id": 23, "name": name, "jersey_number": jersey}
     ]
     assert seen == {"CupID": 20, "TeamID": 9}
+
+
+def test_fetch_failure_logs_and_continues_with_other_players(tmp_db_path, run_main, caplog):
+    _seed(tmp_db_path, 20, [(1, "張瓈文", 2, "OH"), (2, "王小明", 3, "MB")]).close()
+
+    def flaky(season, team_id, ext_pid):
+        if ext_pid == 100:
+            raise RuntimeError("連線失敗")
+        return [_record("2024-11-02")]
+
+    with caplog.at_level(logging.ERROR):
+        run_main(20, [("張瓈文", 2), ("王小明", 3)], fetch=flaky)
+
+    assert "抓取球員 [張瓈文] 數據失敗" in caplog.text
+    assert _query(tmp_db_path, "SELECT COUNT(*) FROM player_match_stats") == [(1,)]
+    assert _query(tmp_db_path, "SELECT p.name FROM player_match_stats s JOIN roster_registrations r "
+                  "ON s.registration_id = r.registration_id JOIN players p ON p.player_id = r.player_id") == [("王小明",)]

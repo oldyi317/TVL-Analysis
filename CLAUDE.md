@@ -46,7 +46,7 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
   週登錄外的球員分兩路：該賽季有賽季報名名單時，依「同隊姓名 → 同隊背號」比對，
   對不上就略過並 warning，不插入 `players`；整季沒有報名名單（legacy）時才以全域
   姓名比對、查無就動態新增。比對到人但查無登錄時補一筆 `source='backfill'`
-  登錄（背號/位置皆 NULL），下游計算仍須對缺值防禦。
+  登錄（背號/位置先取自 `season_rosters`，查無才 NULL），下游計算仍須對缺值防禦。
 - **換季前必跑 `docs/ops/season-switch.md` checklist**：cup_id 已進
   roster_registrations 的 UNIQUE（Phase 3），跨季同名週次不再互相覆寫；但
   `EXT_CUP_ID` 等常數是手動更新的，未更新前爬蟲抓不到新季資料。
