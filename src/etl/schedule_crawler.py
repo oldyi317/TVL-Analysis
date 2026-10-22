@@ -2,7 +2,7 @@
 TVL 官網賽事列表爬蟲
 從 tvl.ctvba.org.tw 的 /schedule（男子組）與 /wschedule（女子組）解析每場的
 game_id、日期、時間、場館、兩隊與 game_label，upsert 進 matches（鍵 game_id + gender）。
-依 ADR 0003 的欄位分工：本爬蟲永不寫各局比分與 sets_won。
+依 ADR 0008 的欄位所有權：本爬蟲永不寫各局比分與 sets_won。
 round_name 在 2026-10-15 抓到的列表頁上全部空白，故只在列內出現「例行賽 Week N」等字樣時才寫，
 否則保留既有值（由 match_crawler 從單場頁補）。
 解析一律防禦式：缺值寫 NULL、缺關鍵欄位跳過該列；時間/場館待定列尚無樣本（#28）。

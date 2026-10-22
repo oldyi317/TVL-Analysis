@@ -199,7 +199,7 @@ def resolve_cup_id(conn: sqlite3.Connection, match_date: str) -> int:
 
 
 def upsert_match(conn: sqlite3.Connection, match: dict) -> bool:
-    """寫入或更新單場比賽紀錄，回傳是否為新增。"""
+    """寫入或更新單場比賽紀錄，回傳是否為新增。round_name／game_label 單場頁解析不到時保留既有值（ADR 0008）。"""
     existing = conn.execute(
         "SELECT match_id FROM matches WHERE game_id = ? AND gender = ?",
         (match["game_id"], match["gender"]),
@@ -213,7 +213,8 @@ def upsert_match(conn: sqlite3.Connection, match: dict) -> bool:
         conn.execute("""
             UPDATE matches SET
                 cup_id=?, match_date=?, start_time=COALESCE(start_time, ?),
-                venue=COALESCE(venue, ?), round_name=?, game_label=?,
+                venue=COALESCE(venue, ?), round_name=COALESCE(?, round_name),
+                game_label=COALESCE(?, game_label),
                 is_golden_set=?, home_team=?, away_team=?, home_team_id=?, away_team_id=?,
                 home_set1=?, home_set2=?, home_set3=?, home_set4=?, home_set5=?,
                 home_total=?, away_set1=?, away_set2=?, away_set3=?, away_set4=?,
