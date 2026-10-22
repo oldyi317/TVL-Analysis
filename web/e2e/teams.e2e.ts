@@ -55,13 +55,26 @@ test('當季男子組列表：現役隊整列可點', async ({ page }) => {
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
-test('2024-25 男子組列表：非現役隊不連結', async ({ page }) => {
+test('2024-25 男子組列表：非現役隊也整列可點', async ({ page }) => {
 	await page.goto(`${BASE}/${OLD_SEASON}/men/teams/`);
 	const all = menIn(OLD_CUP);
-	const inactive = all.filter((t) => !t.is_active);
-	expect(inactive.length).toBeGreaterThan(0);
+	expect(all.some((t) => !t.is_active)).toBe(true);
 	await expect(page.locator('li')).toHaveCount(all.length);
-	await expect(page.locator('li a')).toHaveCount(all.length - inactive.length);
+	await expect(page.locator('li a')).toHaveCount(all.length);
+	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
+});
+
+test('2024-25 男子組球隊頁：點進非現役隊，看到名單', async ({ page }) => {
+	const team = menIn(OLD_CUP).find(
+		(t) => !t.is_active && latestWeekOf(OLD_CUP, 'men', t.team_id) !== undefined
+	)!;
+	expect(team).toBeDefined();
+	await page.goto(`${BASE}/${OLD_SEASON}/men/teams/`);
+	await page.locator('li a', { hasText: team.name }).click();
+	await expect(page).toHaveURL(new RegExp(`/${OLD_SEASON}/men/teams/${team.team_id}/$`));
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText(team.name);
+	const latest = latestWeekOf(OLD_CUP, 'men', team.team_id)!;
+	await expect(page.locator('ul.players li')).toHaveCount(latest.players.length);
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
@@ -155,12 +168,9 @@ test('只有賽季報名名單、沒有週登錄的現役隊顯示賽季報名�
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
-test('非現役隊與不存在的球隊沒有球隊頁', async ({ page }) => {
-	const inactive = menIn(OLD_CUP).find((t) => !t.is_active)!;
-	for (const id of [inactive.team_id, 999]) {
-		const res = await page.goto(`${BASE}/${OLD_SEASON}/men/teams/${id}/`);
-		expect(res?.status()).toBe(404);
-	}
+test('不存在的球隊沒有球隊頁', async ({ page }) => {
+	const res = await page.goto(`${BASE}/${OLD_SEASON}/men/teams/999/`);
+	expect(res?.status()).toBe(404);
 });
 
 test('球隊頁的組別與賽季切換', async ({ page }) => {

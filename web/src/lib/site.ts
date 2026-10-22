@@ -173,7 +173,7 @@ export function matchEntries(): { season: string; group: Group; game: string }[]
 
 export function findTeam(cupId: number, group: Group, teamId: number): Team | undefined {
 	return teams.find(
-		(t) => t.group === group && t.team_id === teamId && t.is_active && t.cup_ids.includes(cupId)
+		(t) => t.group === group && t.team_id === teamId && t.cup_ids.includes(cupId)
 	);
 }
 

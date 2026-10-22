@@ -41,11 +41,7 @@
 	<ul class="teams">
 		{#each data.teams as { team, standing }, i (team.team_id)}
 			<li class="rise" style:--i={Math.min(i, 5)}>
-				{#if team.is_active}
-					<a class="card" href={teamHref(team)}>{@render body(team, standing)}</a>
-				{:else}
-					<div class="card">{@render body(team, standing)}</div>
-				{/if}
+				<a class="card" href={teamHref(team)}>{@render body(team, standing)}</a>
 			</li>
 		{/each}
 	</ul>
