@@ -53,7 +53,7 @@ def test_init_refuses_unmigrated_matches_table(tmp_db_path):
         "gender TEXT NOT NULL, match_date DATE NOT NULL, home_team TEXT, away_team TEXT)"
     )
     try:
-        with pytest.raises(RuntimeError, match="migrate_add_season"):
+        with pytest.raises(RuntimeError, match="schema 過舊（缺 cup_id）"):
             init_matches_table(connection)
     finally:
         connection.close()

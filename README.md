@@ -48,8 +48,7 @@ TVL-Analysis/
 │   │   ├── db_loader.py          # 名單 CSV → players 身分層 + season_rosters
 │   │   ├── stats_crawler.py      # 外部統計系統 → 週登錄（--rosters）與逐場技術統計（--incremental）
 │   │   ├── cleaner.py            # 清洗規則（只標記異常，不插補）
-│   │   ├── backup_db.py          # 遷移前備份 .db
-│   │   └── migrate_*.py          # 歷次 schema 遷移（已套用，保留供回溯）
+│   │   └── backup_db.py          # 遷移前備份 .db
 │   ├── export/
 │   │   ├── site_data.py          # 靜態站 JSON 匯出器
 │   │   └── player_advanced.py    # 球員進階數據純函式
@@ -151,7 +150,7 @@ npm run build                    # 3. 建置到 web/build/
 ### 測試
 
 ```bash
-pytest                           # Python：爬蟲解析、匯出器、模型合約、遷移
+pytest                           # Python：爬蟲解析、匯出器、模型合約
 cd web
 npm run check                    # 型別檢查
 npm run test:unit                # Vitest

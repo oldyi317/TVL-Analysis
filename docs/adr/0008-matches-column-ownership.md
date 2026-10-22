@@ -33,7 +33,7 @@ date: 2026-10-22
 
 ## 不在範圍
 
-- 一次性 migration 腳本（`migrate_add_season`、`migrate_add_match_team_id` 等）。
+- 一次性 migration 腳本已於 #66 移除。
 
 ## Consequences
 

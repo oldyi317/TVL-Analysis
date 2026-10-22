@@ -44,11 +44,11 @@ def _assert_matches_migrated(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(matches)")}
     if "cup_id" not in cols:
         raise RuntimeError(
-            "matches 表尚無 cup_id（舊 schema），請先執行 python -m src.etl.migrate_add_season。"
+            "matches 表 schema 過舊（缺 cup_id），請以 sql/schema.sql 重建資料庫。"
         )
     if "home_team_id" not in cols:
         raise RuntimeError(
-            "matches 表尚無 home_team_id，請先執行 python -m src.etl.migrate_add_match_team_id。"
+            "matches 表 schema 過舊（缺 home_team_id），請以 sql/schema.sql 重建資料庫。"
         )
 
 
