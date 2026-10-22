@@ -114,7 +114,7 @@ def test_init_refuses_matches_without_team_id(tmp_db_path):
         "gender TEXT NOT NULL, cup_id INTEGER, match_date DATE NOT NULL, home_team TEXT, away_team TEXT)"
     )
     try:
-        with pytest.raises(RuntimeError, match="migrate_add_match_team_id"):
+        with pytest.raises(RuntimeError, match="schema 過舊（缺 home_team_id）"):
             init_matches_table(connection)
     finally:
         connection.close()

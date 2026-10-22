@@ -152,6 +152,6 @@ def test_colors_valid_and_unique_per_gender(conn):
 def test_apply_team_seed_requires_migration(tmp_path):
     old = sqlite3.connect(tmp_path / "old.db")
     old.execute("CREATE TABLE teams (team_id INTEGER, team_name TEXT, gender TEXT)")
-    with pytest.raises(RuntimeError, match="migrate_add_team_identity"):
+    with pytest.raises(RuntimeError, match="schema 過舊（缺 short_name）"):
         apply_team_seed(old)
     old.close()
