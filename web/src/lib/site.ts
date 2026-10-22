@@ -5,7 +5,6 @@ import rostersJson from '#lib/data/rosters.json';
 import seasonsJson from '#lib/data/seasons.json';
 import standingsJson from '#lib/data/standings.json';
 import teamsJson from '#lib/data/teams.json';
-import type { StandingsRow } from '#lib/components/StandingsTable.svelte';
 import type { StyleMatch } from '#lib/match.js';
 import type {
 	GroupStandings,
@@ -47,6 +46,24 @@ export function findSeason(name: string): Season | undefined {
 }
 
 export type SeasonTeam = Team & { cup_id: number; logo: string | null };
+
+export type SetRecordKey = '3-0' | '3-1' | '3-2' | '2-3' | '1-3' | '0-3';
+export type StandingsRow = {
+	rank: number;
+	team: SeasonTeam;
+	wins: number;
+	losses: number;
+	win_pct: number | null;
+	points: number;
+	sets_won: number;
+	sets_lost: number;
+	points_for: number;
+	points_against: number;
+	set_ratio: number | null;
+	point_ratio: number | null;
+	set_record: Record<SetRecordKey, number>;
+	last5: ('W' | 'L')[];
+};
 
 const logoFiles = new Set<string>(logosJson);
 

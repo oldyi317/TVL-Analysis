@@ -1,34 +1,13 @@
-<script module lang="ts">
-	import type { SeasonTeam } from '#lib/site.js';
-
-	export type SetRecordKey = '3-0' | '3-1' | '3-2' | '2-3' | '1-3' | '0-3';
-	export type StandingsRow = {
-		rank: number;
-		team: SeasonTeam;
-		wins: number;
-		losses: number;
-		win_pct: number | null;
-		points: number;
-		sets_won: number;
-		sets_lost: number;
-		points_for: number;
-		points_against: number;
-		set_ratio: number | null;
-		point_ratio: number | null;
-		set_record: Record<SetRecordKey, number>;
-		last5: ('W' | 'L')[];
-	};
+<script lang="ts">
+	import type { SetRecordKey, StandingsRow } from '#lib/site.js';
+	import DataNote from './DataNote.svelte';
+	import TeamBadge from './TeamBadge.svelte';
 
 	const RECORD_KEYS: SetRecordKey[] = ['3-0', '3-1', '3-2', '2-3', '1-3', '0-3'];
 
 	function ratio(value: number | null): string {
 		return value === null ? '—' : value.toFixed(3);
 	}
-</script>
-
-<script lang="ts">
-	import DataNote from './DataNote.svelte';
-	import TeamBadge from './TeamBadge.svelte';
 
 	let { rows, note }: { rows: StandingsRow[]; note?: string } = $props();
 
