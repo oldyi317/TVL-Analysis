@@ -194,10 +194,10 @@ export function inPrPool(
 }
 
 export function noPrReason(advanced: PoolFields | null): string | null {
+	if (inPrPool(advanced)) return null;
 	if (!advanced) return '本季沒有進階數據';
 	if (advanced.insufficient_sets) return '出賽局數不足 5 局，不計算 PR 值與分佈';
-	if (advanced.position === null) return '本季無登錄位置，不計算 PR 值與分佈';
-	return null;
+	return '本季無登錄位置，不計算 PR 值與分佈';
 }
 
 export type GameStats = Omit<StatRow, 'player_id' | 'team_id' | 'jersey_number' | 'position'>;
