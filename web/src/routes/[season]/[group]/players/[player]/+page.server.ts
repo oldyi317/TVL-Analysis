@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { findAdvanced, findDistribution, playerGameLog } from '#lib/advanced.js';
+import { findAdvanced, findDistribution, inPrPool, playerGameLog } from '#lib/advanced.js';
 import advancedJson from '#lib/data/player_advanced.json';
 import boxScoresJson from '#lib/data/box_scores.json';
 import type { BoxScoresData, PlayerAdvancedData } from '#lib/data/types.js';
@@ -16,7 +16,7 @@ export const load: PageServerLoad = ({ params }) => {
 	if (!found) error(404, '這一季沒有這位球員的登錄');
 	const advanced = findAdvanced(advancedJson as PlayerAdvancedData, season.cup_id, group, found.player.player_id);
 	const distribution =
-		advanced?.position && !advanced.insufficient_sets
+		inPrPool(advanced)
 			? findDistribution(advancedJson as PlayerAdvancedData, season.cup_id, group, advanced.position)
 			: undefined;
 	return {

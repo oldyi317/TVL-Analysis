@@ -5,6 +5,7 @@ import {
 	defaultTrendMetric,
 	distributionOption,
 	headlineStats,
+	inPrPool,
 	noPrReason,
 	playerGameLog,
 	toGameStats,
@@ -274,6 +275,25 @@ describe('noPrReason', () => {
 		expect(noPrReason({ insufficient_sets: false, position: null })).toContain('無登錄位置');
 		expect(noPrReason({ insufficient_sets: false, position: 'OH' })).toBeNull();
 		expect(noPrReason(null)).toContain('沒有進階數據');
+	});
+});
+
+describe('inPrPool', () => {
+	const cases = {
+		沒有資料: null,
+		局數不足: { insufficient_sets: true, position: 'OH' },
+		無位置: { insufficient_sets: false, position: null },
+		正常: { insufficient_sets: false, position: 'OH' }
+	};
+	it('只有局數足夠且有位置才進池', () => {
+		expect(inPrPool(cases.沒有資料)).toBe(false);
+		expect(inPrPool(cases.局數不足)).toBe(false);
+		expect(inPrPool(cases.無位置)).toBe(false);
+		expect(inPrPool(cases.正常)).toBe(true);
+	});
+
+	it('與 noPrReason 一致：noPrReason 為 null 若且唯若進池', () => {
+		for (const x of Object.values(cases)) expect(noPrReason(x) === null).toBe(inPrPool(x));
 	});
 });
 
