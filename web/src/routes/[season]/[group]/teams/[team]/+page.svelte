@@ -7,7 +7,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import MatchLink from '#lib/components/MatchLink.svelte';
 	import PlayerLink from '#lib/components/PlayerLink.svelte';
-	import { stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
+	import { isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -20,7 +20,7 @@
 		`${resolve('/[season]/[group]/teams', { season: data.season.name, group: data.group })}/`
 	);
 
-	const hasUnplayed = $derived(data.matches.some((m) => m.sets.length === 0));
+	const hasUnplayed = $derived(data.matches.some((m) => !isPlayed(m)));
 
 	function matchHref(gameId: number): string {
 		return `${resolve('/[season]/[group]/matches/[game]', {

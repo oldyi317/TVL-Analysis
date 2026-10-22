@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupByMonth, latestMatchDay, nextMatch, setsWon, winnerSide, winProbPercent } from './match.js';
+import { groupByMonth, isPlayed, latestMatchDay, nextMatch, setsWon, winnerSide, winProbPercent } from './match.js';
 
 const sets: [number, number][] = [
 	[25, 20],
@@ -8,6 +8,15 @@ const sets: [number, number][] = [
 	[25, 27],
 	[15, 11],
 ];
+
+describe('isPlayed', () => {
+	it('沒有任何局比分算未開打', () => {
+		expect(isPlayed({ sets: [] })).toBe(false);
+	});
+	it('有局比分算已開打', () => {
+		expect(isPlayed({ sets: [[25, 20]] })).toBe(true);
+	});
+});
 
 describe('setsWon', () => {
 	it('數每一局贏家', () => {

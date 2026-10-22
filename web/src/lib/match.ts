@@ -3,6 +3,10 @@ import type { SeasonTeam } from '#lib/site.js';
 export type SetScore = [number, number];
 export type Side = 'home' | 'away';
 
+export function isPlayed(match: { sets: readonly unknown[] }): boolean {
+	return match.sets.length > 0;
+}
+
 // 各局比分 → 雙方贏得的局數
 export function setsWon(sets: readonly SetScore[]): [number, number] {
 	let home = 0;
@@ -70,7 +74,7 @@ type Dated = { date: string; start_time?: string | null; sets: readonly unknown[
 export function latestMatchDay<T extends Dated>(
 	matches: readonly T[]
 ): { date: string; matches: T[] } | null {
-	const played = matches.filter((m) => m.sets.length > 0);
+	const played = matches.filter((m) => isPlayed(m));
 	if (played.length === 0) return null;
 	const date = played.reduce((max, m) => (m.date > max ? m.date : max), played[0].date);
 	return { date, matches: played.filter((m) => m.date === date) };
@@ -83,7 +87,7 @@ function startsBefore(a: Dated, b: Dated): boolean {
 }
 
 export function nextMatch<T extends Dated>(matches: readonly T[]): T | null {
-	const unplayed = matches.filter((m) => m.sets.length === 0);
+	const unplayed = matches.filter((m) => !isPlayed(m));
 	if (unplayed.length === 0) return null;
 	return unplayed.reduce((min, m) => (startsBefore(m, min) ? m : min));
 }

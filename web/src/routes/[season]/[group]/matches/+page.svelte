@@ -3,7 +3,7 @@
 	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import MatchLink from '#lib/components/MatchLink.svelte';
-	import { stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
+	import { isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -43,7 +43,7 @@
 		return () => window.removeEventListener('scroll', onScroll);
 	});
 
-	const hasUnplayed = $derived(data.months.some((month) => month.matches.some((m) => m.sets.length === 0)));
+	const hasUnplayed = $derived(data.months.some((month) => month.matches.some((m) => !isPlayed(m))));
 
 	const matchHref = (game: number) =>
 		`${resolve('/[season]/[group]/matches/[game]', {

@@ -6,6 +6,7 @@
 import pandas as pd
 
 from src.utils.constants import LEGACY_TEAM_IDS
+from src.utils.match_status import has_result
 
 
 GAME_STAT_COLS = ["ASR", "GP_pct", "DIG_pct", "BLK_per_set", "ACE_pct"]
@@ -53,8 +54,7 @@ def build_match_labels(matches: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     for _, m in matches.iterrows():
         if m["is_golden_set"] == 1:
             continue
-        if (pd.isna(m["home_sets_won"]) or pd.isna(m["away_sets_won"])
-                or m["home_sets_won"] == m["away_sets_won"]):
+        if not has_result(m["home_sets_won"], m["away_sets_won"]) or m["home_sets_won"] == m["away_sets_won"]:
             report["invalid_skipped"] += 1
             continue
         if pd.isna(m["home_team_id"]) or pd.isna(m["away_team_id"]):
