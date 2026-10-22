@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import {
 	BASE,
 	currentSeason as current,
@@ -9,7 +9,14 @@ import {
 	seasonsData
 } from './helpers.js';
 
-type Team = { team_id: number; group: string; name: string; is_active: boolean; cup_ids: number[] };
+type Team = {
+	team_id: number;
+	group: string;
+	name: string;
+	short_name: string;
+	is_active: boolean;
+	cup_ids: number[];
+};
 const teams: Team[] = readJson('teams').teams;
 const matchGroups = readJson('matches').matches;
 const rosters = readJson('rosters').rosters;
@@ -107,7 +114,7 @@ test('現役球隊頁頁首有隊徽圖且載入成功', async ({ page }) => {
 	expect(active.length).toBeGreaterThan(0);
 	for (const team of active) {
 		await page.goto(`${BASE}/${current}/men/teams/${team.team_id}/`);
-		const logo = page.locator('header img.logo');
+		const logo = page.locator('header .badge img');
 		await expect(logo).toHaveAttribute('alt', `${team.name}隊徽`);
 		expect(await logo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
 	}
@@ -191,4 +198,26 @@ test('歷史賽季球隊頁的季內賽事顯示當季隊名', async ({ page }) 
 	const cards = page.locator('.card-link');
 	await expect(cards.first()).toContainText('臺北國北獅');
 	await expect(cards.filter({ hasText: '臺北鳳凰' })).toHaveCount(0);
+});
+
+test('隊徽載入失敗時落回縮寫文字，隊頁隊徽仍帶名稱', async ({ page }) => {
+	await page.route('**/logos/*.png', (route) => route.fulfill({ status: 404 }));
+	const team = menIn(currentCup).find((t) => t.is_active);
+	expect(team).toBeDefined();
+	// 縮寫可能拆成兩個 span，去掉空白再比
+	const abbreviation = async (badge: Locator) => (await badge.textContent())?.replace(/\s/g, '');
+
+	await page.goto(`${BASE}/${current}/men/teams/${team!.team_id}/`);
+	const badge = page.locator('header .badge');
+	await expect(badge).toHaveAttribute('role', 'img');
+	await expect(badge).toHaveAttribute('aria-label', `${team!.name}隊徽`);
+	expect(await abbreviation(badge)).toBe(team!.short_name);
+	await expect(page.locator('.badge img')).toHaveCount(0);
+
+	await page.goto(`${BASE}/${current}/men/standings/`);
+	// 先等所有 img 都觸發 onerror 被移除，再讀文字（textContent 不會自動等待）
+	await expect(page.locator('.badge img')).toHaveCount(0);
+	const badges = page.locator('.badge');
+	expect(await badges.count()).toBeGreaterThan(0);
+	for (const b of await badges.all()) expect(await abbreviation(b)).not.toBe('');
 });
