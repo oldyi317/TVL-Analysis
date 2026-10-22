@@ -18,7 +18,7 @@ class UnknownTeamError(ValueError):
 def apply_team_seed(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(teams)")}
     if "short_name" not in cols:
-        raise RuntimeError("teams 表 schema 過舊（缺 short_name），請以 sql/schema.sql 重建資料庫。")
+        raise RuntimeError("teams 表 schema 過舊（缺 short_name），請改用 repo 內已遷移的 data/db/tvl_database.db（git checkout 還原）。")
     conn.executescript(TEAM_SEED_PATH.read_text(encoding="utf-8"))
 
 

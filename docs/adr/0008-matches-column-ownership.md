@@ -33,7 +33,7 @@ date: 2026-10-22
 
 ## 不在範圍
 
-- 一次性 migration 腳本已於 #66 移除。
+- 舊 schema 的升級路徑：一次性 migration 腳本已於 #66 移除，以 repo 內已遷移的 `.db` 為準。
 
 ## Consequences
 
