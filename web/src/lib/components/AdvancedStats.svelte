@@ -64,9 +64,9 @@
 	{#if open}
 		<section class="card">
 			<h3>PR 值</h3>
-			{#if noPrReason || !advanced?.pr}
-				<DataNote text={noPrReason ?? '本季沒有進階數據'} />
-			{:else}
+			{#if noPrReason}
+				<DataNote text={noPrReason} />
+			{:else if advanced}
 				<p class="sub">與本季同組別 {positionText} {distribution?.player_count ?? '—'} 位球員比較</p>
 				<table aria-label="PR 值">
 					<thead>

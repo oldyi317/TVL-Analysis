@@ -3,8 +3,8 @@ import { BASE, currentSeason, findSeason, readJson } from './helpers.js';
 
 type Adv = { player_id: number; cup_id: number; group: string; position: string | null; insufficient_sets: boolean };
 type Player = { player_id: number; group: string; seasons: { cup_id: number; games: number }[] };
-// 開季初當季還沒有球員數據，退回最近一個有球員的賽季
-const picked = findSeason('players');
+// 開季初當季還沒有進階數據，退回最近一個有進階數據的賽季
+const picked = findSeason('advanced');
 const cup: number = picked?.cupId ?? 0;
 const current = picked?.season ?? currentSeason;
 const advanced: Adv[] = readJson('player_advanced').players;
@@ -112,4 +112,5 @@ test('沒有 PR 值的球員（局數不足或無位置）展開後看到說明'
 	const reason = a!.insufficient_sets ? '出賽局數不足 5 局' : '本季無登錄位置';
 	await expect(page.getByRole('note').filter({ hasText: reason })).toBeVisible();
 	await expect(page.getByRole('table', { name: 'PR 值' })).toHaveCount(0);
+	await expect(page.getByRole('heading', { name: '同位置分佈' })).toHaveCount(0);
 });
