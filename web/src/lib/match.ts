@@ -74,7 +74,7 @@ type Dated = { date: string; start_time?: string | null; sets: readonly unknown[
 export function latestMatchDay<T extends Dated>(
 	matches: readonly T[]
 ): { date: string; matches: T[] } | null {
-	const played = matches.filter((m) => isPlayed(m));
+	const played = matches.filter(isPlayed);
 	if (played.length === 0) return null;
 	const date = played.reduce((max, m) => (m.date > max ? m.date : max), played[0].date);
 	return { date, matches: played.filter((m) => m.date === date) };

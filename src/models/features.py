@@ -54,7 +54,8 @@ def build_match_labels(matches: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     for _, m in matches.iterrows():
         if m["is_golden_set"] == 1:
             continue
-        if not has_result(m["home_sets_won"], m["away_sets_won"]) or m["home_sets_won"] == m["away_sets_won"]:
+        if (not has_result(m["home_sets_won"], m["away_sets_won"])
+                or m["home_sets_won"] == m["away_sets_won"]):
             report["invalid_skipped"] += 1
             continue
         if pd.isna(m["home_team_id"]) or pd.isna(m["away_team_id"]):

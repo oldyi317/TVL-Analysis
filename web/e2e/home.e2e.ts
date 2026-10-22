@@ -8,7 +8,7 @@ const matchesData = JSON.parse(readFileSync('src/lib/data/matches.json', 'utf8')
 const menMatches: { date: string; sets: unknown[] }[] = matchesData.matches.find(
 	(m: { cup_id: number; group: string }) => m.cup_id === cupId && m.group === 'men'
 ).matches;
-const played = menMatches.filter((m) => isPlayed(m));
+const played = menMatches.filter(isPlayed);
 const latestDate = played.map((m) => m.date).sort().at(-1);
 const hasUpcoming = menMatches.some((m) => !isPlayed(m));
 

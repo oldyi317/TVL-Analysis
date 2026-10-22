@@ -11,7 +11,7 @@ export type Source = {
 export const KINDS: Record<Kind, { file: string; cups: (r: any) => number[] }> = {
 	played: {
 		file: 'matches',
-		cups: (r) => (r.matches.some((m: { sets: unknown[] }) => isPlayed(m)) ? [r.cup_id] : [])
+		cups: (r) => (r.matches.some(isPlayed) ? [r.cup_id] : [])
 	},
 	players: { file: 'players', cups: (r) => r.seasons.map((s: { cup_id: number }) => s.cup_id) },
 	teams: { file: 'teams', cups: (r) => r.cup_ids },
