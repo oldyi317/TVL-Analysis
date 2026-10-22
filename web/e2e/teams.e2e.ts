@@ -64,16 +64,17 @@ test('2024-25 男子組列表：非現役隊也整列可點', async ({ page }) =
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
-test('2024-25 男子組球隊頁點進連莊，看到名單', async ({ page }) => {
-	const team = menIn(OLD_CUP).find((t) => !t.is_active && t.name === '連莊')!;
+test('2024-25 男子組球隊頁：點進非現役隊，看到名單', async ({ page }) => {
+	const team = menIn(OLD_CUP).find(
+		(t) => !t.is_active && latestWeekOf(OLD_CUP, 'men', t.team_id) !== undefined
+	)!;
 	expect(team).toBeDefined();
 	await page.goto(`${BASE}/${OLD_SEASON}/men/teams/`);
-	await page.locator('li a', { hasText: '連莊' }).click();
+	await page.locator('li a', { hasText: team.name }).click();
 	await expect(page).toHaveURL(new RegExp(`/${OLD_SEASON}/men/teams/${team.team_id}/$`));
-	await expect(page.getByRole('heading', { level: 1 })).toHaveText('連莊');
-	const latest = latestWeekOf(OLD_CUP, 'men', team.team_id);
-	expect(latest).toBeDefined();
-	await expect(page.locator('ul.players li')).toHaveCount(latest!.players.length);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText(team.name);
+	const latest = latestWeekOf(OLD_CUP, 'men', team.team_id)!;
+	await expect(page.locator('ul.players li')).toHaveCount(latest.players.length);
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
