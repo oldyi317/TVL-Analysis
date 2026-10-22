@@ -23,6 +23,7 @@ import {
 	positionLabel,
 	playerEntries,
 	playerName,
+	seasons,
 	playersByTeam,
 	standingsFor,
 	teamEntries,
@@ -223,8 +224,8 @@ describe('matchesFor / findMatch', () => {
 describe('findTeam', () => {
 	const inactive = teams.find((t) => !t.is_active)!;
 	const active = teams.find((t) => t.is_active)!;
-	it('非現役隊回 undefined', () => {
-		expect(findTeam(inactive.cup_ids[0], inactive.group, inactive.team_id)).toBeUndefined();
+	it('非現役隊在其出賽賽季可查到', () => {
+		expect(findTeam(inactive.cup_ids[0], inactive.group, inactive.team_id)).toBe(inactive);
 	});
 	it('該季不在 cup_ids 回 undefined', () => {
 		expect(findTeam(-1, active.group, active.team_id)).toBeUndefined();
@@ -235,16 +236,21 @@ describe('findTeam', () => {
 });
 
 describe('teamEntries', () => {
-	it('只含現役且該季有的隊，不含非現役隊', () => {
+	it('含該季有的隊（包含非現役隊），且每筆都查得到', () => {
 		const entries = teamEntries();
 		expect(entries.length).toBeGreaterThan(0);
 		for (const e of entries) {
 			expect(findTeam(findSeason(e.season)!.cup_id, e.group, Number(e.team))).toBeDefined();
 		}
+	});
+	it('非現役隊在其出賽賽季有 entry', () => {
 		const inactive = teams.find((t) => !t.is_active)!;
-		expect(
-			entries.some((e) => e.group === inactive.group && e.team === String(inactive.team_id))
-		).toBe(false);
+		const season = seasons.find((s) => s.cup_id === inactive.cup_ids[0])!;
+		expect(teamEntries()).toContainEqual({
+			season: season.name,
+			group: inactive.group,
+			team: String(inactive.team_id)
+		});
 	});
 });
 

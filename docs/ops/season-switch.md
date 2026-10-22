@@ -31,7 +31,7 @@
 - [ ] 隊徽（有新隊伍或拿到舊隊圖才需要動）：原圖放 `assets/team_logo/<隊名>.png`（jpg 也可，縮圖一律輸出 png），縮成最長邊 512px 存到
       `web/static/logos/`。檔名規則：`<men|women>-<team_id>.png` 是現行隊徽；`<men|women>-<team_id>-<cup_id>.png` 是該季專用隊徽
       （該季當季隊名與現行不同時才會用到，見 ADR 0005；前端 `seasonTeam` 先找該季專用圖，沒有且當季隊名等於現行隊名才用現行圖，否則顯示隊色圓標）。
-      **有圖就產，不分現役與否**：非現役球隊的圖會出現在歷史賽季的戰績與賽事，但仍不給球隊頁；缺圖的隊顯示隊色圓標，不會壞圖。
+      **有圖就產，不分現役與否**：非現役球隊的圖會出現在歷史賽季的戰績與賽事，且在其出賽賽季有球隊頁（#71）；缺圖的隊顯示隊色圓標，不會壞圖。
       縮圖一行：`~/venvs/tvl/bin/python -c "from PIL import Image; im=Image.open('assets/team_logo/X.png').convert('RGBA'); im.thumbnail((512,512)); im.save('web/static/logos/men-N.png', optimize=True)"`。
       `src/lib/data/logos.json`（隊徽檔名清單）由 `npm run gen` 掃 `static/logos` 產生、不進 git，`check`／`build` 前會自動重跑；本機要先跑單元測試就手動 `npm run gen`。原圖與縮圖一併提交。
 - [ ] `STANDINGS_NOTES`（src/export/site_data.py）：以 `(cup_id, gender)` 標記官網收錄不全的

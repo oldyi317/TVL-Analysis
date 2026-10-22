@@ -14,4 +14,4 @@ date: 2026-10-20
 - `teams.schema.json` 與鎖 teams.json 欄位的測試隨 `names_by_cup` 更新；`team_aliases` 與 ADR-0002 的解析規則不變。
 - 改名變成三個動作：`teams` 更新現行隊名、`team_season_names` 補上一季、舊隊徽改名加 cup 後綴；寫進 `docs/ops/season-switch.md`。
 - 隊色維持跨季一色（CONTEXT.md「隊色」），只有隊名與隊徽分季。
-- 非現役球隊有圖就產隊徽，仍不給球隊頁。
+- 非現役球隊有圖就產隊徽，原本不給球隊頁（2026-10-22 起非現役隊在其出賽賽季亦有球隊頁，#71）。
