@@ -282,9 +282,111 @@ def ext_team_map_for(cup_id: int) -> dict:
     return EXT_TEAM_MAPS[cup_id]
 
 
+def collect_player_rows(
+    conn: sqlite3.Connection,
+    season: Season,
+    resolver: PlayerResolver,
+    ext_team_id: int,
+    db_team_id: int,
+    gender: str,
+    p: dict,
+    cup_id: int,
+) -> tuple[list[tuple], int]:
+    """單一球員：解析身分 → 抓單場數據 → 去重 → 反查登錄，回傳 (待寫入 rows, 已存在而跳過的筆數)。"""
+    name = p["name"]
+    player_id = resolver.resolve(db_team_id, gender, name, p.get("jersey_number"))
+    if player_id is None:
+        return [], 0
+
+    try:
+        records = fetch_player_stats(season, ext_team_id, p["ext_player_id"])
+    except Exception as e:
+        logger.error("抓取球員 [%s] 數據失敗: %s", name, e)
+        return [], 0
+
+    if not records:
+        return [], 0
+
+    # 去重：不論全量或增量，皆只插入尚未存在的紀錄（含黃金局區分）
+    new_records = filter_new_records(conn, player_id, records)
+    skipped = len(records) - len(new_records)
+
+    # 逐筆解析 registration_id（Phase 2：player_match_stats 改掛
+    # registration_id，不同筆記錄可能落在不同週次，須逐筆反查）
+    rows = [
+        (
+            resolve_registration_for_stats(conn, player_id, db_team_id, gender, r["match_date"], cup_id),
+            r["match_date"], r["opponent"], r["sets_played"],
+            r["attack_total"], r["attack_points"], r["block_points"],
+            r["serve_total"], r["serve_points"],
+            r["receive_total"], r["receive_excellent"],
+            r["dig_total"], r["dig_excellent"],
+            r["set_total"], r["set_excellent"], r["total_points"],
+            r["is_golden_set"],
+        )
+        for r in new_records
+    ]
+    return rows, skipped
+
+
+def insert_stat_rows(conn: sqlite3.Connection, rows: list[tuple]) -> None:
+    """批次寫入 player_match_stats（17 欄，第一欄為 registration_id）。"""
+    conn.executemany(
+        """INSERT INTO player_match_stats
+           (registration_id, match_date, opponent, sets_played,
+            attack_total, attack_points, block_points,
+            serve_total, serve_points,
+            receive_total, receive_excellent,
+            dig_total, dig_excellent,
+            set_total, set_excellent, total_points,
+            is_golden_set)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        rows,
+    )
+
+
+def print_summary(
+    conn: sqlite3.Connection,
+    incremental: bool,
+    total_inserted: int,
+    total_skipped: int,
+    new_players: int,
+) -> None:
+    total_rows = conn.execute(
+        "SELECT COUNT(*) FROM player_match_stats"
+    ).fetchone()[0]
+
+    total_players = conn.execute(
+        "SELECT COUNT(*) FROM players"
+    ).fetchone()[0]
+
+    mode_label = "增量" if incremental else "全量"
+    print(f"\n===== {mode_label}寫入完成 =====")
+    print(f"player_match_stats 總筆數：{total_rows}")
+    print(f"本次新增：{total_inserted} 筆")
+    print(f"跳過（已存在）：{total_skipped} 筆")
+    print(f"動態新增球員數：{new_players}")
+    print(f"players 表總人數：{total_players}")
+
+    print(f"\n===== 前 3 筆資料 =====")
+    df = pd.read_sql_query(
+        """SELECT s.stat_id, p.name, s.match_date, s.opponent,
+                  s.sets_played, s.attack_points, s.block_points,
+                  s.serve_points, s.total_points
+           FROM player_match_stats s
+           JOIN roster_registrations r ON s.registration_id = r.registration_id
+           JOIN players p ON r.player_id = p.player_id
+           LIMIT 3""",
+        conn,
+    )
+    print(df.to_string(index=False))
+
+
 def main(incremental: bool = False, cup_id: int = CUP_ID):
     """
     主流程：抓取所有球員單場數據並寫入 DB。
+
+    全量與增量皆為補缺不清表，旗標僅影響訊息。
 
     Parameters
     ----------
@@ -316,67 +418,18 @@ def main(incremental: bool = False, cup_id: int = CUP_ID):
         logger.info(
             "TeamID=%d: %d 位球員", ext_team_id, len(players)
         )
+        db_team_id, gender = ext_team_map[ext_team_id]
 
         for p in players:
-            ext_pid = p["ext_player_id"]
-            name = p["name"]
-            jersey = p.get("jersey_number")
-
-            db_team_id, gender = ext_team_map[ext_team_id]
-
-            player_id = resolver.resolve(db_team_id, gender, name, jersey)
-            if player_id is None:
-                continue
-
-            # 抓取單場數據
-            try:
-                records = fetch_player_stats(season, ext_team_id, ext_pid)
-            except Exception as e:
-                logger.error(
-                    "抓取球員 [%s] 數據失敗: %s", name, e
-                )
-                continue
-
-            if not records:
-                continue
-
-            # 去重：不論全量或增量，皆只插入尚未存在的紀錄（含黃金局區分）
-            new_records = filter_new_records(conn, player_id, records)
-            total_skipped += len(records) - len(new_records)
-            records = new_records
-            if not records:
-                continue
-
-            # 逐筆解析 registration_id（Phase 2：player_match_stats 改掛
-            # registration_id，不同筆記錄可能落在不同週次，須逐筆反查）
-            rows_to_insert = [
-                (
-                    resolve_registration_for_stats(conn, player_id, db_team_id, gender, r["match_date"], cup_id),
-                    r["match_date"], r["opponent"], r["sets_played"],
-                    r["attack_total"], r["attack_points"], r["block_points"],
-                    r["serve_total"], r["serve_points"],
-                    r["receive_total"], r["receive_excellent"],
-                    r["dig_total"], r["dig_excellent"],
-                    r["set_total"], r["set_excellent"], r["total_points"],
-                    r["is_golden_set"],
-                )
-                for r in records
-            ]
-
-            # 批次寫入
-            conn.executemany(
-                """INSERT INTO player_match_stats
-                   (registration_id, match_date, opponent, sets_played,
-                    attack_total, attack_points, block_points,
-                    serve_total, serve_points,
-                    receive_total, receive_excellent,
-                    dig_total, dig_excellent,
-                    set_total, set_excellent, total_points,
-                    is_golden_set)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                rows_to_insert,
+            rows, skipped = collect_player_rows(
+                conn, season, resolver, ext_team_id, db_team_id, gender, p, cup_id
             )
-            total_inserted += len(records)
+            total_skipped += skipped
+            if not rows:
+                continue
+
+            insert_stat_rows(conn, rows)
+            total_inserted += len(rows)
 
             time.sleep(0.5)
 
@@ -384,35 +437,7 @@ def main(incremental: bool = False, cup_id: int = CUP_ID):
 
     resolver.log_reports()
 
-    # 統計與驗證
-    total_rows = conn.execute(
-        "SELECT COUNT(*) FROM player_match_stats"
-    ).fetchone()[0]
-
-    total_players = conn.execute(
-        "SELECT COUNT(*) FROM players"
-    ).fetchone()[0]
-
-    mode_label = "增量" if incremental else "全量"
-    print(f"\n===== {mode_label}寫入完成 =====")
-    print(f"player_match_stats 總筆數：{total_rows}")
-    print(f"本次新增：{total_inserted} 筆")
-    print(f"跳過（已存在）：{total_skipped} 筆")
-    print(f"動態新增球員數：{resolver.new_players}")
-    print(f"players 表總人數：{total_players}")
-
-    print(f"\n===== 前 3 筆資料 =====")
-    df = pd.read_sql_query(
-        """SELECT s.stat_id, p.name, s.match_date, s.opponent,
-                  s.sets_played, s.attack_points, s.block_points,
-                  s.serve_points, s.total_points
-           FROM player_match_stats s
-           JOIN roster_registrations r ON s.registration_id = r.registration_id
-           JOIN players p ON r.player_id = p.player_id
-           LIMIT 3""",
-        conn,
-    )
-    print(df.to_string(index=False))
+    print_summary(conn, incremental, total_inserted, total_skipped, resolver.new_players)
 
     conn.close()
     logger.info("事實表載入完成：%s", DB_PATH)

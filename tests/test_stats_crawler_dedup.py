@@ -8,7 +8,8 @@ teams/players/roster_registrations 三層再掛 stats。
 import sqlite3
 from pathlib import Path
 
-from src.etl.stats_crawler import filter_new_records
+from src.etl import stats_crawler
+from src.etl.stats_crawler import PlayerResolver, collect_player_rows, insert_stat_rows
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "sql" / "schema.sql"
 
@@ -34,40 +35,7 @@ def _make_conn(tmp_db_path) -> tuple[sqlite3.Connection, int]:
     return conn, player_id
 
 
-def _insert_records(conn: sqlite3.Connection, player_id: int, records: list[dict]) -> None:
-    """與 stats_crawler.main() 相同的批次寫入邏輯（Phase 2：掛 registration_id）。"""
-    registration_id = conn.execute(
-        "SELECT registration_id FROM roster_registrations WHERE player_id = ?",
-        (player_id,),
-    ).fetchone()[0]
-    conn.executemany(
-        """INSERT INTO player_match_stats
-           (registration_id, match_date, opponent, sets_played,
-            attack_total, attack_points, block_points,
-            serve_total, serve_points,
-            receive_total, receive_excellent,
-            dig_total, dig_excellent,
-            set_total, set_excellent, total_points,
-            is_golden_set)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        [
-            (
-                registration_id,
-                r["match_date"], r["opponent"], r["sets_played"],
-                r["attack_total"], r["attack_points"], r["block_points"],
-                r["serve_total"], r["serve_points"],
-                r["receive_total"], r["receive_excellent"],
-                r["dig_total"], r["dig_excellent"],
-                r["set_total"], r["set_excellent"], r["total_points"],
-                r["is_golden_set"],
-            )
-            for r in records
-        ],
-    )
-    conn.commit()
-
-
-def test_filter_new_records_prevents_duplicate_insert_on_rerun(tmp_db_path):
+def test_filter_new_records_prevents_duplicate_insert_on_rerun(tmp_db_path, monkeypatch):
     conn, player_id = _make_conn(tmp_db_path)
     try:
         fake_record = {
@@ -89,15 +57,23 @@ def test_filter_new_records_prevents_duplicate_insert_on_rerun(tmp_db_path):
             "is_golden_set": 0,
         }
 
-        # 第一次：同一筆紀錄應成功寫入（走真正的 filter_new_records + insert 路徑）
-        new_records = filter_new_records(conn, player_id, [fake_record])
-        assert len(new_records) == 1
-        _insert_records(conn, player_id, new_records)
+        monkeypatch.setattr(stats_crawler, "fetch_player_stats", lambda *a: [fake_record])
+        resolver = PlayerResolver(conn, 21)
+        p = {"ext_player_id": 1, "name": "測試球員", "jersey_number": 5}
+
+        def run_once():
+            rows, skipped = collect_player_rows(conn, None, resolver, 1, 1, "M", p, 21)
+            insert_stat_rows(conn, rows)
+            conn.commit()
+            return rows, skipped
+
+        # 第一次：同一筆紀錄應成功寫入
+        rows, skipped = run_once()
+        assert len(rows) == 1 and skipped == 0
 
         # 第二次：以完全相同的 records 重跑（模擬全量模式重複執行），應被去重濾掉
-        new_records_again = filter_new_records(conn, player_id, [fake_record])
-        assert new_records_again == []
-        _insert_records(conn, player_id, new_records_again)
+        rows, skipped = run_once()
+        assert rows == [] and skipped == 1
 
         total_rows = conn.execute(
             "SELECT COUNT(*) FROM player_match_stats"
