@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { BASE, currentSeason, findSeason, readJson, seasonsData } from './helpers.js';
+import { isPlayed } from '../src/lib/match.js';
 
 // 開季初當季還沒有已完賽場次，退回最近一個有已完賽場次的賽季
 const picked = findSeason('played');
@@ -63,7 +64,7 @@ test('黃金決勝局在卡片與詳情都標明', async ({ page }) => {
 
 test('點卡片進詳情：逐局比分表、返回連結', async ({ page }) => {
 	test.skip(!picked, noPlayed);
-	const first = menMatches.find((m) => m.sets.length > 0)!;
+	const first = menMatches.find(isPlayed)!;
 	await page.goto(URL);
 	await page.locator(`.card-link[href$="/matches/${first.game_id}/"]`).click();
 	await expect(page).toHaveURL(/\/matches\/\d+\/$/);

@@ -10,6 +10,7 @@ from src.export.player_advanced import compute_advanced, distributions
 from src.export.player_seasons import STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
 from src.export.standings import compute_standings
 from src.utils.db_config import DB_PATH, PROJECT_ROOT, get_connection
+from src.utils.match_status import HAS_RESULT_WHERE
 from src.utils.teams import UnknownTeamError, resolve_team
 
 DEFAULT_OUT_DIR = PROJECT_ROOT / "web" / "src" / "lib" / "data"
@@ -111,13 +112,13 @@ def _group_standings(conn: sqlite3.Connection, cup_id: int, gender: str) -> list
         (cup_id, gender, cup_id, gender),
     ).fetchall()
     results = conn.execute(
-        """
+        f"""
         SELECT home_team_id, away_team_id, home_sets_won, away_sets_won,
                home_set1, home_set2, home_set3, home_set4, home_set5,
                away_set1, away_set2, away_set3, away_set4, away_set5
         FROM matches
         WHERE cup_id = ? AND gender = ? AND is_golden_set = 0 AND round_name LIKE '例行賽%'
-          AND home_sets_won IS NOT NULL AND away_sets_won IS NOT NULL
+          AND {HAS_RESULT_WHERE}
         ORDER BY match_date, game_id
         """,
         (cup_id, gender),

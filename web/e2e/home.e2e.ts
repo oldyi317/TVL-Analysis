@@ -1,15 +1,16 @@
 import { expect, test } from '@playwright/test';
 import { BASE, currentSeason as current, findSeason, seasonsData } from './helpers.js';
 import { readFileSync } from 'node:fs';
+import { isPlayed } from '../src/lib/match.js';
 
 const cupId: number = seasonsData.current_cup_id;
 const matchesData = JSON.parse(readFileSync('src/lib/data/matches.json', 'utf8'));
 const menMatches: { date: string; sets: unknown[] }[] = matchesData.matches.find(
 	(m: { cup_id: number; group: string }) => m.cup_id === cupId && m.group === 'men'
 ).matches;
-const played = menMatches.filter((m) => m.sets.length > 0);
+const played = menMatches.filter(isPlayed);
 const latestDate = played.map((m) => m.date).sort().at(-1);
-const hasUpcoming = menMatches.some((m) => m.sets.length === 0);
+const hasUpcoming = menMatches.some((m) => !isPlayed(m));
 
 test('根路徑首次導向當季男子組首頁', async ({ page }) => {
 	await page.goto(`${BASE}/`);
