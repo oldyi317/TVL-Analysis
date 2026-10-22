@@ -60,8 +60,8 @@ def test_match_with_new_round_name_replaces_old_value(conn):
 
 
 @pytest.mark.parametrize("schedule_first", [True, False])
-def test_start_time_and_venue_schedule_wins_match_fills_gaps(conn, schedule_first):
-    # 任一寫入順序下，start_time／venue 都以列表頁新值為準；單場頁只在既有值為 NULL 時補缺
+def test_start_time_and_venue_schedule_wins_in_either_order(conn, schedule_first):
+    # 任一寫入順序下，start_time／venue 都以列表頁新值為準
     if schedule_first:
         upsert_schedule_match(conn, dict(SCHEDULE), CUP_ID)
         upsert_match(conn, dict(MATCH))
@@ -69,7 +69,10 @@ def test_start_time_and_venue_schedule_wins_match_fills_gaps(conn, schedule_firs
         upsert_match(conn, dict(MATCH))
         upsert_schedule_match(conn, dict(SCHEDULE), CUP_ID)
     assert _select(conn, "start_time, venue") == ("18:30", "列表頁場館")
-    # 既有值為 NULL 時，單場頁補缺
-    conn.execute("UPDATE matches SET start_time = NULL, venue = NULL")
+
+
+def test_match_fills_null_start_time_and_venue(conn):
+    # 既有 start_time／venue 為 NULL 時，單場頁才補缺
+    upsert_schedule_match(conn, dict(SCHEDULE, start_time=None, venue=None), CUP_ID)
     upsert_match(conn, dict(MATCH))
     assert _select(conn, "start_time, venue") == ("10:00", "單場頁場館")
