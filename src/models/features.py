@@ -40,7 +40,7 @@ _TEAM_MATCH_SQL = """
         WHERE s.is_golden_set = 0
         GROUP BY s.match_date, r.team_id, r.gender, s.opponent, a.team_id
     )
-    SELECT t.match_date, t.team_id, t.gender, t.opponent,
+    SELECT t.match_date, t.team_id, t.gender, t.opponent, t.opp_team_id,
            t.atk_pts, t.atk_tot, t.blk_pts, t.srv_pts, t.srv_tot,
            t.rcv_exc, t.rcv_tot, t.dig_exc, t.dig_tot, t.total_points,
            COALESCE(t.played_sets, m.home_sets_won + m.away_sets_won) AS total_sets
@@ -150,11 +150,21 @@ def add_rolling_features(labeled: pd.DataFrame) -> pd.DataFrame:
             .reset_index(drop=True))
 
 
+def _drop_legacy_rows(team_match: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """
+    舊隊賽事的標籤被 build_match_labels 跳過（#48），統計列要同步排除，否則 attach_labels 對不上。
+    對手以 team_aliases 解析出的 opp_team_id 判定；別名查無時不會被排除，會在 attach_labels 大聲失敗。
+    """
+    legacy = team_match["team_id"].isin(LEGACY_TEAM_IDS) | team_match["opp_team_id"].isin(LEGACY_TEAM_IDS)
+    return team_match[~legacy], int(legacy.sum())
+
+
 def load_labeled_history(conn) -> tuple[pd.DataFrame, dict]:
     """所有有技術統計且已有勝負的球隊單場列（訓練與賽前勝率共用的歷史）。"""
-    team_match = load_team_match_stats(conn)
+    team_match, legacy_count = _drop_legacy_rows(load_team_match_stats(conn))
     matches = pd.read_sql_query("SELECT * FROM matches", conn)
     labels, report = build_match_labels(matches)
+    report["legacy_stat_rows_skipped"] = legacy_count
     labeled = attach_labels(team_match, labels)
     report["team_match_rows"] = len(labeled)
     return labeled, report
