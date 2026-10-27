@@ -22,9 +22,9 @@
 ## 資料流
 
 ```
-官網 tvl.ctvba.org.tw ──┐  schedule_crawler / match_crawler / crawler
+官網 tvl.ctvba.org.tw ──┐  schedule_crawler / match_crawler / match_stats_writer / crawler
                         ├──▶ SQLite data/db/tvl_database.db ──▶ src.export.site_data ──▶ web/src/lib/data/*.json
-外部統計系統（逐場數據）─┘  stats_crawler                              │                        │
+外部統計系統（cup ≤21 歷史）┘  stats_crawler（已停用）                   │                        │
                                                        src.models.predict        SvelteKit build ──▶ GitHub Pages
 ```
 
@@ -46,7 +46,7 @@ TVL-Analysis/
 │   │   ├── match_crawler.py      # 官網單場頁 → matches 各局比分
 │   │   ├── crawler.py            # 官網球隊頁 → data/raw/ 賽季報名名單 CSV
 │   │   ├── db_loader.py          # 名單 CSV → players 身分層 + season_rosters
-│   │   ├── stats_crawler.py      # 外部統計系統 → 週登錄（--rosters）與逐場技術統計（--incremental）
+│   │   ├── stats_crawler.py      # 外部統計系統 → 週登錄與單場數據（歷史補抓工具，cup ≤21；ADR 0009）
 │   │   ├── cleaner.py            # 清洗規則（只標記異常，不插補）
 │   │   └── backup_db.py          # 遷移前備份 .db
 │   ├── export/
@@ -108,24 +108,24 @@ cd web && npm ci && cd ..
 
 ```bash
 python -m src.etl.schedule_crawler               # 賽程列表 → matches
-python -m src.etl.match_crawler                  # 各局比分 → matches（stats_crawler 依賴此表最新）
+python -m src.etl.match_crawler                  # 各局比分 → matches（match_stats_writer 依賴此表最新）
 python -m src.etl.official_box_score --dry-run --game-id 281 --gender F  # 官網單場數據解析與閘門檢查（不讀寫 DB）
 python -m src.etl.match_stats_writer             # 本季有比分且無統計的場次 → player_match_stats（官網單場數據，spec #75）
 python -m src.etl.match_stats_writer --force-partial 281 --gender F   # 有未解析列的場次仍寫入其餘球員（人工決定）
 python -m src.etl.crawler                        # 賽季報名名單 → data/raw/
 python -m src.etl.db_loader                      # 名單 CSV → players + season_rosters
-python -m src.etl.stats_crawler --rosters        # 週登錄 → roster_registrations
-python -m src.etl.stats_crawler --incremental    # 逐場技術統計（增量；不加參數為全量補缺）
 
-# 歷史賽季回填：指定賽季
-python -m src.etl.stats_crawler --rosters --cup-id 20
+# 歷史工具（外部統計系統，僅 cup ≤21；已自每日更新停用，cup 22 起拒絕執行，見 ADR 0009）
+python -m src.etl.stats_crawler --rosters --cup-id 20        # 週登錄 → roster_registrations
+python -m src.etl.stats_crawler --incremental --cup-id 20    # 單場數據（增量；不加 --incremental 為全量補缺）
 python -m src.etl.db_loader --csv assets/tvl_20_player_list/tvl20_rosters.csv --cup-id 20
 
 # 整套每日流程演練（不 commit）
 DRY_RUN=1 bash scripts/daily_update.sh
 ```
 
-所有爬蟲都是「補缺不清表」：schema 冪等、`db_loader` 以自然鍵 upsert、`stats_crawler` 以
+所有爬蟲都是「補缺不清表」：schema 冪等、`db_loader` 以自然鍵 upsert、`match_stats_writer`
+只寫兩隊皆無統計的場次且寫入後不覆寫、歷史工具 `stats_crawler` 以
 `match_date + is_golden_set` 逐球員去重。遇到週登錄名單外的球員會插入身分層並建 `source='backfill'`
 的登錄（背號、位置皆 NULL）。
 
@@ -164,7 +164,7 @@ npm run test:e2e                 # Playwright 手機 smoke（會先 build；第�
 
 - **自架 runner**：`bash scripts/setup_runner.sh` 在 WSL 內安裝 ephemeral runner 並以 systemd 常駐，
   每跑完一個 job 自動註銷重註冊。機器未開機時 job 排隊等 runner 上線。
-- **換季**：新賽季開打前照 `docs/ops/season-switch.md` 逐項執行（`EXT_CUP_ID` 等常數是手動更新，
+- **換季**：新賽季開打前照 `docs/ops/season-switch.md` 逐項執行（`seasons` 列等是手動更新，
   未更新前每日排程照跑但抓不到新季資料）。
 - **行尾一律 LF**（`.gitattributes` 強制）：repo 在 WSL 的 `/mnt/d` 上，Windows 工具容易轉成 CRLF。
 

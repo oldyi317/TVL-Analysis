@@ -1,14 +1,11 @@
 # 換季手動 Checklist
 
-每年新賽季開打前逐項執行。未完成前每日排程照跑但抓不到新季資料（EXT_CUP_ID
-仍指舊季），屬預期行為，不需先停 workflow。
+每年新賽季開打前逐項執行。未完成前每日排程照跑但抓不到新季資料（`seasons` 表
+還沒有新季列），屬預期行為，不需先停 workflow。單場數據與週登錄自 cup 22 起由官網
+賽事頁供應（ADR 0009），換季不再有外部統計系統的項目。
 
 ## 常數更新（src/utils/constants.py 為主）
 
-- [ ] `EXT_CUP_ID`（constants.py）：外部系統的 `.aspx` 頁面自 2026-09-29 起全部 404，
-      改用 handler 探測：`curl -s -o /dev/null -w '%{http_code}' 'http://114.35.229.141/_handler/Match.ashx?CupID=<N>&MatchID=1'`，
-      200 表示該季已有資料、500 表示沒有。cup_id 就是屆數（官網標題「企業22年」= 22），
-      外部系統還沒建新季前 `EXT_CUP_ID` 維持舊季，rosters 步驟照抓舊季即可。
 - [x] 在 `seasons` 插一列新賽季：於 `sql/schema.sql` 的種子 `INSERT OR IGNORE INTO seasons`
       加一列（`cup_id`、名稱如 `2026-27`、起訖日 `2026-07-01`～`2027-06-30`）；下次
       `match_crawler` 執行時 `init_matches_table` 重跑 schema.sql，`INSERT OR IGNORE`
@@ -21,8 +18,7 @@
       `SELECT gender, min(game_id), max(game_id) FROM matches WHERE cup_id=<新季> GROUP BY gender` 即可。
 - [x] 球隊身分（有新隊伍/改名才需要動；2026-27 已於 2026-10-15 補：鳳凰／龍邁延續 4／5，三福／可利為新 team_id 11／12，本地 team_id 自此與官網隊伍頁編號脫鉤，下季再把本項改回未勾）：改 `sql/team_seed.sql`（teams 與 team_aliases），
       再套用：`python -c "from src.utils.db_config import get_connection; from src.utils.teams import apply_team_seed; c=get_connection(); apply_team_seed(c); c.commit()"`。
-      過渡期相容：`EXT_TEAM_MAPS`（constants.py，每屆一份，新季要加一份）與
-      `TEAM_NAME_SHORT`（constants.py）仍被爬蟲使用；官網隊名的別名只補 `sql/team_seed.sql` 的 team_aliases；`OPP_SHORT_TO_TEAM` 已廢除，單場出賽名單隊名改走 team_aliases。
+      過渡期相容：`TEAM_NAME_SHORT`（constants.py）仍被爬蟲使用（`EXT_TEAM_MAPS` 止於 cup 21，新季不補，ADR 0009）；官網隊名的別名只補 `sql/team_seed.sql` 的 team_aliases；`OPP_SHORT_TO_TEAM` 已廢除，單場出賽名單隊名改走 team_aliases。
       `match_crawler` 寫入 matches 時以 `team_aliases`（`source <> 'ext_stats'`）解析 `home_team_id`/`away_team_id`；
       新隊名或新別名未進種子會 log warning 並寫 NULL，記得補 `sql/team_seed.sql`。
 
@@ -53,7 +49,7 @@
 
 ## 歷史賽季回填
 
-補舊賽季的週登錄與單場數據（cup 20 / 2024-25 已依此跑過，見 issue #34）。一次性本機執行，不進每日更新；以下命令都從 repo 根目錄跑，會打外部系統或改 DB。
+補舊賽季的週登錄與單場數據（cup 20 / 2024-25 已依此跑過，見 issue #34）。只適用 cup 21 以前：cup 22 起單場數據以官網賽事頁為唯一來源（ADR 0009），`stats_crawler` 對這些賽季會拒絕執行。一次性本機執行，不進每日更新；以下命令都從 repo 根目錄跑，會打外部系統或改 DB。
 
 - [ ] 確認外部系統該屆有資料：`curl -s -o /dev/null -w '%{http_code}' 'http://114.35.229.141/_handler/Match.ashx?CupID=<N>&MatchID=1'`，200 有資料、500 沒有（程式的 `_match_page_exists` 另要求回應 `<h3>` 含「組」，200 但標題無「組」也視為沒有）。
       cup 20 的 MatchID 為 1–102 與 201–210 有資料，其餘回 500，`fetch_match_list` 的逐號探測會處理。
@@ -65,7 +61,7 @@
       cup 20 範例：1 屏東台電、2 雲林美津濃、3 彰化三大有線、4 臺北Conti、5 龍邁建設（當季名桃園臺產）、6 連莊（以上男）、7 高雄台電、8 臺北鯨華、9 新北中纖、10 義力營造（以上女）。
       當季舊隊名要在 `team_aliases`（`sql/team_seed.sql`）才解析得出。
 - [ ] 執行順序（都是補缺不清表，可重跑）：先 `python -m src.etl.stats_crawler --rosters --cup-id <N>`（週登錄），
-      再 `python -m src.etl.stats_crawler --cup-id <N>`（單場數據）。不帶 `--cup-id` 等同每日更新，抓 `EXT_CUP_ID` 當季。
+      再 `python -m src.etl.stats_crawler --cup-id <N>`（單場數據）。不帶 `--cup-id` 抓 `EXT_CUP_ID`（固定為外部系統最後一季 21）。
       外部日期只有月/日，年份由 `seasons` 起迄推算；兩個年份都落不進區間會 warning 並略過該筆。
 - [ ] 球員對應與清單檢視：順序為「同隊姓名 → 同隊背號對 `season_rosters` → 略過（不新增身分）」。結束時 log 兩份清單：
       「姓名不同、以背號對上」與「略過（對不上賽季報名名單）」。維護者看完決定是否把略過者補進 CSV；補了就重跑 `db_loader --csv <路徑> --cup-id <N>`，再重跑上面兩步補缺。

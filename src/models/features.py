@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 GAME_STAT_COLS = ["ASR", "GP_pct", "DIG_pct", "BLK_per_set", "ACE_pct"]
 
-# total_sets：個人上場局數優先，為 NULL（官網 box score 來源）時退回該場賽事的實際局數。
+# total_sets：個人出賽局數優先，為 NULL（官網 box score 來源）時退回該場賽事的實際局數。
 _TEAM_MATCH_SQL = """
     WITH team_match AS (
         SELECT s.match_date,
@@ -68,7 +68,7 @@ def load_team_match_stats(conn) -> pd.DataFrame:
         raise ValueError(f"同日同隊對同一對手有多場賽事，無法決定局數：\n{df.loc[dup, _TEAM_MATCH_KEYS].to_string(index=False)}")
     no_sets = df[df["total_sets"].isna()]
     if not no_sets.empty:
-        logger.warning("%d 筆球隊單場統計無上場局數且對不回賽事，每局攔網以 0 計：\n%s",
+        logger.warning("%d 筆球隊單場統計無出賽局數且對不回賽事，每局攔網以 0 計：\n%s",
                        len(no_sets), no_sets[_TEAM_MATCH_KEYS].to_string(index=False))
     df["ASR"] = _pct(df["atk_pts"], df["atk_tot"])
     df["GP_pct"] = _pct(df["rcv_exc"], df["rcv_tot"])

@@ -1,7 +1,9 @@
 """
-TVL 球員單場數據爬蟲模組
+TVL 球員單場數據爬蟲模組（歷史補抓工具，已自每日更新停用；ADR 0009）
 從外部數據系統 (114.35.229.141) 抓取球員逐場統計，
 透過球員姓名與本地 DB 關聯後寫入 player_match_stats 事實表。
+只服務 cup 21 以前的賽季；cup 22 起單場數據與週登錄改由官網賽事頁（match_stats_writer）供應，
+本模組對這些賽季拒絕執行。
 """
 
 import re
@@ -19,7 +21,7 @@ from src.utils.seasons import Season, get_season, resolve_date_in_season
 from src.utils.constants import (
     EXT_BASE, EXT_CUP_ID as CUP_ID, EXT_HEADERS as HEADERS,
     EXT_TEAM_MAPS,
-    MATCH_POSITION_MAP, ROUND_STAGE_ALIAS,
+    MATCH_POSITION_MAP, OFFICIAL_BOX_SCORE_FROM_CUP, ROUND_STAGE_ALIAS,
 )
 from src.utils.teams import UnknownTeamError, resolve_team
 
@@ -276,6 +278,17 @@ def filter_new_records(
     ]
 
 
+def reject_external_path_for_official_cup(cup_id: int) -> None:
+    """cup 22 起單場數據只走官網賽事頁（ADR 0009），外部系統路徑拒絕執行，避免兩個來源寫同一季。"""
+    if cup_id < OFFICIAL_BOX_SCORE_FROM_CUP:
+        return
+    raise SystemExit(
+        f"cup_id={cup_id} 自 cup {OFFICIAL_BOX_SCORE_FROM_CUP} 起單場數據與週登錄改以官網賽事頁為唯一來源（ADR 0009），"
+        "外部統計系統路徑已停用；請改跑 python -m src.etl.match_stats_writer。"
+        "stats_crawler 僅保留給 cup 21 以前的歷史補抓（--cup-id <N>）。"
+    )
+
+
 def ext_team_map_for(cup_id: int) -> dict:
     if cup_id not in EXT_TEAM_MAPS:
         raise RuntimeError(f"cup_id={cup_id} 沒有外部 TeamID 對照表，請先在 constants.EXT_TEAM_MAPS 新增該賽季")
@@ -393,6 +406,7 @@ def main(incremental: bool = False, cup_id: int = CUP_ID):
         False = 全量模式，掃描全部場次，但一樣只插入缺少的紀錄
                 （去重鍵：match_date + is_golden_set，逐球員判斷），不清空既有資料。
     """
+    reject_external_path_for_official_cup(cup_id)
     conn = get_connection()
     init_stats_table(conn)
     season = get_season(conn, cup_id)
@@ -701,6 +715,7 @@ def find_registration_id(
 
 def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
     """批次爬取全部場次出賽名單並 upsert 進 roster_registrations。"""
+    reject_external_path_for_official_cup(cup_id)
     season = get_season(conn, cup_id)
     match_list = fetch_match_list(cup_id)
     resolver = PlayerResolver(conn, cup_id)
@@ -746,7 +761,9 @@ def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
 
 def cli(argv=None):
     import argparse
-    parser = argparse.ArgumentParser(description="TVL 球員單場數據爬蟲")
+    parser = argparse.ArgumentParser(
+        description="TVL 球員單場數據爬蟲（外部統計系統；僅限 cup 21 以前的歷史補抓，ADR 0009）",
+    )
     parser.add_argument(
         "--incremental", "-i", action="store_true",
         help="增量模式：僅新增尚未存在的比賽紀錄，不清除既有資料",
@@ -758,9 +775,11 @@ def cli(argv=None):
     )
     parser.add_argument(
         "--cup-id", type=int, default=CUP_ID,
-        help="外部統計系統賽季編號；預設當季常數（單場數據與 --rosters 皆生效）",
+        help="外部統計系統賽季編號；預設為外部系統最後一季（單場數據與 --rosters 皆生效），"
+             "cup 22 起拒絕執行，請改用 match_stats_writer",
     )
     args = parser.parse_args(argv)
+    reject_external_path_for_official_cup(args.cup_id)
     if args.rosters:
         conn = get_connection()
         try:
