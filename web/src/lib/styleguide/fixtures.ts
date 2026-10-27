@@ -1,5 +1,4 @@
-import { currentSeason, seasons, teamsIn, type SeasonTeam } from '#lib/site.js';
-import type { StandingsRow } from '#lib/components/StandingsTable.svelte';
+import { currentSeason, seasons, teamsIn, type SeasonTeam, type StandingsRow } from '#lib/site.js';
 import type { StyleMatch } from '#lib/match.js';
 
 // 樣本要五支男隊；新季剛建、尚無隊伍時退回最近有隊伍的賽季

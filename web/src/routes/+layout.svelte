@@ -5,7 +5,8 @@
 	import SiteFooter from '#lib/components/SiteFooter.svelte';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
-	import { findPlayerSeason, findSeason, findTeam, isGroup } from '#lib/site.js';
+	import { parseId, resolveSeasonGroup } from '#lib/route.js';
+	import { findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -34,22 +35,28 @@
 		return switched(path);
 	}
 
+	// 切換賽季時，目標賽季在同組別下找不找得到這個 id；切換組別一律不保留
+	function keepDetailPage(
+		param: 'season' | 'group',
+		value: string,
+		raw: string,
+		find: (cupId: number, group: Group, id: number) => unknown
+	): boolean {
+		if (param !== 'season') return false;
+		const target = resolveSeasonGroup({ season: value, group: page.params.group });
+		const id = parseId(raw);
+		if (!target || id === undefined) return false;
+		return find(target.season.cup_id, target.group, id) !== undefined;
+	}
+
 	// player_id 跨組別獨立；跨賽季則看目標賽季有沒有這位球員的登錄
 	function keepPlayerPage(param: 'season' | 'group', value: string, player: string): boolean {
-		if (param !== 'season') return false;
-		const group = page.params.group;
-		const cupId = findSeason(value)?.cup_id;
-		if (!group || !isGroup(group) || cupId === undefined) return false;
-		return findPlayerSeason(cupId, group, Number(player)) !== undefined;
+		return keepDetailPage(param, value, player, findPlayerSeason);
 	}
 
 	// team_id 跨組別是不同隊；跨賽季則看目標賽季有沒有這支現役隊
 	function keepTeamPage(param: 'season' | 'group', value: string, team: string): boolean {
-		if (param !== 'season') return false;
-		const group = page.params.group;
-		const cupId = findSeason(value)?.cup_id;
-		if (!group || !isGroup(group) || cupId === undefined) return false;
-		return findTeam(cupId, group, Number(team)) !== undefined;
+		return keepDetailPage(param, value, team, findTeam);
 	}
 
 	const group = $derived(page.params.group && isGroup(page.params.group) ? page.params.group : undefined);

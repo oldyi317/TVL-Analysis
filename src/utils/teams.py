@@ -1,6 +1,9 @@
 import sqlite3
 
 from src.utils.db_config import PROJECT_ROOT
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 TEAM_SEED_PATH = PROJECT_ROOT / "sql" / "team_seed.sql"
 
@@ -15,7 +18,7 @@ class UnknownTeamError(ValueError):
 def apply_team_seed(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(teams)")}
     if "short_name" not in cols:
-        raise RuntimeError("teams 尚未遷移，請先執行 python -m src.etl.migrate_add_team_identity")
+        raise RuntimeError("teams 表 schema 過舊（缺 short_name），請改用 repo 內已遷移的 data/db/tvl_database.db（git checkout 還原）。")
     conn.executescript(TEAM_SEED_PATH.read_text(encoding="utf-8"))
 
 
@@ -28,17 +31,22 @@ def _lookup(conn: sqlite3.Connection, alias: str, source_cond: str) -> tuple[int
     return (row[0], row[1]) if row else None
 
 
-def resolve_team(conn: sqlite3.Connection, name: str) -> tuple[int, str]:
+def resolve_team(conn: sqlite3.Connection, name: str, gender: str | None = None) -> tuple[int, str]:
     key = name.strip() if isinstance(name, str) else ""
     result = _lookup(conn, key, _NAME_SOURCE_COND)
     if result is None:
         raise UnknownTeamError(f"未知隊名：{name!r}（請補 sql/team_seed.sql 的 team_aliases）")
+    if gender is not None and result[1] != gender:
+        raise UnknownTeamError(f"隊名 {name!r} 性別為 {result[1]}，與預期的 {gender} 不符")
     return result
 
 
-def load_team_lookup(conn: sqlite3.Connection) -> dict[str, tuple[int, str]]:
-    rows = conn.execute(f"SELECT alias, team_id, gender FROM team_aliases WHERE {_NAME_SOURCE_COND}")
-    return {alias: (team_id, gender) for alias, team_id, gender in rows}
+def resolve_team_id(conn: sqlite3.Connection, name: str, gender: str, context: str = "") -> int | None:
+    try:
+        return resolve_team(conn, name, gender)[0]
+    except UnknownTeamError as e:
+        logger.warning("[%s] team_id 寫 NULL：%s", context, e)
+        return None
 
 
 def resolve_ext_team(conn: sqlite3.Connection, ext_team_id: int) -> tuple[int, str]:

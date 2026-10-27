@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { BASE, findSeason, seasonsData } from './helpers.js';
+import { isPlayed } from '../src/lib/match.js';
 
 type Game = {
 	game_id: number;
@@ -35,7 +36,7 @@ const noBoxGame = matchesData.matches
 	.filter((m: { group: string }) => m.group === 'men')
 	.flatMap((m: { cup_id: number; matches: { game_id: number; sets: unknown[] }[] }) =>
 		m.matches
-			.filter((g) => g.sets.length > 0 && !boxIds.has(g.game_id))
+			.filter((g) => isPlayed(g) && !boxIds.has(g.game_id))
 			.map((g) => ({ gameId: g.game_id, season: seasonsData.seasons.find((s: { cup_id: number }) => s.cup_id === m.cup_id)?.name }))
 	)[0];
 

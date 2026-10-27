@@ -14,7 +14,7 @@ date: 2026-10-15
 - **特徵定義不另寫**：賽前特徵必須呼叫 `src/models/features.py` 訓練時同一套函式（視窗 3 與 5 場、先 shift(1)、分組鍵 team_id+gender、排除黃金決勝局、跨季連續不重置）。改視窗、跨季或黃金局定義屬於重訓模型，另開票，不在第三期。
 - **重算與凍結**：每次 daily_update 對所有未開打賽事重算並 upsert；賽事一打完（任一局比分非 NULL）就不再重算，保留最後一次賽前值，不刪不覆寫。不存特徵快照，要除錯時重算即可。預測步驟失敗只記 log，不中止 daily_update。
 - **顯示門檻**：兩隊各有至少 1 場有技術統計的歷史賽事（不限賽季）才算得出；算不出時預測步驟不寫列，匯出為 null，卡片顯示「資料不足」。開季初會以上季末近況推估，寫在模型限制說明裡。
-- **兩個爬蟲欄位分工**：`schedule_crawler` 只寫日期、時間、場館、兩隊、round_name、game_label，永不碰比分欄；`match_crawler` 只寫各局比分與 sets_won，start_time 與 venue 以 COALESCE 保留既有值。
+- **兩個爬蟲欄位分工**：見 ADR 0008。
 - **不加 status 欄**：「未開打」的唯一定義是所有局比分皆 NULL；`match_crawler` 遇各局全空時 sets_won 寫 NULL 而非 0，前端沿用 `sets.length === 0`。
 
 ## Consequences

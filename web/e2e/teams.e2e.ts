@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import {
 	BASE,
 	currentSeason as current,
@@ -9,7 +9,14 @@ import {
 	seasonsData
 } from './helpers.js';
 
-type Team = { team_id: number; group: string; name: string; is_active: boolean; cup_ids: number[] };
+type Team = {
+	team_id: number;
+	group: string;
+	name: string;
+	short_name: string;
+	is_active: boolean;
+	cup_ids: number[];
+};
 const teams: Team[] = readJson('teams').teams;
 const matchGroups = readJson('matches').matches;
 const rosters = readJson('rosters').rosters;
@@ -48,13 +55,26 @@ test('當季男子組列表：現役隊整列可點', async ({ page }) => {
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
-test('2024-25 男子組列表：非現役隊不連結', async ({ page }) => {
+test('2024-25 男子組列表：非現役隊也整列可點', async ({ page }) => {
 	await page.goto(`${BASE}/${OLD_SEASON}/men/teams/`);
 	const all = menIn(OLD_CUP);
-	const inactive = all.filter((t) => !t.is_active);
-	expect(inactive.length).toBeGreaterThan(0);
+	expect(all.some((t) => !t.is_active)).toBe(true);
 	await expect(page.locator('li')).toHaveCount(all.length);
-	await expect(page.locator('li a')).toHaveCount(all.length - inactive.length);
+	await expect(page.locator('li a')).toHaveCount(all.length);
+	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
+});
+
+test('2024-25 男子組球隊頁：點進非現役隊，看到名單', async ({ page }) => {
+	const team = menIn(OLD_CUP).find(
+		(t) => !t.is_active && latestWeekOf(OLD_CUP, 'men', t.team_id) !== undefined
+	)!;
+	expect(team).toBeDefined();
+	await page.goto(`${BASE}/${OLD_SEASON}/men/teams/`);
+	await page.locator('li a', { hasText: team.name }).click();
+	await expect(page).toHaveURL(new RegExp(`/${OLD_SEASON}/men/teams/${team.team_id}/$`));
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText(team.name);
+	const latest = latestWeekOf(OLD_CUP, 'men', team.team_id)!;
+	await expect(page.locator('ul.players li')).toHaveCount(latest.players.length);
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
@@ -107,7 +127,7 @@ test('現役球隊頁頁首有隊徽圖且載入成功', async ({ page }) => {
 	expect(active.length).toBeGreaterThan(0);
 	for (const team of active) {
 		await page.goto(`${BASE}/${current}/men/teams/${team.team_id}/`);
-		const logo = page.locator('header img.logo');
+		const logo = page.locator('header .badge img');
 		await expect(logo).toHaveAttribute('alt', `${team.name}隊徽`);
 		expect(await logo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
 	}
@@ -148,12 +168,9 @@ test('只有賽季報名名單、沒有週登錄的現役隊顯示賽季報名�
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
-test('非現役隊與不存在的球隊沒有球隊頁', async ({ page }) => {
-	const inactive = menIn(OLD_CUP).find((t) => !t.is_active)!;
-	for (const id of [inactive.team_id, 999]) {
-		const res = await page.goto(`${BASE}/${OLD_SEASON}/men/teams/${id}/`);
-		expect(res?.status()).toBe(404);
-	}
+test('不存在的球隊沒有球隊頁', async ({ page }) => {
+	const res = await page.goto(`${BASE}/${OLD_SEASON}/men/teams/999/`);
+	expect(res?.status()).toBe(404);
 });
 
 test('球隊頁的組別與賽季切換', async ({ page }) => {
@@ -191,4 +208,26 @@ test('歷史賽季球隊頁的季內賽事顯示當季隊名', async ({ page }) 
 	const cards = page.locator('.card-link');
 	await expect(cards.first()).toContainText('臺北國北獅');
 	await expect(cards.filter({ hasText: '臺北鳳凰' })).toHaveCount(0);
+});
+
+test('隊徽載入失敗時落回縮寫文字，隊頁隊徽仍帶名稱', async ({ page }) => {
+	await page.route('**/logos/*.png', (route) => route.fulfill({ status: 404 }));
+	const team = menIn(currentCup).find((t) => t.is_active);
+	expect(team).toBeDefined();
+	// 縮寫可能拆成兩個 span，去掉空白再比
+	const abbreviation = async (badge: Locator) => (await badge.textContent())?.replace(/\s/g, '');
+
+	await page.goto(`${BASE}/${current}/men/teams/${team!.team_id}/`);
+	const badge = page.locator('header .badge');
+	await expect(badge).toHaveAttribute('role', 'img');
+	await expect(badge).toHaveAttribute('aria-label', `${team!.name}隊徽`);
+	expect(await abbreviation(badge)).toBe(team!.short_name);
+	await expect(page.locator('.badge img')).toHaveCount(0);
+
+	await page.goto(`${BASE}/${current}/men/standings/`);
+	// 先等所有 img 都觸發 onerror 被移除，再讀文字（textContent 不會自動等待）
+	await expect(page.locator('.badge img')).toHaveCount(0);
+	const badges = page.locator('.badge');
+	expect(await badges.count()).toBeGreaterThan(0);
+	for (const b of await badges.all()) expect(await abbreviation(b)).not.toBe('');
 });

@@ -42,6 +42,14 @@ describe('pickSeason', () => {
 		expect(pickSeason('players', 'women', src(rows))).toEqual({ cupId: 22, season: '2026-27' });
 	});
 
+	it('進階數據每列就是一個賽季，當季沒有就退回最近有數據的賽季', () => {
+		const rows = [
+			{ player_id: 1, cup_id: 20, group: 'men' },
+			{ player_id: 2, cup_id: 21, group: 'men' }
+		];
+		expect(pickSeason('advanced', 'men', src(rows))).toEqual({ cupId: 21, season: '2025-26' });
+	});
+
 	it('球隊與週登錄各看自己的欄位', () => {
 		const teams = [{ team_id: 1, group: 'men', cup_ids: [20, 21] }];
 		expect(pickSeason('teams', 'men', src(teams))).toEqual({ cupId: 21, season: '2025-26' });

@@ -2,7 +2,7 @@
 TVL 官網賽事列表爬蟲
 從 tvl.ctvba.org.tw 的 /schedule（男子組）與 /wschedule（女子組）解析每場的
 game_id、日期、時間、場館、兩隊與 game_label，upsert 進 matches（鍵 game_id + gender）。
-依 ADR 0003 的欄位分工：本爬蟲永不寫各局比分與 sets_won。
+依 ADR 0008 的欄位所有權：本爬蟲永不寫各局比分與 sets_won。
 round_name 在 2026-10-15 抓到的列表頁上全部空白，故只在列內出現「例行賽 Week N」等字樣時才寫，
 否則保留既有值（由 match_crawler 從單場頁補）。
 解析一律防禦式：缺值寫 NULL、缺關鍵欄位跳過該列；時間/場館待定列尚無樣本（#28）。
@@ -13,10 +13,11 @@ import sqlite3
 import requests
 from bs4 import BeautifulSoup
 
-from src.etl.match_crawler import _resolve_match_team_id, normalize_team, parse_round_name, resolve_cup_id
+from src.etl.match_crawler import parse_round_name, resolve_cup_id
 from src.utils.constants import EXT_HEADERS as HEADERS, SCHEDULE_PAGES, TVL_BASE_URL
 from src.utils.db_config import get_connection
 from src.utils.logger import get_logger
+from src.utils.teams import resolve_team_id
 
 logger = get_logger(__name__)
 
@@ -78,8 +79,8 @@ def _parse_row(row, gender: str) -> dict | None:
         "round_name": parse_round_name(_text(row)),
         "game_label": game_label,
         "is_golden_set": 1 if game_label and "黃金決勝局" in game_label else 0,
-        "home_team": normalize_team(home),
-        "away_team": normalize_team(away),
+        "home_team": home,
+        "away_team": away,
     }
 
 
@@ -98,9 +99,10 @@ def next_year_path(html: str) -> str | None:
 
 
 def upsert_schedule_match(conn: sqlite3.Connection, match: dict, cup_id: int) -> bool:
-    """寫入或更新賽事基本資料，回傳是否為新增。比分欄一律不動；頁面缺值的欄位保留既有值。"""
-    home_team_id = _resolve_match_team_id(conn, match, "home")
-    away_team_id = _resolve_match_team_id(conn, match, "away")
+    """寫入或更新賽事資料，回傳是否為新增。比分欄一律不動；頁面缺值的欄位保留既有值。"""
+    ctx = f"{match['gender']}/{match['game_id']}"
+    home_team_id = resolve_team_id(conn, match["home_team"], match["gender"], f"{ctx} home")
+    away_team_id = resolve_team_id(conn, match["away_team"], match["gender"], f"{ctx} away")
     existing = conn.execute(
         "SELECT match_id FROM matches WHERE game_id = ? AND gender = ?",
         (match["game_id"], match["gender"]),

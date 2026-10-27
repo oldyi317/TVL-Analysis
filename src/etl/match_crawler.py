@@ -15,13 +15,13 @@ from pathlib import Path
 from src.utils.db_config import DB_PATH, get_connection
 from src.utils.logger import get_logger
 from src.utils.constants import EXT_HEADERS as HEADERS, ROUND_STAGE_ALIAS, TVL_BASE_URL as BASE_URL
-from src.utils.teams import UnknownTeamError, resolve_team
+from src.utils.teams import resolve_team_id
 
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
 
 logger = get_logger(__name__)
 
-ROUND_NAME_RE = re.compile(r"(例行賽|挑戰賽|總決賽|總冠軍賽|季後賽|明星賽)\s*Week\s*(\d+)")
+ROUND_NAME_RE = re.compile(r"(例行賽|挑戰賽|總決賽|總冠軍賽|季後賽|明星賽)\s*Week\s*(\d+)")  # 官網原字
 
 
 def parse_round_name(text: str) -> str | None:
@@ -30,31 +30,6 @@ def parse_round_name(text: str) -> str | None:
         return None
     stage = ROUND_STAGE_ALIAS.get(m.group(1), m.group(1))
     return f"{stage} Week {m.group(2)}"
-
-
-# 官網隊名 → DB 簡寫對照（官網隊名可能有差異）
-# 過渡期相容：單一來源為 DB 的 teams/team_aliases（sql/team_seed.sql），待改用 resolve_team 後移除。
-TEAM_ALIAS = {
-    "臺北鯨華": "臺北鯨華",
-    "新北中纖": "新北中纖",
-    "高雄台電": "高雄台電",
-    "義力營造": "義力營造",
-    "屏東台電": "屏東台電",
-    "雲林美津濃": "雲林美津濃",
-    "臺北國北獅": "臺北國北獅",
-    "臺北鳳凰": "臺北鳳凰",
-    "龍邁建設": "龍邁建設",
-    "龍脈建設": "龍邁建設",
-    "三福產業": "三福產業",
-    "新竹可利工程師": "新竹可利工程師",
-    "桃園臺灣產險": "桃園臺產",
-    "臺中獅子王": "獅子王",
-}
-
-
-def normalize_team(raw: str) -> str:
-    """將官網隊名轉為 DB 簡寫。"""
-    return TEAM_ALIAS.get(raw, raw)
 
 
 def init_matches_table(conn: sqlite3.Connection) -> None:
@@ -69,11 +44,11 @@ def _assert_matches_migrated(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(matches)")}
     if "cup_id" not in cols:
         raise RuntimeError(
-            "matches 表尚無 cup_id（舊 schema），請先執行 python -m src.etl.migrate_add_season。"
+            "matches 表 schema 過舊（缺 cup_id），請改用 repo 內已遷移的 data/db/tvl_database.db（git checkout 還原）。"
         )
     if "home_team_id" not in cols:
         raise RuntimeError(
-            "matches 表尚無 home_team_id，請先執行 python -m src.etl.migrate_add_match_team_id。"
+            "matches 表 schema 過舊（缺 home_team_id），請改用 repo 內已遷移的 data/db/tvl_database.db（git checkout 還原）。"
         )
 
 
@@ -127,8 +102,8 @@ def scrape_match_page(prefix: str, game_id: int) -> dict | None:
     if not home_cells or not home_cells[0]:
         return None
 
-    home_team = normalize_team(home_cells[0])
-    away_team = normalize_team(away_cells[0])
+    home_team = home_cells[0]
+    away_team = away_cells[0]
 
     # 各局分數: cells[1:6], 總分: cells[6]
     home_sets = [_safe_int(home_cells[i]) if i < len(home_cells) else None for i in range(1, 6)]
@@ -223,37 +198,23 @@ def resolve_cup_id(conn: sqlite3.Connection, match_date: str) -> int:
     return row[0]
 
 
-def _resolve_match_team_id(conn: sqlite3.Connection, match: dict, side: str) -> int | None:
-    name = match[f"{side}_team"]
-    try:
-        team_id, gender = resolve_team(conn, name)
-    except UnknownTeamError:
-        logger.warning("[%s/%s] %s 隊名解析不到：%r，team_id 寫 NULL", match["gender"], match["game_id"], side, name)
-        return None
-    if gender != match["gender"]:
-        logger.warning(
-            "[%s/%s] %s 隊名 %r 性別為 %s 與比賽不符，team_id 寫 NULL",
-            match["gender"], match["game_id"], side, name, gender,
-        )
-        return None
-    return team_id
-
-
 def upsert_match(conn: sqlite3.Connection, match: dict) -> bool:
-    """寫入或更新單場比賽紀錄，回傳是否為新增。"""
+    """寫入或更新單場比賽紀錄，回傳是否為新增。round_name／game_label 單場頁解析不到時保留既有值（ADR 0008）。"""
     existing = conn.execute(
         "SELECT match_id FROM matches WHERE game_id = ? AND gender = ?",
         (match["game_id"], match["gender"]),
     ).fetchone()
     cup_id = resolve_cup_id(conn, match["match_date"])
-    home_team_id = _resolve_match_team_id(conn, match, "home")
-    away_team_id = _resolve_match_team_id(conn, match, "away")
+    ctx = f"{match['gender']}/{match['game_id']}"
+    home_team_id = resolve_team_id(conn, match["home_team"], match["gender"], f"{ctx} home")
+    away_team_id = resolve_team_id(conn, match["away_team"], match["gender"], f"{ctx} away")
 
     if existing:
         conn.execute("""
             UPDATE matches SET
                 cup_id=?, match_date=?, start_time=COALESCE(start_time, ?),
-                venue=COALESCE(venue, ?), round_name=?, game_label=?,
+                venue=COALESCE(venue, ?), round_name=COALESCE(?, round_name),
+                game_label=COALESCE(?, game_label),
                 is_golden_set=?, home_team=?, away_team=?, home_team_id=?, away_team_id=?,
                 home_set1=?, home_set2=?, home_set3=?, home_set4=?, home_set5=?,
                 home_total=?, away_set1=?, away_set2=?, away_set3=?, away_set4=?,

@@ -10,7 +10,7 @@ const teamCount: number = teamSeason
 		).length
 	: 0;
 
-test('球隊頁列出帶隊色的圓形隊標', async ({ page }) => {
+test('球隊頁列出帶隊色的圓形隊色圓標', async ({ page }) => {
 	test.skip(!teamSeason, '所有賽季的男子組都沒有球隊');
 	await page.goto(`${BASE}/${teamSeason!.season}/men/teams/`);
 	const rows = page.getByRole('list').getByRole('listitem');

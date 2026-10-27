@@ -184,13 +184,20 @@ export function distributionOption(
 	};
 }
 
-export function noPrReason(
-	advanced: Pick<PlayerAdvancedEntry, 'insufficient_sets' | 'position'> | null
-): string | null {
+type PoolFields = Pick<PlayerAdvancedEntry, 'insufficient_sets' | 'position'>;
+
+// 與後端 player_advanced.py 的 _in_pool 同一規則：局數足夠且有登錄位置才有 PR 值與分佈
+export function inPrPool(
+	advanced: PoolFields | null | undefined
+): advanced is PoolFields & { position: string } {
+	return !!advanced && !advanced.insufficient_sets && advanced.position !== null;
+}
+
+export function noPrReason(advanced: PoolFields | null): string | null {
+	if (inPrPool(advanced)) return null;
 	if (!advanced) return '本季沒有進階數據';
 	if (advanced.insufficient_sets) return '出賽局數不足 5 局，不計算 PR 值與分佈';
-	if (advanced.position === null) return '本季無登錄位置，不計算 PR 值與分佈';
-	return null;
+	return '本季無登錄位置，不計算 PR 值與分佈';
 }
 
 export type GameStats = Omit<StatRow, 'player_id' | 'team_id' | 'jersey_number' | 'position'>;

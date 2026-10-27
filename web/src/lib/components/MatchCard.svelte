@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { setsWon, winnerSide, winProbPercent, type StyleMatch } from '#lib/match.js';
+	import { isPlayed, setsWon, winnerSide, winProbPercent, type StyleMatch } from '#lib/match.js';
 	import TeamBadge from './TeamBadge.svelte';
 	import WinRing from './WinRing.svelte';
 
@@ -10,7 +10,7 @@
 		size = 'md'
 	}: { match: StyleMatch; stage?: string | null; showSets?: boolean; size?: 'md' | 'lg' } = $props();
 
-	const played = $derived(match.sets.length > 0);
+	const played = $derived(isPlayed(match));
 	const winner = $derived(winnerSide(match.sets));
 	const [homeSets, awaySets] = $derived(setsWon(match.sets));
 	const prob = $derived(winProbPercent(match.home_win_prob));

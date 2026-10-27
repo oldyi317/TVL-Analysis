@@ -13,9 +13,9 @@ export const currentSeason: string = seasonsData.seasons.find(
 
 // 讀匯出 JSON 的薄包裝：給 spec 取「最近一個有該資料的賽季」
 export const findSeason = (kind: Kind, group = 'men') => {
-	const { file } = KINDS[kind];
+	const { file, key } = KINDS[kind];
 	return pickSeason(kind, group, {
-		rows: readJson(file)[file],
+		rows: readJson(file)[key ?? file],
 		seasons: seasonsData.seasons,
 		currentCupId: seasonsData.current_cup_id
 	});

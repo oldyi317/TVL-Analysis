@@ -3,7 +3,7 @@
 用法：python -m src.models.predict [--model src/models/match_predictor_v2.pkl]
 
 模型是單隊視角（給一隊的近況特徵 → 該隊勝率），主隊勝率取兩隊各自勝率的正規化：p_home / (p_home + p_away)，
-兩隊相加恰為 1。未開打 = 各局比分皆 NULL；已開打賽事不在查詢範圍內，既有預測自然凍結。
+兩隊相加恰為 1。未開打 = 各局比分皆 NULL；已開打賽事不在查詢範圍內，既有賽前勝率自然凍結。
 """
 
 import argparse
@@ -17,17 +17,17 @@ import numpy as np
 from src.models.features import latest_rolling_features, load_labeled_history
 from src.utils.db_config import PROJECT_ROOT, get_connection
 from src.utils.logger import get_logger
+from src.utils.match_status import UNPLAYED_WHERE
 
 logger = get_logger(__name__)
 
 MODEL_PATH = PROJECT_ROOT / "src" / "models" / "match_predictor_v2.pkl"
 SCHEMA_PATH = PROJECT_ROOT / "sql" / "schema.sql"
 
-_SET_COLS = [f"{side}_set{i}" for side in ("home", "away") for i in range(1, 6)]
 _UNPLAYED_SQL = f"""
     SELECT match_id, match_date, gender, home_team, away_team, home_team_id, away_team_id
     FROM matches
-    WHERE is_golden_set = 0 AND {" AND ".join(f"{c} IS NULL" for c in _SET_COLS)}
+    WHERE is_golden_set = 0 AND {UNPLAYED_WHERE}
     ORDER BY match_date, match_id
 """
 _UPSERT_SQL = """

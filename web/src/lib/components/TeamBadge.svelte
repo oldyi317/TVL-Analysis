@@ -4,7 +4,11 @@
 	import type { SeasonTeam } from '#lib/site.js';
 	import { teamStyle } from './teamStyle.js';
 
-	let { team, size = 'md' }: { team: SeasonTeam; size?: 'sm' | 'md' | 'lg' | 'xl' } = $props();
+	let {
+		team,
+		size = 'md',
+		label
+	}: { team: SeasonTeam; size?: 'sm' | 'md' | 'lg' | 'xl'; label?: string } = $props();
 
 	// 三字以內單行；四字拆 2+2；更長的在中英交界或中點斷成兩行
 	function lines(name: string): string[] {
@@ -20,16 +24,27 @@
 	const logoSrc = $derived(team.logo === null ? null : asset(team.logo as AssetPath));
 	let failedSrc = $state('');
 	const failed = $derived(logoSrc === null || failedSrc === logoSrc);
+	// 有給 label 才由圓標自己承載名稱；落回縮寫文字時改由外層說明
+	const labelled = $derived(label !== undefined);
+	const describesItself = $derived(labelled && failed);
 </script>
 
-<!-- 隊標是裝飾性的，球隊名稱由旁邊的文字承載 -->
-<span class="badge {size}" class:has-logo={!failed} style={teamStyle(team)} aria-hidden="true">
+<!-- 沒給 label：隊色圓標是裝飾性的，球隊名稱由旁邊的文字承載，整顆 aria-hidden。
+     有給 label：圓標自己承載名稱，有圖時由 img 的 alt 說明，落回縮寫文字時由外層 role="img" 說明 -->
+<span
+	class="badge {size}"
+	class:has-logo={!failed}
+	style={teamStyle(team)}
+	aria-hidden={labelled ? undefined : 'true'}
+	role={describesItself ? 'img' : undefined}
+	aria-label={describesItself ? label : undefined}
+>
 	{#if failed}
 		{#each parts as part, i (i)}
 			<span>{part}</span>
 		{/each}
 	{:else}
-		<img src={logoSrc} alt="" onerror={() => (failedSrc = logoSrc ?? '')} />
+		<img src={logoSrc} alt={label ?? ''} onerror={() => (failedSrc = logoSrc ?? '')} />
 	{/if}
 </span>
 

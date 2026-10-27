@@ -15,7 +15,7 @@ describe('contrastRatio', () => {
 });
 
 describe('textColorOn', () => {
-	it('每一隊隊標上的文字對隊色達 4.5:1', () => {
+	it('每一隊隊色圓標上的文字對隊色達 4.5:1', () => {
 		for (const team of teams) {
 			expect(contrastRatio(textColorOn(team.color), team.color), team.short_name).toBeGreaterThanOrEqual(4.5);
 		}

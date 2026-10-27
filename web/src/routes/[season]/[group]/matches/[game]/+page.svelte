@@ -6,14 +6,14 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import MatchCard from '#lib/components/MatchCard.svelte';
 	import type { BoxRow } from '#lib/boxScore.js';
-	import { stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
+	import { isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	const match = $derived(data.match);
-	const played = $derived(match.sets.length > 0);
+	const played = $derived(isPlayed(match));
 	const homeTotal = $derived(match.sets.reduce((sum, [h]) => sum + h, 0));
 	const awayTotal = $derived(match.sets.reduce((sum, [, a]) => sum + a, 0));
 	const listHref = $derived(

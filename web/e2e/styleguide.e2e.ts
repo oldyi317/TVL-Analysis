@@ -48,7 +48,7 @@ test.describe('淺色', () => {
 		expect(new Set(tops).size).toBe(1);
 	});
 
-	test('隊標文字不超出圓形', async ({ page }) => {
+	test('隊色圓標文字不超出圓形', async ({ page }) => {
 		await page.goto(URL);
 		const overflowing = await page.locator('.badge').evaluateAll((badges) =>
 			badges
