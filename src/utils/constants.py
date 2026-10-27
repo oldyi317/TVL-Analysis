@@ -7,6 +7,8 @@ TVL 共用常數模組
 TVL_BASE_URL = "https://tvl.ctvba.org.tw"
 # 賽事列表頁：男子組 /schedule、女子組 /wschedule（/schedule-mix 不納入）
 SCHEDULE_PAGES = {"M": "/schedule", "F": "/wschedule"}
+# 單場數據自此賽季起以官網賽事頁為唯一來源（spec #75）；歷史賽季永不成為寫入候選
+OFFICIAL_BOX_SCORE_FROM_CUP = 22
 
 # ── 外部數據系統 (114.35.229.141) ──────────────────────────────
 EXT_BASE = "http://114.35.229.141"

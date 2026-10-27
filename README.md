@@ -110,6 +110,8 @@ cd web && npm ci && cd ..
 python -m src.etl.schedule_crawler               # 賽程列表 → matches
 python -m src.etl.match_crawler                  # 各局比分 → matches（stats_crawler 依賴此表最新）
 python -m src.etl.official_box_score --dry-run --game-id 281 --gender F  # 官網單場數據解析與閘門檢查（不讀寫 DB）
+python -m src.etl.match_stats_writer             # 本季有比分且無統計的場次 → player_match_stats（官網單場數據，spec #75）
+python -m src.etl.match_stats_writer --force-partial 281 --gender F   # 有未解析列的場次仍寫入其餘球員（人工決定）
 python -m src.etl.crawler                        # 賽季報名名單 → data/raw/
 python -m src.etl.db_loader                      # 名單 CSV → players + season_rosters
 python -m src.etl.stats_crawler --rosters        # 週登錄 → roster_registrations

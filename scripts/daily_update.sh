@@ -35,6 +35,9 @@ BEFORE=$(db_hash)
 # stats_crawler 讀 matches.round_name 決定 week_label，必須排在 match_crawler 之後（ADR 0008）
 "$PYTHON" -m src.etl.stats_crawler --rosters
 "$PYTHON" -m src.etl.stats_crawler --incremental
+# 官網單場數據（spec #75）：本季有比分且無統計的場次，排在 match_crawler 之後、predict 之前；
+# 只讀 matches 不寫；失敗只記 log，不中止每日更新與 commit
+"$PYTHON" -m src.etl.match_stats_writer || echo "官網單場數據步驟有場次略過或失敗（exit $?），見上方 log，其餘步驟照常。"
 # 賽前勝率（ADR 0003）：失敗只記 log，不中止每日更新與 commit
 "$PYTHON" -m src.models.predict || echo "預測步驟失敗（exit $?），略過。"
 

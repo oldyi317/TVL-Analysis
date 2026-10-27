@@ -671,13 +671,9 @@ def resolve_registration_for_stats(
     """
     week_label, week_start_date = resolve_week_label(conn, match_date, "", cup_id)
 
-    row = conn.execute(
-        """SELECT registration_id FROM roster_registrations
-           WHERE player_id = ? AND team_id = ? AND gender = ? AND cup_id = ? AND week_label = ?""",
-        (player_id, team_id, gender, cup_id, week_label),
-    ).fetchone()
-    if row:
-        return row[0]
+    rid = find_registration_id(conn, player_id, team_id, gender, cup_id, week_label)
+    if rid is not None:
+        return rid
 
     sr = conn.execute(
         "SELECT jersey_number, position FROM season_rosters WHERE player_id = ? AND gender = ? AND cup_id = ?",
@@ -689,12 +685,18 @@ def resolve_registration_for_stats(
         {"team_id": team_id, "team_gender": gender, "jersey_number": jersey, "position": position},
         week_label, week_start_date, source="backfill", cup_id=cup_id,
     )
+    return find_registration_id(conn, player_id, team_id, gender, cup_id, week_label)
+
+
+def find_registration_id(
+    conn: sqlite3.Connection, player_id: int, team_id: int, gender: str, cup_id: int, week_label: str,
+) -> int | None:
     row = conn.execute(
         """SELECT registration_id FROM roster_registrations
            WHERE player_id = ? AND team_id = ? AND gender = ? AND cup_id = ? AND week_label = ?""",
         (player_id, team_id, gender, cup_id, week_label),
     ).fetchone()
-    return row[0]
+    return row[0] if row else None
 
 
 def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:

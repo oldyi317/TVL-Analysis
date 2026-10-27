@@ -64,7 +64,7 @@ def _parse_footer(footer, name: str) -> tuple[int, int, int, int]:
     )
 
 
-def _parse_team(section, name: str, warnings: list, errors: list) -> dict:
+def _parse_team(section, name: str, warnings: list, errors: list, gate_errors: list) -> dict:
     if [th.get_text(strip=True) for th in section.select("thead th")] != HEADERS:
         raise ValueError(f"{name}：單場數據欄位順序不符預期")
     body = section.find("tbody")
@@ -88,9 +88,10 @@ def _parse_team(section, name: str, warnings: list, errors: list) -> dict:
             errors.append(f"{name} #{player['jersey_number']}：姓名空白但有非零數值")
             unresolved_rows.append(player)
     player_points, display_points, opponent_errors, total_points = _parse_footer(footer, name)
-    summed_points = sum(p["total_points"] for p in players)
+    # 閘門比對頁面自身的完整性：姓名空白的非零列也在頁面累計內，一併加總
+    summed_points = sum(p["total_points"] for p in players + unresolved_rows)
     if summed_points != player_points:
-        errors.append(
+        gate_errors.append(
             f"{name}：Σ球員得分 {summed_points} ≠ 球員累計 {player_points}，"
             f"差 {summed_points - player_points:+d}"
         )
@@ -115,14 +116,32 @@ def parse_box_score(html: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     teams = []
     errors = []
+    gate_errors = []
     warnings = []
     for ident in ("boxscore_1", "boxscore_11"):
         section = soup.find(id=ident)
         heading = section.find_previous("h1") if section else None
         if section is None or heading is None or not heading.get_text(strip=True):
             raise ValueError(f"缺少 {ident} 或球隊名")
-        teams.append(_parse_team(section, heading.get_text(strip=True), warnings, errors))
-    return {"teams": teams, "warnings": warnings, "errors": errors, "writable": not errors}
+        teams.append(_parse_team(section, heading.get_text(strip=True), warnings, errors, gate_errors))
+    errors = gate_errors + errors
+    return {
+        "teams": teams, "warnings": warnings, "errors": errors,
+        "gate_errors": gate_errors, "writable": not errors,
+    }
+
+
+def fetch_page(gender: str, game_id: int) -> str:
+    """抓官網賽事頁 HTML（男 /game/N、女 /wgame/N）；UA 與逾時沿用 match_crawler。"""
+    response = requests.get(page_url(gender, game_id), headers=EXT_HEADERS, timeout=15)
+    response.raise_for_status()
+    response.encoding = "utf-8"
+    return response.text
+
+
+def page_url(gender: str, game_id: int) -> str:
+    prefix = "game" if gender == "M" else "wgame"
+    return f"{TVL_BASE_URL}/{prefix}/{game_id}"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -133,13 +152,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.game_id <= 0:
         parser.error("--game-id 必須為正整數")
-    prefix = "game" if args.gender == "M" else "wgame"
-    url = f"{TVL_BASE_URL}/{prefix}/{args.game_id}"
+    url = page_url(args.gender, args.game_id)
     try:
-        response = requests.get(url, headers=EXT_HEADERS, timeout=15)
-        response.raise_for_status()
-        response.encoding = "utf-8"
-        result = parse_box_score(response.text)
+        result = parse_box_score(fetch_page(args.gender, args.game_id))
     except (requests.RequestException, ValueError) as exc:
         print(f"[{args.gender}/{args.game_id}] {url}：{exc}", file=sys.stderr)
         return 1
