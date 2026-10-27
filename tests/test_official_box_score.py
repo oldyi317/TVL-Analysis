@@ -41,13 +41,20 @@ def test_mens_links_and_zero_rows_are_preserved():
     assert shi["all_zero"] is False
 
 
-def test_golden_set_uses_the_same_parser_and_removes_captain_suffix():
+def test_golden_set_historical_page_is_parsed_but_not_writable():
     result = parse_box_score(fixture("game_328"))
+    regular = parse_box_score(fixture("game_331"))
     home, away = result["teams"]
     assert [home["player_points"], away["player_points"]] == [9, 14]
+    keys = set(regular["teams"][0]["players"][0])
+    for team in result["teams"]:
+        assert team["players"]
+        assert all(set(p) == keys for p in team["players"])
     captain = next(p for p in home["players"] if p["jersey_number"] == 99)
     assert captain["name"] == "黃正良"
     assert all("(C)" not in p["name"] for t in result["teams"] for p in t["players"])
+    assert result["writable"] is False
+    assert any("姓名空白但有非零數值" in e for e in result["errors"])
 
 
 def test_changed_player_score_blocks_the_entire_match_and_explains_difference():
@@ -58,16 +65,42 @@ def test_changed_player_score_blocks_the_entire_match_and_explains_difference():
     assert any("臺北鯨華" in e and "差 +1" in e for e in result["errors"])
 
 
-def test_unnamed_nonzero_row_warns_and_blocks_even_when_points_still_match():
+def test_unnamed_nonzero_row_blocks_even_when_points_still_match():
     soup = BeautifulSoup(fixture(), "html.parser")
-    # 空白佔位只改接發球，得分加總仍吻合，仍須擋下無法歸屬的數據。
     soup.select('#boxscore_11 tbody tr')[-1].select('td')[9].string = "1 - 2"
     result = parse_box_score(str(soup))
     assert result["writable"] is False
-    assert any("高雄台電" in w and "#20" in w and "姓名空白" in w for w in result["warnings"])
-    assert any("姓名空白" in e for e in result["errors"])
+    assert any("高雄台電" in e and "#20" in e and "姓名空白" in e for e in result["errors"])
+    assert result["warnings"] == []
     row = result["teams"][1]["unresolved_rows"][0]
     assert (row["receive_excellent"], row["receive_total"]) == (1, 2)
+
+
+def test_unknown_position_is_none_and_warns():
+    soup = BeautifulSoup(fixture(), "html.parser")
+    soup.select('#boxscore_1 tbody tr')[0].select('td')[2].string = "未知"
+    home = parse_box_score(str(soup))
+    player = home["teams"][0]["players"][0]
+    assert player["position"] is None
+    assert player["position_text"] == "未知"
+    assert any("臺北鯨華" in w and "未知位置 未知" in w for w in home["warnings"])
+
+
+def test_official_player_id_is_read_from_links():
+    men = parse_box_score(fixture("game_331"))
+    ids = [p["official_player_id"] for t in men["teams"] for p in t["players"]]
+    assert all(isinstance(i, int) and i > 0 for i in ids)
+    women = parse_box_score(fixture())
+    lin = next(p for p in women["teams"][0]["players"] if p["name"] == "林良黛")
+    assert lin["official_player_id"] == 59
+
+
+@pytest.mark.parametrize("text", ["１ - ３", "٣ - ٤"])
+def test_non_ascii_digits_are_rejected(text):
+    soup = BeautifulSoup(fixture(), "html.parser")
+    soup.select_one('#boxscore_1 tbody tr').select('td')[3].string = text
+    with pytest.raises(ValueError):
+        parse_box_score(str(soup))
 
 
 def test_page_total_mismatch_only_warns():
