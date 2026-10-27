@@ -26,7 +26,7 @@ def _per(numerator: float, denominator: float) -> float:
 
 
 def compute_ratios(totals: Mapping) -> dict[str, float | None]:
-    """九項比率，沿用舊站公式：率類為百分比，分母為 0 給 0。"""
+    """九項比率，沿用舊站公式：率類為百分比，分母為 0 給 0；局數未知時每局攔網為 None。"""
     defense_total = totals["receive_total"] + totals["dig_total"]
     return {
         "attack_success_rate": _pct(totals["attack_points"], totals["attack_total"]),

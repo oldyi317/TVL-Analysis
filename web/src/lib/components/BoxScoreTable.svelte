@@ -27,7 +27,7 @@
 </script>
 
 {#if rows.some((row) => row.sets_played === null)}
-	<DataNote text="官網 box score 不提供上場局數" />
+	<DataNote text="官網單場數據不提供出賽局數" />
 {/if}
 
 <div class="scroll">

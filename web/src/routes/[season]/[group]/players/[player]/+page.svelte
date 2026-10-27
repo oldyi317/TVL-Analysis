@@ -4,6 +4,7 @@
 	import AdvancedStats from '#lib/components/AdvancedStats.svelte';
 	import BigStat from '#lib/components/BigStat.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import { displayPosition, findTeam, GROUP_LABEL, playerDisplayName, positionLabel } from '#lib/site.js';
@@ -75,10 +76,10 @@
 	{/if}
 </div>
 {#if stats.games === 0}
-	<EmptyState title="本季尚無上場紀錄" />
+	<EmptyState title="本季尚無上場紀錄" hint="有單場數據後就會出現" />
 {:else}
 	{#if stats.sets_played === null}
-		<p>官網 box score 不提供上場局數</p>
+		<DataNote text="官網單場數據不提供出賽局數" />
 	{/if}
 	<div class="stats">
 		{#each headline.items as item, i (item.label)}

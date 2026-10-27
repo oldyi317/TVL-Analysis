@@ -22,11 +22,11 @@ function page(games: number, setsPlayed: number | null) {
 	return render(PlayerPage, { props }).body;
 }
 
-describe('球員頁缺少上場局數', () => {
+describe('球員頁缺少出賽局數', () => {
 	it('顯示破折號與來源說明，移除每局攔網，兩場不標樣本少', () => {
 		const html = page(2, null);
 		expect(html).toMatch(/出賽局數<\/dt>\s*<dd[^>]*>—<\/dd>/);
-		expect(html).toContain('官網 box score 不提供上場局數');
+		expect(html).toContain('官網單場數據不提供出賽局數');
 		expect(html).not.toContain('每局攔網');
 		expect(html).not.toContain('樣本少');
 		expect(page(1, null)).toContain('樣本少');

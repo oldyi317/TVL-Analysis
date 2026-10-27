@@ -109,5 +109,5 @@ it('box score 保留未知局數並顯示破折號', () => {
 	const html = render(BoxScoreTable, { props: { rows: view.home, label: '測試' } }).body;
 	expect(html).toMatch(/class="num wide[^"]*"[^>]*>—<\/td>/);
 	expect(html).not.toContain('>null<');
-	expect(html).toContain('官網 box score 不提供上場局數');
+	expect(html).toContain('官網單場數據不提供出賽局數');
 });
