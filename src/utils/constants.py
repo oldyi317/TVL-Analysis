@@ -56,7 +56,7 @@ EXT_TEAM_MAPS: dict[int, dict[int, tuple[int, str]]] = {
     },
 }
 
-# ── 官網全名 → 簡寫對應（依 CLAUDE.md 第 7 節）─────────────────
+# ── 官網全名 → 簡寫對應（依 AGENTS.md 慣例）─────────────────
 TEAM_NAME_SHORT = {
     "臺北鯨華女子排球隊": "臺北鯨華",
     "新北中國人纖企業女子排球隊": "新北中纖",

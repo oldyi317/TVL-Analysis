@@ -200,7 +200,7 @@ npm run test:e2e                 # Playwright 手機 smoke（會先 build；第�
 - `CONTEXT.md`：領域詞彙表，UI 文案與程式命名的依據
 - `docs/adr/`：架構決策紀錄（靜態站取代 Streamlit、賽前勝率由爬蟲計算、賽季報名名單獨立成表……）
 - `docs/design-system.md`、`web/DESIGN.md`：網站設計規範與 token
-- `CLAUDE.md`：給 AI agent 的開發慣例與地雷清單
+- `AGENTS.md`：給 AI agent 的開發慣例與地雷清單
 
 ## 授權與資料來源
 

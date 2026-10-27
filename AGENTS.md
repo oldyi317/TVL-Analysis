@@ -16,9 +16,9 @@ npm run test:e2e                                 # Playwright smoke（需先 bui
 # 爬蟲（皆從 repo 根目錄以 module 方式執行）
 python -m src.etl.crawler                        # 官網球員名單 → data/raw/
 python -m src.etl.match_crawler                  # 官網各局比分 → matches 表
-python -m src.etl.stats_crawler --incremental    # 逐場技術統計（增量；依賴 matches 表最新，需先跑 match_crawler）
-python -m src.etl.stats_crawler --rosters        # 出賽名單→roster_registrations（先跑 match_crawler）
-python -m src.etl.stats_crawler --rosters --cup-id 20   # 歷史賽季週登錄回填（指定賽季）
+python -m src.etl.match_stats_writer             # 本季（cup≥22）有比分且無統計的場次 → player_match_stats（官網單場數據，spec #75；先跑 match_crawler）
+python -m src.etl.stats_crawler --rosters --cup-id 20   # 歷史工具：外部統計系統週登錄回填，僅 cup ≤21（ADR 0009；cup 22 起拒絕執行）
+python -m src.etl.stats_crawler --incremental --cup-id 20   # 歷史工具：外部統計系統單場數據回填，僅 cup ≤21（先跑 match_crawler）
 python -m src.etl.db_loader                      # roster CSV → players 身分層 + season_rosters 賽季報名名單
 python -m src.etl.db_loader --csv assets/tvl_20_player_list/tvl20_rosters.csv --cup-id 20   # 歷史名單回填（圖檔轉錄 CSV，指定賽季）
 bash scripts/daily_update.sh                     # 每日增量更新（GitHub Actions 排程同款；DRY_RUN=1 可演練）
@@ -30,7 +30,8 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
 
 - **`schema.sql` 已冪等，不會清空資料**：全部改用 `CREATE TABLE IF NOT EXISTS`，
   沒有 `DROP TABLE`。`db_loader` 對 `teams`/`players` 是以自然鍵 upsert，會保留
-  既有 `player_id`；`stats_crawler` 全量與增量模式皆為「補缺不清表」，去重鍵是
+  既有 `player_id`；`match_stats_writer` 只寫兩隊皆無統計的場次、寫入後不覆寫；
+  歷史工具 `stats_crawler` 全量與增量模式皆為「補缺不清表」，去重鍵是
   `match_date + is_golden_set`（逐球員判斷）。
 - **`.db` 與 `.pkl` 是刻意 commit 進 git 的**：pages.yml 在雲端 runner 只
   checkout repo 就跑匯出器建置，靠 repo 內的 `data/db/tvl_database.db`；
@@ -39,17 +40,19 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
   `tests/test_prediction_artifact.py` 鎖住合約（pages.yml 不跑 pytest；ci.yml 在 PR 上跑，本機也要跑），重訓務必走 `python -m src.models.train`，不要手動 pickle。
 - **行尾一律 LF**：repo 在 WSL 的 `/mnt/d` 上，Windows 工具容易把檔案轉成 CRLF，
   會製造上萬行假 diff。commit 前用 `git diff --stat -w` 確認沒有純行尾雜訊。
-- **資料來源有兩個**：官網 `tvl.ctvba.org.tw`（名單、比分）與外部統計系統
-  `http://114.35.229.141`（明文 HTTP、hardcoded IP，見 `src/utils/constants.py`）。
-  後者不可從程式碼推斷格式，改爬蟲前先實際抓一頁看回應。
-- **每週登錄名單會變動**：企業排球每週登錄球員可能不同。`stats_crawler` 遇到
+- **資料來源**：現行只有官網 `tvl.ctvba.org.tw`（名單、比分、cup 22 起的單場數據與週登錄）。
+  外部統計系統 `http://114.35.229.141`（明文 HTTP、hardcoded IP，見 `src/utils/constants.py`）
+  只供 cup 21 以前的歷史補抓，已自每日更新停用（ADR 0009）；其格式不可從程式碼推斷，
+  改爬蟲前先實際抓一頁看回應。
+- **每週登錄名單會變動**：企業排球每週登錄球員可能不同。`match_stats_writer` 與歷史工具 `stats_crawler` 遇到
   週登錄外的球員分兩路：該賽季有賽季報名名單時，依「同隊姓名 → 同隊背號」比對，
   對不上就略過並 warning，不插入 `players`；整季沒有報名名單（legacy）時才以全域
   姓名比對、查無就動態新增。比對到人但查無登錄時補一筆 `source='backfill'`
   登錄（背號/位置先取自 `season_rosters`，查無才 NULL），下游計算仍須對缺值防禦。
 - **換季前必跑 `docs/ops/season-switch.md` checklist**：cup_id 已進
-  roster_registrations 的 UNIQUE（Phase 3），跨季同名週次不再互相覆寫；但
-  `EXT_CUP_ID` 等常數是手動更新的，未更新前爬蟲抓不到新季資料。
+  roster_registrations 的 UNIQUE（Phase 3），跨季同名週次不再互相覆寫；`seasons`
+  新季列等仍是手動更新，未更新前爬蟲抓不到新季資料。外部統計系統（`EXT_*` 常數、
+  `stats_crawler`）已停用，cup 22 起單場數據只走官網 `match_stats_writer`（ADR 0009）。
 
 ## 慣例
 
@@ -80,4 +83,4 @@ Issue 記在 GitHub Issues（github.com/oldyi317/TVL-Analysis，以 `gh` CLI 操
 
 ### Domain docs
 
-單一 context：根目錄 `CONTEXT.md` 加 `docs/adr/`，由 /domain-modeling 於需要時建立。見 `docs/agents/domain.md`。
+單一 context：根目錄 `GLOSSARY.md` 加 `docs/adr/`；尚未遷移時讀取既有 `CONTEXT.md`。見 `docs/agents/domain.md`。

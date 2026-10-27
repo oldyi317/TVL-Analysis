@@ -1,17 +1,17 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
+Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations. Target `oldyi317/TVL-Analysis` explicitly with `--repo oldyi317/TVL-Analysis` (or `repos/oldyi317/TVL-Analysis/...` for `gh api`), because this clone also has a private remote.
 
 ## Conventions
 
-- **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
-- **Read an issue**: `gh issue view <number> --comments`, filtering comments by `jq` and also fetching labels.
+- **Create an issue**: `gh issue create --title "..." --body "..."`. For multi-line bodies, write the exact text to a temporary file and use `--body-file <path>`.
+- **Read an issue**: `gh issue view <number> --json number,title,body,labels,comments`.
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
 
-Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
+Do not rely on automatic remote selection; use the explicit target above.
 
 ## Repo quirk: GraphQL `projectCards` is deprecated here
 
@@ -41,7 +41,7 @@ Create a GitHub issue.
 
 ## When a skill says "fetch the relevant ticket"
 
-Run `gh issue view <number> --comments`.
+Run `gh issue view <number> --repo oldyi317/TVL-Analysis --json number,title,body,labels,comments`.
 
 ## Wayfinding operations
 
