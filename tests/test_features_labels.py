@@ -8,6 +8,7 @@ from src.models.features import (
     GAME_STAT_COLS,
     attach_labels,
     build_match_labels,
+    load_labeled_history,
     load_team_match_stats,
 )
 from src.utils.db_config import DB_PATH
@@ -121,6 +122,23 @@ def _seed_match(conn, game_id, home_id, away_id, gender, hsw, asw, *, date,
                                 home_sets_won, away_sets_won)
            VALUES (?, ?, 22, ?, 0, ?, ?, ?, ?, ?, ?)""",
         (game_id, gender, date, home, away, home_id, away_id, hsw, asw))
+
+
+def test_labeled_history_drops_legacy_team_rows_like_labels_do(tmp_db_path):
+    # #81：舊隊賽事的標籤刻意跳過（#48），統計列也要同步排除，不能炸在 attach_labels
+    conn = connect_seeded(tmp_db_path)
+    _seed_match(conn, 1, 10, 1, "M", 0, 3, date="2024-10-19", home="連莊", away="屏東台電男排")
+    _seed_match(conn, 2, 1, 2, "M", 3, 1, date="2024-10-20")
+    _seed_stat(conn, 10, "M", "2024-10-19", "屏東台電")
+    _seed_stat(conn, 1, "M", "2024-10-19", "連莊")
+    _seed_stat(conn, 1, "M", "2024-10-20", "雲林美津濃")
+    _seed_stat(conn, 2, "M", "2024-10-20", "屏東台電")
+    labeled, report = load_labeled_history(conn)
+    conn.close()
+    assert sorted(labeled["match_date"].unique()) == ["2024-10-20"]
+    assert len(labeled) == 2
+    assert report["legacy_skipped"] == 1
+    assert report["legacy_stat_rows_skipped"] == 2
 
 
 def test_total_sets_falls_back_to_match_sets_when_sets_played_null(tmp_db_path):
