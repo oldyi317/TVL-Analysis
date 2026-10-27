@@ -6,31 +6,51 @@
 import pandas as pd
 
 from src.utils.constants import LEGACY_TEAM_IDS
+from src.utils.logger import get_logger
 from src.utils.match_status import has_result
+
+logger = get_logger(__name__)
 
 
 GAME_STAT_COLS = ["ASR", "GP_pct", "DIG_pct", "BLK_per_set", "ACE_pct"]
 
+# total_sets：個人出賽局數優先，為 NULL（官網 box score 來源）時退回該場賽事的實際局數。
 _TEAM_MATCH_SQL = """
-    SELECT s.match_date,
-           r.team_id,
-           r.gender,
-           s.opponent,
-           SUM(s.attack_points)     AS atk_pts,
-           SUM(s.attack_total)      AS atk_tot,
-           SUM(s.block_points)      AS blk_pts,
-           SUM(s.serve_points)      AS srv_pts,
-           SUM(s.serve_total)       AS srv_tot,
-           SUM(s.receive_excellent) AS rcv_exc,
-           SUM(s.receive_total)     AS rcv_tot,
-           SUM(s.dig_excellent)     AS dig_exc,
-           SUM(s.dig_total)         AS dig_tot,
-           SUM(s.total_points)      AS total_points,
-           MAX(s.sets_played)       AS total_sets
-    FROM player_match_stats s
-    JOIN roster_registrations r ON s.registration_id = r.registration_id
-    WHERE s.is_golden_set = 0
-    GROUP BY s.match_date, r.team_id, r.gender, s.opponent
+    WITH team_match AS (
+        SELECT s.match_date,
+               r.team_id,
+               r.gender,
+               s.opponent,
+               a.team_id                AS opp_team_id,
+               SUM(s.attack_points)     AS atk_pts,
+               SUM(s.attack_total)      AS atk_tot,
+               SUM(s.block_points)      AS blk_pts,
+               SUM(s.serve_points)      AS srv_pts,
+               SUM(s.serve_total)       AS srv_tot,
+               SUM(s.receive_excellent) AS rcv_exc,
+               SUM(s.receive_total)     AS rcv_tot,
+               SUM(s.dig_excellent)     AS dig_exc,
+               SUM(s.dig_total)         AS dig_tot,
+               SUM(s.total_points)      AS total_points,
+               MAX(s.sets_played)       AS played_sets
+        FROM player_match_stats s
+        JOIN roster_registrations r ON s.registration_id = r.registration_id
+        LEFT JOIN team_aliases a
+               ON a.alias = TRIM(s.opponent) AND a.gender = r.gender AND a.source <> 'ext_stats'
+        WHERE s.is_golden_set = 0
+        GROUP BY s.match_date, r.team_id, r.gender, s.opponent, a.team_id
+    )
+    SELECT t.match_date, t.team_id, t.gender, t.opponent,
+           t.atk_pts, t.atk_tot, t.blk_pts, t.srv_pts, t.srv_tot,
+           t.rcv_exc, t.rcv_tot, t.dig_exc, t.dig_tot, t.total_points,
+           COALESCE(t.played_sets, m.home_sets_won + m.away_sets_won) AS total_sets
+    FROM team_match t
+    LEFT JOIN matches m
+           ON m.match_date = t.match_date
+          AND m.gender = t.gender
+          AND m.is_golden_set = 0
+          AND ((m.home_team_id = t.team_id AND m.away_team_id = t.opp_team_id)
+               OR (m.home_team_id = t.opp_team_id AND m.away_team_id = t.team_id))
 """
 
 
@@ -38,8 +58,18 @@ def _pct(num, den):
     return (num / den * 100).where(den > 0, 0.0)
 
 
+_TEAM_MATCH_KEYS = ["match_date", "team_id", "gender", "opponent"]
+
+
 def load_team_match_stats(conn) -> pd.DataFrame:
     df = pd.read_sql_query(_TEAM_MATCH_SQL, conn)
+    dup = df.duplicated(_TEAM_MATCH_KEYS, keep=False)
+    if dup.any():
+        raise ValueError(f"同日同隊對同一對手有多場賽事，無法決定局數：\n{df.loc[dup, _TEAM_MATCH_KEYS].to_string(index=False)}")
+    no_sets = df[df["total_sets"].isna()]
+    if not no_sets.empty:
+        logger.warning("%d 筆球隊單場統計無出賽局數且對不回賽事，每局攔網以 0 計：\n%s",
+                       len(no_sets), no_sets[_TEAM_MATCH_KEYS].to_string(index=False))
     df["ASR"] = _pct(df["atk_pts"], df["atk_tot"])
     df["GP_pct"] = _pct(df["rcv_exc"], df["rcv_tot"])
     df["DIG_pct"] = _pct(df["dig_exc"], df["dig_tot"])

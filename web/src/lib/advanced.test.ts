@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { BoxScoresData, GameBoxScore, PlayerSeason, StatRow } from '#lib/data/types.js';
 import type { MatchView } from '#lib/site.js';
 import {
+	availableMetrics,
+	METRIC_KEYS,
+	PR_METRICS,
+	TREND_METRICS,
 	defaultTrendMetric,
 	distributionOption,
 	headlineStats,
@@ -406,4 +410,21 @@ describe('headlineStats', () => {
 		expect(headlineStats(season({ sets_played: 4 })).fewSets).toBe(true);
 		expect(headlineStats(season({ sets_played: 5 })).fewSets).toBe(false);
 	});
+});
+
+it('未知局數的球員以兩場為樣本門檻，隱藏每局攔網', () => {
+	const stats = season({ position: 'MB', sets_played: null, games: 2 });
+	expect(headlineStats(stats).fewSets).toBe(false);
+	expect(headlineStats({ ...stats, games: 1 }).fewSets).toBe(true);
+	expect(headlineStats(stats).items.map((s) => s.label)).not.toContain('每局攔網');
+	expect(noPrReason({ insufficient_sets: true, position: 'MB', sets_played: null })).toContain('場數不足 2 場');
+});
+
+
+it('未知局數時分佈、PR 與趨勢選項移除每局攔網，攔中預設改看得分', () => {
+	for (const keys of [METRIC_KEYS, PR_METRICS, TREND_METRICS]) {
+		expect(availableMetrics(keys, null)).not.toContain('blocks_per_set');
+		expect(availableMetrics(keys, 0)).toContain('blocks_per_set');
+	}
+	expect(defaultTrendMetric('MB', null)).toBe('points');
 });

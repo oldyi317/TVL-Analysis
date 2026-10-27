@@ -15,7 +15,7 @@ STAT_FIELDS = [
 class SeasonTotals(NamedTuple):
     """球員一個賽季的出賽場數與技術統計合計，stats 依 STAT_FIELDS 順序。"""
     games: int
-    stats: tuple[int, ...]
+    stats: tuple[int | None, ...]
 
 
 class Registration(NamedTuple):

@@ -7,8 +7,12 @@ TVL 共用常數模組
 TVL_BASE_URL = "https://tvl.ctvba.org.tw"
 # 賽事列表頁：男子組 /schedule、女子組 /wschedule（/schedule-mix 不納入）
 SCHEDULE_PAGES = {"M": "/schedule", "F": "/wschedule"}
+# 單場數據自此賽季起以官網賽事頁為唯一來源（spec #75）；歷史賽季永不成為寫入候選
+OFFICIAL_BOX_SCORE_FROM_CUP = 22
 
-# ── 外部數據系統 (114.35.229.141) ──────────────────────────────
+# ── 外部數據系統 (114.35.229.141)：歷史補抓工具，已停用（ADR 0009）──────────
+# 單場數據與週登錄自 cup 22 起只走官網 match_stats_writer；EXT_CUP_ID 固定在外部系統最後一季 21，
+# 換季不再更新，stats_crawler 對 cup_id >= OFFICIAL_BOX_SCORE_FROM_CUP 一律拒絕執行。
 EXT_BASE = "http://114.35.229.141"
 EXT_CUP_ID = 21
 
@@ -21,11 +25,11 @@ EXT_HEADERS = {
 }
 
 # 球隊身分單一來源為 DB 的 teams/team_aliases（種子 sql/team_seed.sql，解析用 src/utils/teams.resolve_team）；
-# 只有 EXT_TEAM_MAPS、TEAM_NAME_SHORT 仍是手動維護的對照表，其中 EXT_TEAM_MAPS 換季要補。
+# 只有 EXT_TEAM_MAPS、TEAM_NAME_SHORT 仍是手動維護的對照表；EXT_TEAM_MAPS 止於 cup 21，不再補新季（ADR 0009）。
 # 2024-25 舊隊 team_id 8/9/10：訓練集刻意排除，見 issue #48。
 LEGACY_TEAM_IDS = {8, 9, 10}
-# ── 外部系統 TeamID → 本地 DB (team_id, gender) 對照表（每季一份，以 cup_id 為鍵）──
-# TeamID 每季重編；新季要在此加一份，查無該賽季時爬蟲會拋錯而不是落回其他賽季。
+# ── 外部系統 TeamID → 本地 DB (team_id, gender) 對照表（cup 20、21 各一份，以 cup_id 為鍵）──
+# TeamID 每季重編；查無該賽季時爬蟲會拋錯而不是落回其他賽季。cup 22 起不補（ADR 0009）。
 EXT_TEAM_MAPS: dict[int, dict[int, tuple[int, str]]] = {
     20: {
         1: (1, "M"),    # 屏東台電(男)
@@ -52,7 +56,7 @@ EXT_TEAM_MAPS: dict[int, dict[int, tuple[int, str]]] = {
     },
 }
 
-# ── 官網全名 → 簡寫對應（依 CLAUDE.md 第 7 節）─────────────────
+# ── 官網全名 → 簡寫對應（依 AGENTS.md 慣例）─────────────────
 TEAM_NAME_SHORT = {
     "臺北鯨華女子排球隊": "臺北鯨華",
     "新北中國人纖企業女子排球隊": "新北中纖",

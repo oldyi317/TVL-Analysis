@@ -39,7 +39,7 @@
                 "position": { "type": ["string", "null"], "description": "該季主要位置（週登錄最多次的位置，同數取最近）" },
                 "season_roster_position": { "type": ["string", "null"], "description": "該季賽季報名名單上的位置（只補顯示，不參與 PR 值）；沒有報名名單或與該季球隊不同隊時為 null" },
                 "games": { "type": "integer", "minimum": 0, "description": "該季統計列數，黃金決勝局列也算一場" },
-                "sets_played": { "type": "integer" },
+                "sets_played": { "type": ["integer", "null"] },
                 "attack_total": { "type": "integer" },
                 "attack_points": { "type": "integer" },
                 "block_points": { "type": "integer" },

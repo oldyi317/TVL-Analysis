@@ -22,7 +22,7 @@
         "dig_excellent_rate": { "type": "number", "description": "防守到位率（%）" },
         "points_per_game": { "type": "number", "description": "場均得分" },
         "set_excellent_rate": { "type": "number", "description": "舉球到位率（%）" },
-        "blocks_per_set": { "type": "number", "description": "每局攔網" },
+        "blocks_per_set": { "type": ["number", "null"], "description": "每局攔網" },
         "defense_load": { "type": "number", "description": "防守負荷：接發加防守次數" },
         "defense_efficiency": { "type": "number", "description": "防守效率：接發加防守的到位率（%）" }
       }
@@ -51,7 +51,7 @@
       "additionalProperties": false,
       "required": ["median", "values"],
       "properties": {
-        "median": { "type": "number" },
+        "median": { "type": ["number", "null"] },
         "values": { "type": "array", "items": { "type": "number" }, "description": "升冪排列，每位球員一筆" }
       }
     }
@@ -70,8 +70,8 @@
           "group": { "type": "string", "enum": ["men", "women"] },
           "position": { "type": ["string", "null"], "description": "該季主要位置（週登錄最多次的位置，同數取最近）；為空者不計算 PR 值" },
           "games": { "type": "integer", "minimum": 1, "description": "該季統計列數，黃金決勝局列也算一場" },
-          "sets_played": { "type": "integer", "minimum": 0 },
-          "insufficient_sets": { "type": "boolean", "description": "總局數未達 5，PR 值為空，比率照常輸出" },
+          "sets_played": { "type": ["integer", "null"], "minimum": 0 },
+          "insufficient_sets": { "type": "boolean", "description": "已知局數未達 5；局數未知時改以場數未達 2 判斷。PR 值為空，比率照常輸出" },
           "ratios": { "$ref": "#/$defs/Ratios" },
           "pr": { "$ref": "#/$defs/PercentileRanks" }
         }

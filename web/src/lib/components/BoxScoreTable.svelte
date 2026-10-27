@@ -11,11 +11,12 @@
 		{ label: '接發', value: (r) => goodOverTotal(r.receive_excellent, r.receive_total) },
 		{ label: '防守', value: (r) => goodOverTotal(r.dig_excellent, r.dig_total) },
 		{ label: '舉球', value: (r) => goodOverTotal(r.set_excellent, r.set_total) },
-		{ label: '出賽局數', short: '局數', value: (r) => String(r.sets_played) }
+		{ label: '出賽局數', short: '局數', value: (r) => String(r.sets_played ?? '—') }
 	];
 </script>
 
 <script lang="ts">
+	import DataNote from '#lib/components/DataNote.svelte';
 	let { rows, label }: { rows: BoxRow[]; label: string } = $props();
 
 	const uid = $props.id();
@@ -24,6 +25,10 @@
 	const detailId = (row: BoxRow) => `${uid}-${row.player_id}`;
 	const toggle = (row: BoxRow) => (open[row.player_id] = !open[row.player_id]);
 </script>
+
+{#if rows.some((row) => row.sets_played === null)}
+	<DataNote text="官網單場數據不提供出賽局數" />
+{/if}
 
 <div class="scroll">
 	<table aria-label={label}>

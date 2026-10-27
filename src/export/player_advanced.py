@@ -6,6 +6,7 @@
 from collections.abc import Iterable, Mapping, Sequence
 
 MIN_SETS = 5
+MIN_GAMES = 2
 RATIO_KEYS = (
     "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
     "points_per_game", "set_excellent_rate", "blocks_per_set", "defense_load", "defense_efficiency",
@@ -24,8 +25,8 @@ def _per(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator > 0 else 0.0
 
 
-def compute_ratios(totals: Mapping) -> dict[str, float]:
-    """九項比率，沿用舊站公式：率類為百分比，分母為 0 給 0。"""
+def compute_ratios(totals: Mapping) -> dict[str, float | None]:
+    """九項比率，沿用舊站公式：率類為百分比，分母為 0 給 0；局數未知時每局攔網為 None。"""
     defense_total = totals["receive_total"] + totals["dig_total"]
     return {
         "attack_success_rate": _pct(totals["attack_points"], totals["attack_total"]),
@@ -34,7 +35,8 @@ def compute_ratios(totals: Mapping) -> dict[str, float]:
         "dig_excellent_rate": _pct(totals["dig_excellent"], totals["dig_total"]),
         "points_per_game": _per(totals["total_points"], totals["games"]),
         "set_excellent_rate": _pct(totals["set_excellent"], totals["set_total"]),
-        "blocks_per_set": _per(totals["block_points"], totals["sets_played"]),
+        "blocks_per_set": (None if totals["sets_played"] is None
+                           else _per(totals["block_points"], totals["sets_played"])),
         "defense_load": defense_total,
         "defense_efficiency": _pct(totals["receive_excellent"] + totals["dig_excellent"], defense_total),
     }
@@ -64,7 +66,8 @@ def _in_pool(result: Mapping) -> bool:
 def compute_advanced(rows: Iterable[Mapping]) -> list[dict]:
     """同組別同賽季的球員合計 → 每人比率、PR 值與局數不足標記。
 
-    PR 值只在同位置且總局數達 MIN_SETS 的球員間計算；局數不足或無位置者 PR 值為 None。
+    PR 值只在同位置且樣本足夠的球員間計算：已知局數須達 MIN_SETS，未知時須達 MIN_GAMES。
+    每局攔網在未知局數時為 None，不進該指標的 PR 與分佈。
     """
     results = [
         {
@@ -72,7 +75,8 @@ def compute_advanced(rows: Iterable[Mapping]) -> list[dict]:
             "position": row["position"],
             "games": row["games"],
             "sets_played": row["sets_played"],
-            "insufficient_sets": row["sets_played"] < MIN_SETS,
+            "insufficient_sets": (row["games"] < MIN_GAMES if row["sets_played"] is None
+                                  else row["sets_played"] < MIN_SETS),
             "ratios": compute_ratios(row),
             "pr": {key: None for key in PR_KEYS},
         }
@@ -84,8 +88,9 @@ def compute_advanced(rows: Iterable[Mapping]) -> list[dict]:
             pools.setdefault(result["position"], []).append(result)
     for members in pools.values():
         for key in PR_KEYS:
-            ranks = percentile_ranks([m["ratios"][key] for m in members])
-            for member, rank in zip(members, ranks):
+            eligible = [m for m in members if m["ratios"][key] is not None]
+            ranks = percentile_ranks([m["ratios"][key] for m in eligible])
+            for member, rank in zip(eligible, ranks):
                 member["pr"][key] = rank
     return results
 
@@ -98,7 +103,8 @@ def distributions(results: Iterable[Mapping]) -> dict[str, dict[str, list[float]
             continue
         metrics = out.setdefault(result["position"], {key: [] for key in RATIO_KEYS})
         for key in RATIO_KEYS:
-            metrics[key].append(result["ratios"][key])
+            if result["ratios"][key] is not None:
+                metrics[key].append(result["ratios"][key])
     for metrics in out.values():
         for values in metrics.values():
             values.sort()

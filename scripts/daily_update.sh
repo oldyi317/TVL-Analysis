@@ -32,9 +32,11 @@ BEFORE=$(db_hash)
 # 賽季報名名單（ADR 0004）：排在賽事列表後，新季賽程寫入當天就歸到新季；失敗只記 log
 { "$PYTHON" -m src.etl.crawler && "$PYTHON" -m src.etl.db_loader; } || echo "賽季報名名單步驟失敗（exit $?），略過。"
 "$PYTHON" -m src.etl.match_crawler
-# stats_crawler 讀 matches.round_name 決定 week_label，必須排在 match_crawler 之後（ADR 0008）
-"$PYTHON" -m src.etl.stats_crawler --rosters
-"$PYTHON" -m src.etl.stats_crawler --incremental
+# 官網單場數據（ADR 0009）：本季有比分且無統計的場次，週登錄一併由官網賽事頁寫入；
+# 讀 matches.round_name 決定 week_label，必須排在 match_crawler 之後（ADR 0008）、predict 之前；
+# 只讀 matches 不寫；失敗只記 log，不中止每日更新與 commit。
+# 外部統計系統的 stats_crawler --rosters / --incremental 已停用，僅留作 cup 21 以前的歷史補抓工具。
+"$PYTHON" -m src.etl.match_stats_writer || echo "官網單場數據步驟有場次略過或失敗（exit $?），見上方 log，其餘步驟照常。"
 # 賽前勝率（ADR 0003）：失敗只記 log，不中止每日更新與 commit
 "$PYTHON" -m src.models.predict || echo "預測步驟失敗（exit $?），略過。"
 
