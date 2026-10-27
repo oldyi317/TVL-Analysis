@@ -1,3 +1,5 @@
+import { render } from 'svelte/server';
+import BoxScoreTable from './components/BoxScoreTable.svelte';
 import { describe, expect, it } from 'vitest';
 import type { BoxScoresData, PlayerEntry, StatRow } from '#lib/data/types.js';
 import { findBoxScore, toBoxScoreView } from './boxScore.js';
@@ -98,4 +100,14 @@ describe('toBoxScoreView', () => {
 		expect(view.golden_set?.home[0]).toMatchObject({ name: '王小明', total_points: 4 });
 		expect(view.golden_set?.away[0]).toMatchObject({ name: '球員 #2', total_points: 2 });
 	});
+});
+
+
+it('box score 保留未知局數並顯示破折號', () => {
+	const view = toBoxScoreView({ game_id: 9, home: [stat(1, { sets_played: null })], away: [], golden_set: null }, 'men', []);
+	expect(view.home[0].sets_played).toBeNull();
+	const html = render(BoxScoreTable, { props: { rows: view.home, label: '測試' } }).body;
+	expect(html).toMatch(/class="num wide[^"]*"[^>]*>—<\/td>/);
+	expect(html).not.toContain('>null<');
+	expect(html).toContain('官網 box score 不提供上場局數');
 });

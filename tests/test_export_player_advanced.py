@@ -156,3 +156,24 @@ def test_percentile_ranks_match_pandas_rank_pct_on_ties():
     for values in ([3.0], [0.0, 0.0], [5.5, 1.0, 5.5, 2.0, 5.5, 9.0, 0.0], [1, 2, 2, 3, 3, 3, 4, 10, 10]):
         expected = pd.Series(values).rank(pct=True).mul(100).round(1).tolist()
         assert percentile_ranks(values) == expected, values
+
+
+@pytest.mark.parametrize("sets", [(None, None), (5, None)])
+def test_unknown_sets_preserve_null_and_use_games_for_pr(export, sets):
+    def build(conn):
+        _oh(conn, 1, "甲", 1, 1, sets=sets[0], atk_pts=5)
+        seed_stat(conn, 1, (sets[1], 20, 10, 2, 10, 1, 10, 5, 8, 4, 4, 2, 13), match_date="2025-11-08")
+        _oh(conn, 2, "乙", 2, 1, sets=None, atk_pts=15)
+
+    payload = export(build)
+    full, short = payload["players"]
+    assert full["sets_played"] is None
+    assert full["ratios"]["blocks_per_set"] is None
+    assert full["pr"]["blocks_per_set"] is None
+    assert full["insufficient_sets"] is False
+    assert full["pr"]["attack_success_rate"] == 100.0
+    assert short["insufficient_sets"] is True
+    assert all(value is None for value in short["pr"].values())
+    metrics = payload["distributions"][0]["metrics"]
+    assert metrics["blocks_per_set"] == {"median": None, "values": []}
+    assert metrics["attack_success_rate"]["values"] == [37.5]

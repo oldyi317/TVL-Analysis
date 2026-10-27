@@ -253,7 +253,8 @@ def _matches_payload(conn: sqlite3.Connection) -> dict:
 
 
 def _player_seasons(conn: sqlite3.Connection) -> dict[int, list[dict]]:
-    sums = ", ".join(f"COALESCE(SUM(s.{f}), 0)" for f in STAT_FIELDS)
+    sums = ", ".join(("CASE WHEN COUNT(s.sets_played) = COUNT(*) THEN SUM(s.sets_played) ELSE NULL END"
+                      if f == "sets_played" else f"COALESCE(SUM(s.{f}), 0)") for f in STAT_FIELDS)
     totals = {
         (player_id, cup_id): SeasonTotals(games, tuple(stats))
         for player_id, cup_id, games, *stats in conn.execute(
@@ -323,7 +324,7 @@ def _advanced_entry(cup_id: int, group: str, result: dict) -> dict:
         "games": result["games"],
         "sets_played": result["sets_played"],
         "insufficient_sets": result["insufficient_sets"],
-        "ratios": {key: round(value, 2) for key, value in result["ratios"].items()},
+        "ratios": {key: round(value, 2) if value is not None else None for key, value in result["ratios"].items()},
         "pr": result["pr"],
     }
 
@@ -335,7 +336,7 @@ def _distribution_entry(cup_id: int, group: str, position: str, metrics: dict[st
         "position": position,
         "player_count": len(metrics["attack_success_rate"]),
         "metrics": {
-            key: {"median": round(median(values), 2), "values": [round(v, 2) for v in values]}
+            key: {"median": round(median(values), 2) if values else None, "values": [round(v, 2) for v in values]}
             for key, values in metrics.items()
         },
     }
@@ -457,7 +458,7 @@ def _side_rows(game: dict, golden: int, side: str) -> list:
 def _box_score_games(conn: sqlite3.Connection) -> dict[tuple[int, str], dict[int, dict]]:
     matches = _parent_matches(conn)
     opponents = _resolve_opponents(conn)
-    sums = ", ".join(f"COALESCE(s.{f}, 0)" for f in STAT_FIELDS)
+    sums = ", ".join((f"s.{f}" if f == "sets_played" else f"COALESCE(s.{f}, 0)") for f in STAT_FIELDS)
     stat_rows = conn.execute(
         f"""
         SELECT s.stat_id, s.match_date, r.team_id, r.gender, s.opponent, s.is_golden_set,

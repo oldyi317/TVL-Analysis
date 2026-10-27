@@ -36,6 +36,9 @@ export const PR_METRICS: readonly PrKey[] = [
 
 export const METRIC_KEYS = Object.keys(METRIC_LABELS) as MetricKey[];
 
+export const availableMetrics = <T extends string>(keys: readonly T[], setsPlayed: number | null): T[] =>
+	keys.filter((key) => setsPlayed !== null || key !== 'blocks_per_set');
+
 const RATE_METRICS: ReadonlySet<MetricKey> = new Set([
 	'attack_success_rate',
 	'receive_excellent_rate',
@@ -74,7 +77,7 @@ const count = (label: string, value: number): HeadlineStat => ({
 const attackRate = (s: PlayerSeason) => rate('攻擊成功率', s.attack_points, s.attack_total, '得分');
 
 const blocksPerSet = (s: PlayerSeason): HeadlineStat =>
-	s.sets_played === 0
+	s.sets_played === null || s.sets_played === 0
 		? { label: '每局攔網', value: '—', detail: null }
 		: {
 				label: '每局攔網',
@@ -98,7 +101,11 @@ const HEADLINES: Record<string, (s: PlayerSeason) => HeadlineStat[]> = {
 		excellentRate('接發球到位率', s.receive_excellent, s.receive_total),
 		count('攻擊得分', s.attack_points)
 	],
-	MB: (s) => [blocksPerSet(s), attackRate(s), count('攔網得分', s.block_points)],
+	MB: (s) => [
+		...(s.sets_played === null ? [] : [blocksPerSet(s)]),
+		attackRate(s),
+		count('攔網得分', s.block_points)
+	],
 	OP: (s) => [attackRate(s), count('攻擊得分', s.attack_points), count('發球得分', s.serve_points)]
 };
 
@@ -109,13 +116,17 @@ const scoringHeadlines = (s: PlayerSeason) => [
 ];
 
 const MIN_SETS = 5;
+const MIN_GAMES = 2;
 
 export function headlineStats(season: PlayerSeason): {
 	items: HeadlineStat[];
 	fewSets: boolean;
 } {
 	const headlines = HEADLINES[season.position ?? ''] ?? scoringHeadlines;
-	return { items: headlines(season), fewSets: season.sets_played < MIN_SETS };
+	return {
+		items: headlines(season),
+		fewSets: season.sets_played === null ? season.games < MIN_GAMES : season.sets_played < MIN_SETS
+	};
 }
 
 export function findAdvanced(
@@ -184,9 +195,10 @@ export function distributionOption(
 	};
 }
 
-type PoolFields = Pick<PlayerAdvancedEntry, 'insufficient_sets' | 'position'>;
+type PoolFields = Pick<PlayerAdvancedEntry, 'insufficient_sets' | 'position'> &
+	Partial<Pick<PlayerAdvancedEntry, 'sets_played'>>;
 
-// 與後端 player_advanced.py 的 _in_pool 同一規則：局數足夠且有登錄位置才有 PR 值與分佈
+// 與後端 player_advanced.py 的 _in_pool 同一規則：樣本足夠且有登錄位置才有 PR 值與分佈
 export function inPrPool(
 	advanced: PoolFields | null | undefined
 ): advanced is PoolFields & { position: string } {
@@ -196,7 +208,9 @@ export function inPrPool(
 export function noPrReason(advanced: PoolFields | null): string | null {
 	if (inPrPool(advanced)) return null;
 	if (!advanced) return '本季沒有進階數據';
-	if (advanced.insufficient_sets) return '出賽局數不足 5 局，不計算 PR 值與分佈';
+	if (advanced.insufficient_sets) return advanced.sets_played === null
+		? '出賽場數不足 2 場，不計算 PR 值與分佈'
+		: '出賽局數不足 5 局，不計算 PR 值與分佈';
 	return '本季無登錄位置，不計算 PR 值與分佈';
 }
 
@@ -246,7 +260,7 @@ const TREND_DEFS = {
 		label: METRIC_LABELS.blocks_per_set,
 		isRate: false,
 		compute: (s) =>
-			s.sets_played === 0
+			s.sets_played === null || s.sets_played === 0
 				? { value: null, detail: null }
 				: {
 						value: Math.round((s.block_points / s.sets_played) * 100) / 100,
@@ -284,8 +298,8 @@ const DEFAULT_TREND: Record<string, TrendMetric> = {
 	OP: 'attack_success_rate'
 };
 
-export const defaultTrendMetric = (position: string | null): TrendMetric =>
-	DEFAULT_TREND[position ?? ''] ?? 'points';
+export const defaultTrendMetric = (position: string | null, setsPlayed: number | null = 0): TrendMetric =>
+	setsPlayed === null && position === 'MB' ? 'points' : DEFAULT_TREND[position ?? ''] ?? 'points';
 
 const goldenPoint = (value: number) => ({ value, symbol: 'diamond', symbolSize: 14, golden: true });
 

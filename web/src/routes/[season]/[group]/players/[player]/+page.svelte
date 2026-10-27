@@ -75,8 +75,11 @@
 	{/if}
 </div>
 {#if stats.games === 0}
-	<EmptyState title="這一季還沒有單場數據" hint="有單場數據後就會出現" />
+	<EmptyState title="本季尚無上場紀錄" />
 {:else}
+	{#if stats.sets_played === null}
+		<p>官網 box score 不提供上場局數</p>
+	{/if}
 	<div class="stats">
 		{#each headline.items as item, i (item.label)}
 			<BigStat label={item.label} value={item.value} detail={item.detail} tone={(i % 3) + 1 as 1 | 2 | 3} />
@@ -89,7 +92,7 @@
 		</div>
 		<div>
 			<dt>出賽局數</dt>
-			<dd>{stats.sets_played}</dd>
+			<dd>{stats.sets_played ?? '—'}</dd>
 		</div>
 		<div>
 			<dt>總得分</dt>
@@ -98,7 +101,7 @@
 	</dl>
 {/if}
 
-<AdvancedStats advanced={data.advanced} distribution={data.distribution} gameLog={data.gameLog} />
+<AdvancedStats setsPlayed={stats.sets_played} advanced={data.advanced} distribution={data.distribution} gameLog={data.gameLog} />
 
 <style>
 	.back {

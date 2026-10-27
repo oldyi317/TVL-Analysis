@@ -1,5 +1,6 @@
 <script lang="ts">
 	import {
+		availableMetrics,
 		defaultTrendMetric,
 		distributionOption,
 		isRateMetric,
@@ -11,6 +12,7 @@
 		trendLabel,
 		trendOption,
 		type GameLogEntry,
+		type TrendMetric,
 		type MetricKey
 	} from '#lib/advanced.js';
 	import { onMount } from 'svelte';
@@ -24,11 +26,13 @@
 	let {
 		advanced,
 		distribution,
-		gameLog
+		gameLog,
+		setsPlayed
 	}: {
 		advanced: PlayerAdvancedEntry | null;
 		distribution: PositionDistribution | null;
 		gameLog: GameLogEntry[];
+		setsPlayed: number | null;
 	} = $props();
 
 	const uid = $props.id();
@@ -37,19 +41,26 @@
 	onMount(() => {
 		if (window.matchMedia('(min-width: 64rem)').matches) open = true;
 	});
-	let metric = $state<MetricKey>('attack_success_rate');
+	let selectedMetric = $state<MetricKey>('attack_success_rate');
+	const metric = $derived(setsPlayed === null && selectedMetric === 'blocks_per_set' ? 'attack_success_rate' : selectedMetric);
 
 	const positionText = $derived(
 		advanced?.position ? positionLabel(advanced.position, true) : ''
 	);
 	const noPrReason = $derived(prReason(advanced));
-	const fmt = (key: MetricKey, value: number) => (isRateMetric(key) ? `${value}%` : String(value));
+	const fmt = (key: MetricKey, value: number | null) => value === null ? '—' : (isRateMetric(key) ? `${value}%` : String(value));
 	const distOption = $derived(
 		distribution
 			? distributionOption(distribution.metrics[metric], advanced?.ratios[metric] ?? null, METRIC_LABELS[metric])
 			: null
 	);
-	let trendMetric = $derived(defaultTrendMetric(advanced?.position ?? null));
+	const hasSets = $derived(setsPlayed !== null);
+	let selectedTrend = $state<TrendMetric | null>(null);
+	const trendMetric = $derived(
+		selectedTrend && (hasSets || selectedTrend !== 'blocks_per_set')
+			? selectedTrend
+			: defaultTrendMetric(advanced?.position ?? null, setsPlayed)
+	);
 	const trend = $derived(trendOption(gameLog, trendMetric));
 </script>
 
@@ -77,7 +88,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each PR_METRICS as key (key)}
+						{#each availableMetrics(PR_METRICS, setsPlayed) as key (key)}
 							<tr>
 								<th scope="row">{METRIC_LABELS[key]}</th>
 								<td class="num">{fmt(key, advanced.ratios[key])}</td>
@@ -100,8 +111,8 @@
 			<section class="card">
 				<h3>同位置分佈</h3>
 				<div class="metrics" role="group" aria-label="選擇分佈指標">
-					{#each METRIC_KEYS as key (key)}
-						<button type="button" class="chip" aria-pressed={metric === key ? 'true' : 'false'} onclick={() => (metric = key)}>
+					{#each availableMetrics(METRIC_KEYS, setsPlayed) as key (key)}
+						<button type="button" class="chip" aria-pressed={metric === key ? 'true' : 'false'} onclick={() => (selectedMetric = key)}>
 							{METRIC_LABELS[key]}
 						</button>
 					{/each}
@@ -117,8 +128,8 @@
 				<EmptyState title="本季尚無單場數據" />
 			{:else}
 				<div class="metrics" role="group" aria-label="選擇逐場趨勢指標">
-					{#each TREND_METRICS as key (key)}
-						<button type="button" class="chip" aria-pressed={trendMetric === key ? 'true' : 'false'} onclick={() => (trendMetric = key)}>
+					{#each availableMetrics(TREND_METRICS, setsPlayed) as key (key)}
+						<button type="button" class="chip" aria-pressed={trendMetric === key ? 'true' : 'false'} onclick={() => (selectedTrend = key)}>
 							{trendLabel(key)}
 						</button>
 					{/each}
