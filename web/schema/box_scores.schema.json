@@ -65,7 +65,7 @@
         "team_id": { "type": "integer" },
         "jersey_number": { "type": ["integer", "null"], "description": "該統計列自己的登錄背號" },
         "position": { "type": ["string", "null"] },
-        "sets_played": { "type": "integer" },
+        "sets_played": { "type": ["integer", "null"] },
         "attack_total": { "type": "integer" },
         "attack_points": { "type": "integer" },
         "block_points": { "type": "integer" },

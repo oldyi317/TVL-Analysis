@@ -182,3 +182,15 @@ def test_cup_20_stats_attach_to_cup_20_men_group(export):
     [game] = groups[(20, "men")]
     assert game["game_id"] == 201
     assert game["home"] == [_row(1, 1, 7, "OH", 4)]
+
+
+def test_unknown_sets_stay_null_in_box_score_and_player_season(export):
+    def build(conn):
+        _season_with_one_game(conn)
+        seed_stat(conn, 1, (None, *_points(5)[1:]), opponent="雲林美津濃")
+
+    boxes, out_dir = export(build)
+    [game] = next(b["games"] for b in boxes if (b["cup_id"], b["group"]) == (21, "men"))
+    assert game["home"][0]["sets_played"] is None
+    players = json.loads((out_dir / "players.json").read_text())
+    assert players["players"][0]["seasons"][0]["sets_played"] is None

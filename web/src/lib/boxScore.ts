@@ -6,7 +6,7 @@ export type BoxRow = {
 	name: string;
 	number: number | null;
 	position: string | null;
-	sets_played: number;
+	sets_played: StatRow['sets_played'];
 	total_points: number;
 	attack_points: number;
 	attack_total: number;

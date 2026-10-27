@@ -41,7 +41,7 @@ def test_players_payload_validates_against_schema_without_dob(export_json):
 
 
 def test_season_totals_count_golden_set_rows_as_games_and_sum_all_columns(export):
-    """賽季合計沿用舊站 COUNT(*) / SUM 口徑：黃金決勝局列也算一場、各欄照加；NULL 當 0。"""
+    """賽季合計沿用舊站 COUNT(*) / SUM 口徑：黃金決勝局列也算一場、各欄照加；局數任一 NULL 則未知，其他欄 NULL 當 0。"""
     def build(conn):
         seed_player(conn, 1, "男甲")
         seed_registration(conn, 1, 1, team_id=1, jersey=7, position="OH")
@@ -54,7 +54,7 @@ def test_season_totals_count_golden_set_rows_as_games_and_sum_all_columns(export
 
     assert player["seasons"] == [{
         "cup_id": 21, "team_id": 1, "jersey_number": 7, "position": "OH", "season_roster_position": None, "games": 4,
-        "sets_played": 6, "attack_total": 33, "attack_points": 17, "block_points": 3,
+        "sets_played": None, "attack_total": 33, "attack_points": 17, "block_points": 3,
         "serve_total": 10, "serve_points": 4, "receive_total": 10, "receive_excellent": 5,
         "dig_total": 16, "dig_excellent": 8, "set_total": 10, "set_excellent": 5, "total_points": 24,
     }]
