@@ -109,7 +109,7 @@ JS 端需要色值的只有兩處：`color.ts` 的 `SURFACE`（算隊色變體�
 | `BigStat` | 大數字 | 標籤 sm muted 在上、數字 `--num-xl` 在下；三個並排 |
 | `EmptyState` | 空資料提示 | 一句話說明沒有什麼，加一句能做什麼；置中、muted，不放插圖 |
 | 賽事列表的月份列 | 吸附在頂部的月份跳轉 | 與賽季切換同款 chip，一列可橫向捲動；當前月份（捲動時自動更新）用 `--accent` 反白、`aria-current="location"`；每個月份一個 `<section>` 加 h2，`scroll-margin` 讓錨點跳轉不被月份列蓋住 |
-| `SiteFooter` | 頁尾：資料來源、非官方與商標聲明、MIT 與 GitHub 連結 | `<footer>`（`contentinfo`），每頁都有、放在內容欄內；上方 1px `--line` 分隔、`--text-muted` 正文字級，連結底線同色 |
+| `SiteFooter` | 頁尾：資料更新時間、資料來源、非官方與商標聲明、MIT 與 GitHub 連結、回報錯誤與 TVL 官網連結 | `<footer>`（`contentinfo`），每頁都有、放在內容欄內；上方 1px `--line` 分隔、`--text-muted` 正文字級，連結底線同色；資料更新時間用 `<time datetime>` 顯示台北時間到分（匯出器產生站台資料的時刻）；外部連結開新分頁並帶 `rel="noopener"`，元件不帶 props、自行 import `site.json` |
 | `DataNote` | 資料不完整註記 | `--warn-tint` 底、`--warn-ink` 字、正文字級，一行說清楚缺什麼（例：2024-25 女子組官網只收錄 8 場賽事） |
 
 通用規則：
