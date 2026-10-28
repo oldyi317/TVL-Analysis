@@ -210,6 +210,14 @@ test('歷史賽季球隊頁的季內賽事顯示當季隊名', async ({ page }) 
 	await expect(cards.filter({ hasText: '臺北鳳凰' })).toHaveCount(0);
 });
 
+test('歷史賽季球隊頁標頭顯示當季隊徽，無障礙文字用當季隊名', async ({ page }) => {
+	await page.goto(`${BASE}/2025-26/men/teams/4/`);
+	const logo = page.locator('header .badge img');
+	await expect(logo).toHaveAttribute('src', /men-4-21\.png$/);
+	await expect(logo).toHaveAttribute('alt', '臺北國北獅隊徽');
+	expect(await logo.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+});
+
 test('隊徽載入失敗時落回縮寫文字，隊頁隊徽仍帶名稱', async ({ page }) => {
 	await page.route('**/logos/*.png', (route) => route.fulfill({ status: 404 }));
 	const team = menIn(currentCup).find((t) => t.is_active);

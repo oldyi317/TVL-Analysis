@@ -41,7 +41,7 @@
 </a>
 
 <header class="rise">
-	<TeamBadge team={data.currentSeasonTeam} size="xl" label="{team.name}隊徽" />
+	<TeamBadge team={data.seasonTeam} size="xl" label="{data.seasonTeam.name}隊徽" />
 	<div class="title">
 		<h1>{team.name}</h1>
 		<p class="sub">{team.short_name === team.name ? '' : `${team.short_name}・`}{GROUP_LABEL[data.group]}</p>

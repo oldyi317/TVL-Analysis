@@ -1,7 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { parseId, requireSeasonGroup } from '#lib/route.js';
 import {
-	currentSeason,
 	findTeam,
 	formerNames,
 	latestRoster,
@@ -23,7 +22,6 @@ export const load: PageLoad = ({ params }) => {
 		season,
 		group,
 		team,
-		currentSeasonTeam: seasonTeam(team, currentSeason.cup_id),
 		seasonTeam: seasonTeam(team, season.cup_id),
 		formerNames: formerNames(team),
 		standing: teamStanding(season.cup_id, group, team.team_id),
