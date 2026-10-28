@@ -47,8 +47,7 @@ TVL-Analysis/
 │   │   ├── crawler.py            # 官網球隊頁 → data/raw/ 賽季報名名單 CSV
 │   │   ├── db_loader.py          # 名單 CSV → players 身分層 + season_rosters
 │   │   ├── stats_crawler.py      # 外部統計系統 → 週登錄與單場數據（歷史補抓工具，cup ≤21；ADR 0009）
-│   │   ├── cleaner.py            # 清洗規則（只標記異常，不插補）
-│   │   └── backup_db.py          # 遷移前備份 .db
+│   │   └── cleaner.py            # 清洗規則（只標記異常，不插補）
 │   ├── export/
 │   │   ├── site_data.py          # 靜態站 JSON 匯出器
 │   │   └── player_advanced.py    # 球員進階數據純函式

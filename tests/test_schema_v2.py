@@ -3,8 +3,6 @@ from pathlib import Path
 
 import pytest
 
-from src.etl.backup_db import backup_database
-
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "sql" / "schema.sql"
 
 
@@ -81,11 +79,3 @@ def test_player_match_stats_fk_to_registration(conn):
             "INSERT INTO player_match_stats (registration_id, match_date, total_points) VALUES (99999, '2026-01-01', 1)"
         )
 
-
-def test_backup_database_creates_timestamped_copy(tmp_path):
-    source = tmp_path / "fake.db"
-    source.write_bytes(b"fake sqlite content")
-    backup_path = backup_database(db_path=source)
-    assert backup_path.exists()
-    assert backup_path.name.startswith("fake.db.bak-")
-    assert backup_path.read_bytes() == b"fake sqlite content"
