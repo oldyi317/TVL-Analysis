@@ -5,7 +5,7 @@ game_id、日期、時間、場館、兩隊與 game_label，upsert 進 matches�
 依 ADR 0008 的欄位所有權：本爬蟲永不寫各局比分與 sets_won。
 round_name 在 2026-10-15 抓到的列表頁上全部空白，故只在列內出現「例行賽 Week N」等字樣時才寫，
 否則保留既有值（由 match_crawler 從單場頁補）。
-解析一律防禦式：缺值寫 NULL、缺關鍵欄位跳過該列；時間/場館待定列尚無樣本（#28）。
+解析一律防禦式：缺值寫 NULL、缺關鍵欄位跳過該列；場館空白列（2026-10-28 整季賽事列表的季後賽等列）照常寫入、venue 為 NULL（#28）。
 """
 import re
 import sqlite3
