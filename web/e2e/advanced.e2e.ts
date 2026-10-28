@@ -1,7 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 import { BASE, currentSeason, findSeason, readJson } from './helpers.js';
 
-type Adv = { player_id: number; cup_id: number; group: string; position: string | null; insufficient_sets: boolean };
+type Adv = {
+	player_id: number;
+	cup_id: number;
+	group: string;
+	position: string | null;
+	insufficient_sets: boolean;
+	sets_played: number | null;
+};
 type Player = { player_id: number; group: string; seasons: { cup_id: number; games: number }[] };
 // 開季初當季還沒有進階數據，退回最近一個有進階數據的賽季
 const picked = findSeason('advanced');
@@ -103,14 +110,21 @@ test('逐場趨勢預設依主要位置選指標，可切換其他指標', async
 	await expect(chart).toHaveAttribute('aria-label', `${next}逐場趨勢折線圖`);
 });
 
+// 文案刻意寫死、不 import noPrReason：測試要獨立於實作，才能抓到頁面文案改了測試沒跟的情況（#84）
+const expectedReason = (a: Adv) => {
+	if (!a.insufficient_sets) return '本季無登錄位置';
+	// 官網單場數據不提供局數（sets_played 為 null）時，樣本門檻改以場數計
+	if (a.sets_played === null) return '出賽場數不足 2 場';
+	return '出賽局數不足 5 局';
+};
+
 test('沒有 PR 值的球員（局數不足或無位置）展開後看到說明', async ({ page }) => {
 	const a = advanced.find(
 		(x) => x.cup_id === cup && (x.insufficient_sets || x.position === null) && played(x)
 	);
 	test.skip(!a, '用於比對的賽季沒有局數不足或無位置的出賽球員');
 	await open(page, a!);
-	const reason = a!.insufficient_sets ? '出賽局數不足 5 局' : '本季無登錄位置';
-	await expect(page.getByRole('note').filter({ hasText: reason })).toBeVisible();
+	await expect(page.getByRole('note').filter({ hasText: expectedReason(a!) })).toBeVisible();
 	await expect(page.getByRole('table', { name: 'PR 值' })).toHaveCount(0);
 	await expect(page.getByRole('heading', { name: '同位置分佈' })).toHaveCount(0);
 });

@@ -20,7 +20,11 @@ MEN = "schedule_2026-10-15.html"
 WOMEN = "wschedule_2026-10-15.html"
 MEN_NEXT = "schedule_115_2026-10-15.html"
 WOMEN_NEXT = "wschedule_115_2026-10-15.html"
+MEN_FULL = "schedule_2026-10-28.html"
+WOMEN_FULL = "wschedule_2026-10-28.html"
 PAGES = {"/schedule": MEN, "/wschedule": WOMEN, "/schedule/115": MEN_NEXT, "/wschedule/115": WOMEN_NEXT}
+
+BLANK_VENUE = {MEN_FULL: ("M", 66, [379, 380, 393, 394]), WOMEN_FULL: ("F", 52, [321, 322, 323, 324, 331, 332])}
 SCORE_COLUMNS = [
     "home_set1", "home_set2", "home_set3", "home_set4", "home_set5", "home_total",
     "away_set1", "away_set2", "away_set3", "away_set4", "away_set5", "away_total",
@@ -137,6 +141,17 @@ def test_unplayed_rows_on_next_year_page(fixture, gender, expected):
     assert not any(col in first for col in SCORE_COLUMNS)
 
 
+@pytest.mark.parametrize("fixture", [MEN_FULL, WOMEN_FULL])
+def test_blank_venue_rows_are_kept_with_none_venue(fixture):
+    """2026-10-28 整季賽事列表：2027-02-20/21 與季後賽列場館欄空白、時間有值，整列不得被跳過。"""
+    gender, expected, blank_venue = BLANK_VENUE[fixture]
+    html = _html(fixture)
+    rows, on_page = parse_schedule_page(html, gender)
+    assert len(rows) == on_page == _count_match_rows(html) == expected
+    assert [r["game_id"] for r in rows if r["venue"] is None] == blank_venue
+    assert all(r["start_time"] for r in rows)
+
+
 def test_next_year_link_only_on_default_page():
     assert next_year_path(_html(MEN)) == "/schedule/115"
     assert next_year_path(_html(WOMEN)) == "/wschedule/115"
@@ -214,6 +229,23 @@ def test_unknown_team_writes_null_and_warns(conn, caplog):
     assert "不存在隊" in caplog.text and "264" in caplog.text
 
 
+@pytest.mark.parametrize("fixture", [MEN_FULL, WOMEN_FULL])
+def test_upsert_writes_null_venue_even_with_placeholder_teams(conn, fixture):
+    gender, _, blank_venue = BLANK_VENUE[fixture]
+    rows, _ = parse_schedule_page(_html(fixture), gender)
+    by_id = {r["game_id"]: r for r in rows}
+    for game_id in (blank_venue[0], blank_venue[-1]):
+        assert upsert_schedule_match(conn, by_id[game_id], cup_id=22) is True
+        db = conn.execute(
+            "SELECT venue, start_time, home_team, away_team FROM matches WHERE game_id=? AND gender=?",
+            (game_id, gender),
+        ).fetchone()
+        assert db == (None, by_id[game_id]["start_time"], by_id[game_id]["home_team"], by_id[game_id]["away_team"])
+    assert conn.execute(
+        "SELECT home_team_id, away_team_id FROM matches WHERE game_id=? AND gender=?", (blank_venue[-1], gender)
+    ).fetchone() == (None, None)
+
+
 # ── 整頁流程 ─────────────────────────────────────────────────
 
 
@@ -249,9 +281,3 @@ def test_request_failure_skips_page_without_raising(conn, caplog):
         result = scrape_schedule_pages(conn, genders=("F",))
     assert result["F"] == {"parsed": 0, "on_page": 0, "inserted": 0, "updated": 0}
     assert "boom" in caplog.text
-
-
-@pytest.mark.skip(reason="待賽程公布，見 #28")
-def test_unplayed_row_with_undecided_time_or_venue():
-    """2026-27 已有未開打列樣本（schedule_115 fixture，比分顯示 0/0）；
-    時間或場館「待定」的列尚無樣本，拿到後補：缺值寫 NULL、不得讓整列被跳過。"""
