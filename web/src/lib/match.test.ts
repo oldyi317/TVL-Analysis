@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { groupByMonth, isPlayed, latestMatchDay, nextMatch, setsWon, winnerSide, winProbPercent } from './match.js';
+import {
+	groupByMonth,
+	isPlayed,
+	latestMatchDay,
+	nextMatch,
+	setsWon,
+	winnerSide,
+	winProbPercent,
+	WIN_PROB_NOTE
+} from './match.js';
 
 const sets: [number, number][] = [
 	[25, 20],
@@ -113,5 +122,12 @@ describe('winProbPercent', () => {
 	it('四捨五入邊界', () => {
 		expect(winProbPercent(0.615)).toEqual([62, 38]);
 		expect(winProbPercent(0.614)).toEqual([61, 39]);
+	});
+});
+
+describe('WIN_PROB_NOTE', () => {
+	it('註明交叉驗證 F1 與僅供參考', () => {
+		expect(WIN_PROB_NOTE).toContain('F1 約 0.61');
+		expect(WIN_PROB_NOTE).toContain('僅供參考');
 	});
 });

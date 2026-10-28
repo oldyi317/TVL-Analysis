@@ -100,4 +100,4 @@ export function winProbPercent(p: number | null | undefined): [number, number] |
 }
 
 export const WIN_PROB_NOTE =
-	'依兩隊近 3 至 5 場技術統計推估，未考慮對手強度與主客場；開季初以上季末近況為準，僅供參考。';
+	'依兩隊近 3 至 5 場技術統計推估，未考慮對手強度與主客場；開季初以上季末近況為準。交叉驗證 F1 約 0.61，僅供參考。';
