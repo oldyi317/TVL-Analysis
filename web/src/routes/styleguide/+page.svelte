@@ -6,6 +6,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import MatchCard from '#lib/components/MatchCard.svelte';
 	import PlayerCard from '#lib/components/PlayerCard.svelte';
+	import SiteHead from '#lib/components/SiteHead.svelte';
 	import StandingsTable from '#lib/components/StandingsTable.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import WinRing from '#lib/components/WinRing.svelte';
@@ -112,9 +113,7 @@
 	});
 </script>
 
-<svelte:head>
-	<title>樣式指南｜TVL 數據</title>
-</svelte:head>
+<SiteHead title="樣式指南｜TVL 數據" />
 
 <h1>樣式指南</h1>
 <p class="lead">本頁把設計 token 與元件用真實球隊資料擺出來，供簽核用。球隊是真的；比分、戰績、球員與圖表數字都是示意資料，不是真實結果。</p>

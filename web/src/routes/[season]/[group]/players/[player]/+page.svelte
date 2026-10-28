@@ -6,6 +6,7 @@
 	import Icon from '#lib/components/Icon.svelte';
 	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import SiteHead from '#lib/components/SiteHead.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import { displayPosition, findTeam, GROUP_LABEL, playerDisplayName, positionLabel } from '#lib/site.js';
 	import type { PageProps } from './$types';
@@ -35,9 +36,7 @@
 	]);
 </script>
 
-<svelte:head>
-	<title>{name}｜{data.season.name} {GROUP_LABEL[data.group]} 球員｜TVL 數據</title>
-</svelte:head>
+<SiteHead title="{name}｜{data.season.name} {GROUP_LABEL[data.group]} 球員｜TVL 數據" />
 
 <a class="back" href={listHref}>
 	<Icon name="chevron-left" size={16} />

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import SiteHead from '#lib/components/SiteHead.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import BigStat from '#lib/components/BigStat.svelte';
 	import DataNote from '#lib/components/DataNote.svelte';
@@ -31,9 +32,7 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{team.name}｜{data.season.name} {GROUP_LABEL[data.group]} 球隊｜TVL 數據</title>
-</svelte:head>
+<SiteHead title="{team.name}｜{data.season.name} {GROUP_LABEL[data.group]} 球隊｜TVL 數據" />
 
 <a class="back" href={listHref}>
 	<Icon name="chevron-left" size={16} />
