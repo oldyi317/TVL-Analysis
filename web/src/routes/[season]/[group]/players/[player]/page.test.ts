@@ -14,7 +14,7 @@ const context = new Map([
 	['__request__', { page: { url: new URL('http://localhost/TVL-Analysis/22/men/players/1/') } }]
 ]);
 
-function page(games: number, setsPlayed: number | null) {
+function renderPage(games: number, setsPlayed: number | null) {
 	const props: PageProps = {
 		params: { season: season.name, group: player.group, player: String(player.player_id) },
 		form: null,
@@ -24,21 +24,14 @@ function page(games: number, setsPlayed: number | null) {
 			advanced: null, distribution: null, gameLog: []
 		}
 	};
-	return render(PlayerPage, { props, context }).body;
+	return render(PlayerPage, { props, context });
 }
+
+const page = (games: number, setsPlayed: number | null) => renderPage(games, setsPlayed).body;
 
 describe('球員頁 head', () => {
 	it('title 維持原格式，並帶 Open Graph 與絕對網址', () => {
-		const props: PageProps = {
-			params: { season: season.name, group: player.group, player: String(player.player_id) },
-			form: null,
-			data: {
-				season, group: player.group, player, team: found.team,
-				stats: { ...stats, position: 'MB', games: 2, sets_played: 6 },
-				advanced: null, distribution: null, gameLog: []
-			}
-		};
-		const head = render(PlayerPage, { props, context }).head;
+		const head = renderPage(2, 6).head;
 		const title = `${playerDisplayName(player)}｜${season.name} ${GROUP_LABEL[player.group]} 球員｜TVL 數據`;
 		expect(head).toContain(`<title>${title}</title>`);
 		expect(head).toContain(`<meta property="og:title" content="${title}"`);
