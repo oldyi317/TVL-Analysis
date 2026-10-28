@@ -26,8 +26,6 @@ EXT_HEADERS = {
 
 # 球隊身分單一來源為 DB 的 teams/team_aliases（種子 sql/team_seed.sql，解析用 src/utils/teams.resolve_team）；
 # 只有 EXT_TEAM_MAPS、TEAM_NAME_SHORT 仍是手動維護的對照表；EXT_TEAM_MAPS 止於 cup 21，不再補新季（ADR 0009）。
-# 2024-25 舊隊 team_id 8/9/10：訓練集刻意排除，見 issue #48。
-LEGACY_TEAM_IDS = {8, 9, 10}
 # ── 外部系統 TeamID → 本地 DB (team_id, gender) 對照表（cup 20、21 各一份，以 cup_id 為鍵）──
 # TeamID 每季重編；查無該賽季時爬蟲會拋錯而不是落回其他賽季。cup 22 起不補（ADR 0009）。
 EXT_TEAM_MAPS: dict[int, dict[int, tuple[int, str]]] = {

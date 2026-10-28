@@ -84,15 +84,18 @@ def test_label_uses_sets_won_not_total_points():
     assert home["win"] == 0 and away["win"] == 1
 
 
-def test_labels_skip_golden_set_and_legacy():
+def test_labels_skip_golden_set_but_keep_2024_25_teams():
+    # #48：彰化三大有線／臺北Conti／連莊（team_id 8/9/10）的賽事納入訓練集，不再跳過
     matches = pd.DataFrame([
         _match_row(1, 7, "M", 3, 1),
         _match_row(1, 7, "M", 1, 0, golden=1, date="2026-01-11"),
         _match_row(9, 10, "M", 3, 2, date="2024-12-01"),
     ])
     labels, report = build_match_labels(matches)
-    assert len(labels) == 2  # 只有第一場的主客兩筆
-    assert report["legacy_skipped"] == 1
+    assert len(labels) == 4  # 第一場與舊隊那場各主客兩筆，黃金局不算
+    assert labels[labels["team_id"] == 9]["win"].item() == 1
+    assert labels[labels["team_id"] == 10]["win"].item() == 0
+    assert "legacy_skipped" not in report
 
 
 def test_labels_skip_null_team_id_as_unresolved():
@@ -124,8 +127,8 @@ def _seed_match(conn, game_id, home_id, away_id, gender, hsw, asw, *, date,
         (game_id, gender, date, home, away, home_id, away_id, hsw, asw))
 
 
-def test_labeled_history_drops_legacy_team_rows_like_labels_do(tmp_db_path):
-    # #81：舊隊賽事的標籤刻意跳過（#48），統計列也要同步排除，不能炸在 attach_labels
+def test_labeled_history_keeps_2024_25_team_rows(tmp_db_path):
+    # #48：舊隊的統計列與標籤一起進歷史；#81 的「同步排除」隨之作廢
     conn = connect_seeded(tmp_db_path)
     _seed_match(conn, 1, 10, 1, "M", 0, 3, date="2024-10-19", home="連莊", away="屏東台電男排")
     _seed_match(conn, 2, 1, 2, "M", 3, 1, date="2024-10-20")
@@ -135,10 +138,11 @@ def test_labeled_history_drops_legacy_team_rows_like_labels_do(tmp_db_path):
     _seed_stat(conn, 2, "M", "2024-10-20", "屏東台電")
     labeled, report = load_labeled_history(conn)
     conn.close()
-    assert sorted(labeled["match_date"].unique()) == ["2024-10-20"]
-    assert len(labeled) == 2
-    assert report["legacy_skipped"] == 1
-    assert report["legacy_stat_rows_skipped"] == 2
+    assert sorted(labeled["match_date"].unique()) == ["2024-10-19", "2024-10-20"]
+    assert len(labeled) == 4
+    assert labeled.set_index(["match_date", "team_id"]).loc[("2024-10-19", 10), "win"] == 0
+    assert report["team_match_rows"] == 4
+    assert "legacy_stat_rows_skipped" not in report
 
 
 def test_total_sets_falls_back_to_match_sets_when_sets_played_null(tmp_db_path):
