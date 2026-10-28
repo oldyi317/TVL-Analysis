@@ -322,21 +322,25 @@ def collect_player_rows(
     new_records = filter_new_records(resolver.conn, player_id, records)
     skipped = len(records) - len(new_records)
 
-    # 逐筆解析 registration_id（Phase 2：player_match_stats 改掛
-    # registration_id，不同筆記錄可能落在不同週次，須逐筆反查）
-    rows = [
-        (
-            resolve_registration_for_stats(resolver.conn, player_id, db_team_id, gender, r["match_date"], resolver.cup_id),
-            r["match_date"], r["opponent"], r["sets_played"],
+    # 逐筆解析 registration_id（不同筆記錄可能落在不同週次）；查無 round_name 的筆數不寫（#61）
+    rows = []
+    for r in new_records:
+        try:
+            rid = resolve_registration_for_stats(
+                resolver.conn, player_id, db_team_id, gender, r["match_date"], resolver.cup_id,
+            )
+        except WeekLabelUnresolved as e:
+            logger.warning("球員 [%s] %s，該筆統計不寫", name, e)
+            continue
+        rows.append((
+            rid, r["match_date"], r["opponent"], r["sets_played"],
             r["attack_total"], r["attack_points"], r["block_points"],
             r["serve_total"], r["serve_points"],
             r["receive_total"], r["receive_excellent"],
             r["dig_total"], r["dig_excellent"],
             r["set_total"], r["set_excellent"], r["total_points"],
             r["is_golden_set"],
-        )
-        for r in new_records
-    ]
+        ))
     return rows, skipped
 
 
@@ -620,16 +624,21 @@ def fetch_match_roster(conn: sqlite3.Connection, season: Season, match_id: int) 
     return rows
 
 
+class WeekLabelUnresolved(Exception):
+    """該日該季在 matches 查無 round_name，無法決定 week_label；呼叫端應略過、不得寫入持久列（#61）。"""
+
+
 def resolve_week_label(
     conn: sqlite3.Connection, match_date: str, title_text: str, cup_id: int,
 ) -> tuple[str, str]:
     """
-    回傳 (week_label, week_start_date)。
-    優先用 matches.round_name 反查（權威來源）；查無則退化用標題文字，
-    並記錄警告（此為已知限制，非本次遷移的資料涵蓋範圍）。
+    回傳 (week_label, week_start_date)，以 matches.round_name 為唯一權威來源。
+    查無時拋 WeekLabelUnresolved，不再退化成「未比對-日期」寫進 roster_registrations
+    （違序先跑 stats_crawler 再跑 match_crawler 時，退化列不會被清除或遷移，見 #61）。
     """
     row = conn.execute(
-        "SELECT round_name FROM matches WHERE match_date = ? AND cup_id = ? ORDER BY round_name LIMIT 1",
+        "SELECT round_name FROM matches WHERE match_date = ? AND cup_id = ? "
+        "AND round_name IS NOT NULL ORDER BY round_name LIMIT 1",
         (match_date, cup_id),
     ).fetchone()
     if row and row[0]:
@@ -642,11 +651,10 @@ def resolve_week_label(
         week_start_date = start_row[0] if start_row and start_row[0] else match_date
         return week_label, week_start_date
 
-    logger.warning(
-        "match_date=%s 在 matches 表查無 round_name，退化用 match_date 當 week_label：%s",
-        match_date, title_text,
+    hint = f"（標題：{title_text}）" if title_text else ""
+    raise WeekLabelUnresolved(
+        f"match_date={match_date} cup_id={cup_id} 在 matches 表查無 round_name，請先跑 match_crawler{hint}"
     )
-    return f"未比對-{match_date}", match_date
 
 
 def upsert_roster_registration(
@@ -735,11 +743,16 @@ def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
         if not roster_rows:
             stats["matches_skipped"] += 1
             continue
-        stats["matches_scanned"] += 1
 
         match_date = roster_rows[0]["match_date"]
         title_text = roster_rows[0]["title_text"]
-        week_label, week_start_date = resolve_week_label(conn, match_date, title_text, cup_id)
+        try:
+            week_label, week_start_date = resolve_week_label(conn, match_date, title_text, cup_id)
+        except WeekLabelUnresolved as e:
+            logger.warning("[MatchID=%d] %s，跳過該場", m["match_id"], e)
+            stats["matches_skipped"] += 1
+            continue
+        stats["matches_scanned"] += 1
 
         for row in roster_rows:
             player_id = resolver.resolve(

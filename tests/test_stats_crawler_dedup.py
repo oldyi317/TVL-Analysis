@@ -24,6 +24,10 @@ def _make_conn(tmp_db_path) -> tuple[sqlite3.Connection, int]:
     conn.execute(
         "INSERT INTO players (name, gender) VALUES ('測試球員', 'M')"
     )
+    conn.execute(
+        "INSERT INTO matches (game_id, gender, cup_id, match_date, round_name, home_team, away_team) "
+        "VALUES (1, 'M', 21, '2026-01-01', '例行賽 Week 1', '測試隊', '對手隊')"
+    )
     player_id = conn.execute("SELECT player_id FROM players").fetchone()[0]
     conn.execute(
         """INSERT INTO roster_registrations

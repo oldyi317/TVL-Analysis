@@ -9,7 +9,8 @@ from bs4 import BeautifulSoup
 from src.utils.seasons import Season, get_season
 from tests.conftest import connect_seeded
 from src.etl.stats_crawler import (
-    fetch_match_roster, fetch_player_stats, resolve_week_label, upsert_roster_registration,
+    WeekLabelUnresolved, crawl_all_rosters, fetch_match_roster, fetch_player_stats,
+    resolve_week_label, upsert_roster_registration,
     build_name_to_pid,
 )
 
@@ -115,7 +116,8 @@ def test_resolve_week_label_uses_matches_round_name(tmp_db_path):
     conn.close()
 
 
-def test_resolve_week_label_falls_back_when_no_match_found(tmp_db_path):
+def test_resolve_week_label_raises_when_no_round_name(tmp_db_path):
+    """#61：查無 round_name 不再退化成「未比對-日期」，改拋例外讓呼叫端略過該場。"""
     conn = sqlite3.connect(tmp_db_path)
     conn.execute("""
         CREATE TABLE matches (
@@ -123,33 +125,16 @@ def test_resolve_week_label_falls_back_when_no_match_found(tmp_db_path):
             match_date DATE, round_name TEXT, home_team TEXT, away_team TEXT, cup_id INTEGER
         )
     """)
+    conn.execute(
+        "INSERT INTO matches (game_id, gender, match_date, round_name, home_team, away_team, cup_id) "
+        "VALUES (1, 'F', '2099-01-08', NULL, '新北中纖', '義力營造', 21)"
+    )
     conn.commit()
 
-    week_label, week_start = resolve_week_label(conn, "2099-01-01", "女子組 第99週(...) 編號：1", 21)
-    assert week_label.startswith("未比對-")
-    assert week_start == "2099-01-01"
-    conn.close()
-
-
-def test_resolve_week_label_fallback_distinguishes_different_dates(tmp_db_path):
-    """Finding 1: 不同 match_date 落入 fallback 時不應合併成同一個 week_label。"""
-    conn = sqlite3.connect(tmp_db_path)
-    conn.execute("""
-        CREATE TABLE matches (
-            match_id INTEGER PRIMARY KEY, game_id INTEGER, gender TEXT,
-            match_date DATE, round_name TEXT, home_team TEXT, away_team TEXT, cup_id INTEGER
-        )
-    """)
-    conn.commit()
-
-    label_1, start_1 = resolve_week_label(conn, "2099-01-01", "", 21)
-    label_2, start_2 = resolve_week_label(conn, "2099-01-08", "", 21)
-
-    assert label_1 != label_2
-    assert label_1 == "未比對-2099-01-01"
-    assert label_2 == "未比對-2099-01-08"
-    assert start_1 == "2099-01-01"
-    assert start_2 == "2099-01-08"
+    with pytest.raises(WeekLabelUnresolved, match="2099-01-01"):
+        resolve_week_label(conn, "2099-01-01", "女子組 第99週(...) 編號：1", 21)
+    with pytest.raises(WeekLabelUnresolved, match="2099-01-08"):
+        resolve_week_label(conn, "2099-01-08", "", 21)
     conn.close()
 
 
@@ -566,3 +551,35 @@ def test_fetch_player_stats_warns_on_unparseable_date_cell(caplog):
 
     assert [r["match_date"] for r in records] == ["2025-11-01"]
     assert any("累計?" in r.getMessage() for r in caplog.records)
+
+
+def test_resolve_week_label_ignores_null_round_name_when_a_real_one_exists(seeded_conn):
+    """#61：同日同季同時有 NULL 與非 NULL 的 round_name 時，不得被 NULL 排序搶走。"""
+    for game_id, rnd in [(1, None), (2, "例行賽 Week 1")]:
+        seeded_conn.execute(
+            "INSERT INTO matches (game_id, gender, cup_id, match_date, round_name, home_team, away_team) "
+            "VALUES (?, 'F', 21, '2025-11-01', ?, '新北中纖', '義力營造')", (game_id, rnd))
+    seeded_conn.commit()
+
+    assert resolve_week_label(seeded_conn, "2025-11-01", "", 21) == ("例行賽 Week 1", "2025-11-01")
+
+
+def test_crawl_all_rosters_skips_match_without_round_name_and_writes_nothing(seeded_conn, caplog):
+    """#61：違序（matches 尚無該日 round_name）時整場略過，roster_registrations 不留「未比對-」列。"""
+    seeded_conn.execute(
+        "INSERT INTO matches (game_id, gender, cup_id, match_date, round_name, home_team, away_team) "
+        "VALUES (1, 'F', 21, '2025-11-01', NULL, '新北中纖', '義力營造')"
+    )
+    seeded_conn.commit()
+    fixture_html = FIXTURE.read_text(encoding="utf-8")
+
+    with patch("src.etl.stats_crawler.fetch_match_list", return_value=[{"match_id": 1, "label": "第1週-女 1"}]), \
+         patch("src.etl.stats_crawler.requests.get", return_value=_FakeResponse(fixture_html)), \
+         caplog.at_level("WARNING", logger="src.etl.stats_crawler"):
+        stats = crawl_all_rosters(seeded_conn, cup_id=21)
+
+    assert stats["matches_skipped"] == 1
+    assert stats["matches_scanned"] == 0
+    assert stats["registrations_upserted"] == 0
+    assert seeded_conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0] == 0
+    assert any("2025-11-01" in r.getMessage() and "round_name" in r.getMessage() for r in caplog.records)
