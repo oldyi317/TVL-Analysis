@@ -29,7 +29,7 @@ date: 2026-10-22
 
 ## stats_crawler
 
-`stats_crawler` 不寫 `matches`，只唯讀 round_name 來決定 week_label，所以 `daily_update.sh` 必須先跑 `match_crawler`。（附註：`stats_crawler` 已於 ADR 0009 自每日更新停用，同一順序要求改適用於接手寫週登錄的 `match_stats_writer`。）違序時 week_label 退化成「未比對-日期」並寫入 `roster_registrations`，之後補上 round_name 也不會清除或遷移那些列。這個問題在 #61 處理。
+`stats_crawler` 不寫 `matches`，只唯讀 round_name 來決定 week_label，所以 `daily_update.sh` 必須先跑 `match_crawler`。（附註：`stats_crawler` 已於 ADR 0009 自每日更新停用，同一順序要求改適用於接手寫週登錄的 `match_stats_writer`。）違序時（該日該季查無非 NULL 的 round_name）`resolve_week_label` 拋 `WeekLabelUnresolved`：`--rosters` 整場略過、單場數據該筆不寫，兩者都不補登錄列，等 round_name 補上後重跑即可補齊。round_name 查詢加了 `IS NOT NULL`，同日同季 NULL 與非 NULL 並存時不會被 NULL 排序搶走（#61）。舊版曾退化成「未比對-日期」寫進 `roster_registrations`，那些列補上 round_name 後不會被清除或遷移。
 
 ## 不在範圍
 

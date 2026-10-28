@@ -1,7 +1,8 @@
 import sqlite3
 from pathlib import Path
 
-from src.etl.stats_crawler import resolve_registration_for_stats
+from src.etl import stats_crawler
+from src.etl.stats_crawler import PlayerResolver, collect_player_rows, resolve_registration_for_stats
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "sql" / "schema.sql"
 
@@ -97,5 +98,33 @@ def test_resolve_registration_scopes_by_cup_id(tmp_db_path):
         assert row == (21, "backfill"), "應建立當季新登錄，而非誤用他季登錄"
         count = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0]
         assert count == 2
+    finally:
+        conn.close()
+
+
+def test_collect_player_rows_drops_records_without_round_name_and_writes_no_registration(tmp_db_path, monkeypatch, caplog):
+    """#61：統計路徑遇到 matches 尚無 round_name 的場次，該筆不寫、也不補 backfill 登錄。"""
+    conn = _make_conn(tmp_db_path)
+    try:
+        def record(match_date):
+            return {
+                "match_date": match_date, "opponent": "義力營造", "sets_played": 3,
+                "attack_total": 0, "attack_points": 0, "block_points": 0,
+                "serve_total": 0, "serve_points": 0, "receive_total": 0, "receive_excellent": 0,
+                "dig_total": 0, "dig_excellent": 0, "set_total": 0, "set_excellent": 0,
+                "total_points": 0, "is_golden_set": 0,
+            }
+
+        monkeypatch.setattr(stats_crawler, "fetch_player_stats",
+                            lambda *a: [record("2025-11-01"), record("2025-11-08")])
+        resolver = PlayerResolver(conn, 21)
+        with caplog.at_level("WARNING", logger="src.etl.stats_crawler"):
+            rows, skipped = collect_player_rows(None, resolver, 1, 5, "F", {"ext_player_id": 1, "name": "張瓈文"})
+
+        assert [r[1] for r in rows] == ["2025-11-01"]
+        assert skipped == 0
+        labels = [r[0] for r in conn.execute("SELECT week_label FROM roster_registrations").fetchall()]
+        assert labels == ["例行賽 Week 1"]
+        assert any("2025-11-08" in r.getMessage() and "round_name" in r.getMessage() for r in caplog.records)
     finally:
         conn.close()
