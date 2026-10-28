@@ -26,7 +26,7 @@ import type {
 
 export const SITE_URL = 'https://oldyi317.github.io/TVL-Analysis';
 export const SITE_DESCRIPTION =
-	'台灣企業排球聯賽（TVL）球迷自製數據站：賽程比分、球隊與球員數據、賽前勝率';
+	'台灣企業排球聯賽（TVL）球迷自製數據站：賽事比分、球隊與球員數據、賽前勝率';
 
 export const GROUPS = ['men', 'women'] as const;
 export type Group = (typeof GROUPS)[number];
