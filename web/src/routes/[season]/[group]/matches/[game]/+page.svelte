@@ -5,6 +5,7 @@
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import MatchCard from '#lib/components/MatchCard.svelte';
+	import SiteHead from '#lib/components/SiteHead.svelte';
 	import type { BoxRow } from '#lib/boxScore.js';
 	import { isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
@@ -28,9 +29,7 @@
 	<div class="card table-card"><BoxScoreTable rows={sides.away} label="{match.away.short_name} {suffix}" /></div>
 {/snippet}
 
-<svelte:head>
-	<title>{match.home.short_name} 對 {match.away.short_name} {match.date}｜{data.season.name} {GROUP_LABEL[data.group]} 賽事｜TVL 數據</title>
-</svelte:head>
+<SiteHead title="{match.home.short_name} 對 {match.away.short_name} {match.date}｜{data.season.name} {GROUP_LABEL[data.group]} 賽事｜TVL 數據" />
 
 <a class="back" href={listHref}>
 	<Icon name="chevron-left" size={18} />

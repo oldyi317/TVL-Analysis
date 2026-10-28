@@ -3,6 +3,7 @@
 	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import MatchLink from '#lib/components/MatchLink.svelte';
+	import SiteHead from '#lib/components/SiteHead.svelte';
 	import { isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
@@ -53,9 +54,7 @@
 		})}/`;
 </script>
 
-<svelte:head>
-	<title>{data.season.name} {GROUP_LABEL[data.group]} 賽事｜TVL 數據</title>
-</svelte:head>
+<SiteHead title="{data.season.name} {GROUP_LABEL[data.group]} 賽事｜TVL 數據" />
 
 <h1>{data.season.name} {GROUP_LABEL[data.group]} 賽事</h1>
 

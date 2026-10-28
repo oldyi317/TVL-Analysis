@@ -1,13 +1,18 @@
 import { render } from 'svelte/server';
 import { describe, expect, it } from 'vitest';
 import PlayerPage from './+page.svelte';
-import { findPlayerSeason, players, seasons } from '#lib/site.js';
+import { findPlayerSeason, GROUP_LABEL, playerDisplayName, players, seasons } from '#lib/site.js';
 import type { PageProps } from './$types';
 
 const player = players.find((p) => p.seasons.length > 0)!;
 const stats = player.seasons[0];
 const found = findPlayerSeason(stats.cup_id, player.group, player.player_id)!;
 const season = seasons.find((s) => s.cup_id === stats.cup_id)!;
+
+// SiteHead 從 $app/state 讀 page.url，SSR 下靠 __request__ context 供應
+const context = new Map([
+	['__request__', { page: { url: new URL('http://localhost/TVL-Analysis/22/men/players/1/') } }]
+]);
 
 function page(games: number, setsPlayed: number | null) {
 	const props: PageProps = {
@@ -19,8 +24,29 @@ function page(games: number, setsPlayed: number | null) {
 			advanced: null, distribution: null, gameLog: []
 		}
 	};
-	return render(PlayerPage, { props }).body;
+	return render(PlayerPage, { props, context }).body;
 }
+
+describe('球員頁 head', () => {
+	it('title 維持原格式，並帶 Open Graph 與絕對網址', () => {
+		const props: PageProps = {
+			params: { season: season.name, group: player.group, player: String(player.player_id) },
+			form: null,
+			data: {
+				season, group: player.group, player, team: found.team,
+				stats: { ...stats, position: 'MB', games: 2, sets_played: 6 },
+				advanced: null, distribution: null, gameLog: []
+			}
+		};
+		const head = render(PlayerPage, { props, context }).head;
+		const title = `${playerDisplayName(player)}｜${season.name} ${GROUP_LABEL[player.group]} 球員｜TVL 數據`;
+		expect(head).toContain(`<title>${title}</title>`);
+		expect(head).toContain(`<meta property="og:title" content="${title}"`);
+		expect(head).toContain(
+			'<meta property="og:url" content="https://oldyi317.github.io/TVL-Analysis/22/men/players/1/"'
+		);
+	});
+});
 
 describe('球員頁缺少出賽局數', () => {
 	it('顯示破折號與來源說明，移除每局攔網，兩場不標樣本少', () => {

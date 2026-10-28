@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import SiteHead from '#lib/components/SiteHead.svelte';
 	import { browserStorage, DEFAULT_GROUP, readGroup } from '#lib/groupMemory.js';
 	import { currentSeason, GROUP_LABEL, type Group } from '#lib/site.js';
 
@@ -13,9 +14,7 @@
 	});
 </script>
 
-<svelte:head>
-	<title>TVL 數據</title>
-</svelte:head>
+<SiteHead title="TVL 數據" />
 
 <h1>TVL 數據</h1>
 <a class="enter" href={href(DEFAULT_GROUP)}>前往 {currentSeason.name} {GROUP_LABEL[DEFAULT_GROUP]}</a>

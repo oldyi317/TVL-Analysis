@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import SiteHead from '#lib/components/SiteHead.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import { GROUP_LABEL, type SeasonTeam } from '#lib/site.js';
 	import type { StandingsEntry } from '#lib/data/types.js';
@@ -16,9 +17,7 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{data.season.name} {GROUP_LABEL[data.group]} 球隊｜TVL 數據</title>
-</svelte:head>
+<SiteHead title="{data.season.name} {GROUP_LABEL[data.group]} 球隊｜TVL 數據" />
 
 <h1>{data.season.name} {GROUP_LABEL[data.group]} 球隊</h1>
 

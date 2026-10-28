@@ -1,5 +1,6 @@
 <script lang="ts">
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import SiteHead from '#lib/components/SiteHead.svelte';
 	import StandingsTable from '#lib/components/StandingsTable.svelte';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
@@ -7,9 +8,7 @@
 	let { data }: PageProps = $props();
 </script>
 
-<svelte:head>
-	<title>{data.season.name} {GROUP_LABEL[data.group]} 戰績｜TVL 數據</title>
-</svelte:head>
+<SiteHead title="{data.season.name} {GROUP_LABEL[data.group]} 戰績｜TVL 數據" />
 
 <h1>{data.season.name} {GROUP_LABEL[data.group]} 戰績</h1>
 
