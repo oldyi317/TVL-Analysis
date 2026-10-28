@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "site.schema.json",
+  "title": "SiteData",
+  "description": "全站層級資訊（資料更新時間）；由 src.export.site_data 產出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["generated_at"],
+  "properties": {
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "\\+08:00$"
+    }
+  }
+}

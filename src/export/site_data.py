@@ -2,9 +2,10 @@ import json
 import logging
 import re
 import sqlite3
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from statistics import median
+from zoneinfo import ZoneInfo
 
 from src.export.player_advanced import compute_advanced, distributions
 from src.export.player_seasons import STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
@@ -14,6 +15,7 @@ from src.utils.match_status import HAS_RESULT_WHERE
 from src.utils.teams import UnknownTeamError, resolve_team
 
 DEFAULT_OUT_DIR = PROJECT_ROOT / "web" / "src" / "lib" / "data"
+TAIPEI = ZoneInfo("Asia/Taipei")
 GROUP_BY_GENDER = {"M": "men", "F": "women"}
 GROUP_ORDER = list(GROUP_BY_GENDER.values())
 STANDINGS_NOTES: dict[tuple[int, str], str] = {}
@@ -501,6 +503,10 @@ def _box_scores_payload(conn: sqlite3.Connection) -> dict:
     return {"box_scores": box_scores}
 
 
+def _site_payload() -> dict:
+    return {"generated_at": datetime.now(TAIPEI).replace(microsecond=0).isoformat()}
+
+
 def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -517,6 +523,7 @@ def export_site_data(db_path: Path, out_dir: Path) -> None:
         _write_json(out_dir / "player_advanced.json", _player_advanced_payload(conn))
         _write_json(out_dir / "rosters.json", _rosters_payload(conn))
         _write_json(out_dir / "box_scores.json", _box_scores_payload(conn))
+        _write_json(out_dir / "site.json", _site_payload())
     finally:
         conn.close()
 

@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -119,3 +120,19 @@ def test_teams_json_sorted_men_first_then_team_id(exported):
     keys = [(t["group"], t["team_id"]) for t in payload["teams"]]
     assert keys[:5] == [("men", 1), ("men", 2), ("men", 4), ("men", 5), ("men", 7)]
     assert keys[-4:] == [("women", 3), ("women", 4), ("women", 5), ("women", 7)]
+
+
+def test_site_json_records_generation_time_in_taipei(seeded_db, tmp_path):
+    taipei = timezone(timedelta(hours=8))
+    before = datetime.now(taipei).replace(microsecond=0)
+    out_dir = tmp_path / "out"
+    export_site_data(seeded_db, out_dir)
+    after = datetime.now(taipei)
+
+    payload = json.loads((out_dir / "site.json").read_text(encoding="utf-8"))
+    _validate(payload, "site.schema.json")
+    generated_at = payload["generated_at"]
+    assert generated_at.endswith("+08:00")
+    parsed = datetime.fromisoformat(generated_at)
+    assert parsed.utcoffset() == timedelta(hours=8)
+    assert before <= parsed <= after
