@@ -52,3 +52,9 @@ test('每一頁的頁尾都有資料來源與非官方聲明', async ({ page }) 
 		await expect(footer).toContainText('商標');
 	}
 });
+
+test('404 頁顯示「找不到這頁」並可回首頁', async ({ page }) => {
+	await page.goto(`${BASE}/404`);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('找不到這頁');
+	await expect(page.getByRole('link', { name: '回首頁' })).toHaveAttribute('href', `${BASE}/`);
+});
