@@ -398,7 +398,13 @@ describe('headlineStats', () => {
 		expect(headlineStats(season({ position })).items).toEqual(expected);
 	});
 
-	it('沒有主要位置時退回攻擊／攔網／發球得分', () => {
+	it('沒有主要位置時依賽季報名名單位置選主卡', () => {
+		expect(headlineStats(season({ position: null, season_roster_position: 'L' })).items[0]).toEqual(
+			receiveRate
+		);
+	});
+
+	it('主要位置與報名名單位置都沒有時退回攻擊／攔網／發球得分', () => {
 		expect(headlineStats(season({ position: null })).items).toEqual([
 			{ label: '攻擊得分', value: '18', detail: null },
 			{ label: '攔網得分', value: '6', detail: null },

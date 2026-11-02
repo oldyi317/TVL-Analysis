@@ -1,6 +1,6 @@
 import pytest
 
-from tests.conftest import seed_player, seed_registration, seed_stat
+from tests.conftest import seed_player, seed_registration, seed_season_roster, seed_stat
 
 
 RATIO_KEYS = [
@@ -107,6 +107,23 @@ def test_player_without_position_keeps_ratios_but_no_pr(export):
     assert none_pos["ratios"]["attack_success_rate"] == 75.0
     assert [d["position"] for d in payload["distributions"]] == ["OH"]
     assert payload["distributions"][0]["player_count"] == 1
+
+
+def test_blank_registration_position_falls_back_to_season_roster_position(export):
+    """週登錄位置空白、同隊賽季報名名單有位置：以報名名單位置進 PR 計算池與分佈。"""
+    def build(conn):
+        _oh(conn, 1, "甲", 1, 1, sets=10, atk_pts=5)
+        seed_player(conn, 2, "乙")
+        seed_registration(conn, 2, 2, team_id=1)
+        seed_season_roster(conn, 2, team_id=1, cup_id=21, position="OH")
+        seed_stat(conn, 2, (10, 20, 15, 2, 10, 1, 10, 5, 8, 4, 4, 2, 18))
+
+    payload = export(build)
+
+    fallback = next(p for p in payload["players"] if p["player_id"] == 2)
+    assert fallback["position"] == "OH"
+    assert fallback["pr"]["attack_success_rate"] == 100.0
+    assert [(d["position"], d["player_count"]) for d in payload["distributions"]] == [("OH", 2)]
 
 
 def test_pr_pools_are_split_by_group_and_season(export):

@@ -312,7 +312,9 @@ def _advanced_scopes(conn: sqlite3.Connection) -> list[tuple[int, str, list[dict
         for season in seasons:
             if season["games"] == 0:
                 continue
-            scopes.setdefault((season["cup_id"], genders[player_id]), []).append({"player_id": player_id, **season})
+            position = season["position"] or season["season_roster_position"]
+            scopes.setdefault((season["cup_id"], genders[player_id]), []).append(
+                {"player_id": player_id, **season, "position": position})
     ordered = sorted(scopes, key=lambda scope: (scope[0], GROUP_ORDER.index(GROUP_BY_GENDER[scope[1]])))
     return [(cup_id, gender, sorted(scopes[(cup_id, gender)], key=lambda r: r["player_id"])) for cup_id, gender in ordered]
 

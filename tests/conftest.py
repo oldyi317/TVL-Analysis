@@ -49,6 +49,13 @@ def seed_registration(conn, reg_id, player_id, team_id, cup_id=21, week="例行�
     )
 
 
+def seed_season_roster(conn, player_id, team_id, cup_id=22, jersey=None, position=None, gender="M"):
+    conn.execute(
+        "INSERT INTO season_rosters (player_id, team_id, gender, cup_id, jersey_number, position) VALUES (?, ?, ?, ?, ?, ?)",
+        (player_id, team_id, gender, cup_id, jersey, position),
+    )
+
+
 def seed_stat(conn, reg_id, values, match_date="2025-11-01", opponent="雲林美津濃", golden=0):
     conn.execute(
         f"""
