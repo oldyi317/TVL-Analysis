@@ -28,7 +28,7 @@ OFFICIAL_SPELLINGS = [
     ("臺北鯨華", (3, "F")), ("臺北鯨華女子排球隊", (3, "F")),
     ("新北中纖", (5, "F")), ("義力營造", (7, "F")),
     ("桃園臺產", (5, "M")), ("桃園臺灣產險", (5, "M")), ("桃園臺產隼鷹排球隊", (5, "M")),
-    ("龍邁建設", (5, "M")), ("龍脈建設", (5, "M")),
+    ("龍邁建設", (5, "M")), ("龍脈建設", (5, "M")), ("桃園龍邁建設", (5, "M")),
     ("獅子王", (7, "M")), ("臺中獅子王", (7, "M")),
     ("臺北國北獅", (4, "M")), ("臺北鳳凰", (4, "M")),
     ("三福產業", (11, "M")), ("新竹可利工程師", (12, "M")),
@@ -89,7 +89,7 @@ def test_seed_is_idempotent(conn):
         conn.execute("SELECT COUNT(*) FROM teams").fetchone()[0],
         conn.execute("SELECT COUNT(*) FROM team_aliases").fetchone()[0],
     )
-    assert before == after == (14, 39)
+    assert before == after == (14, 40)
 
 
 def test_ext_team_map_20_targets_exist_in_teams(conn):
