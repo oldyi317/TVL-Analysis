@@ -6,7 +6,7 @@ import sys
 import requests
 from bs4 import BeautifulSoup
 
-from src.utils.constants import EXT_HEADERS, POSITION_MAP, TVL_BASE_URL
+from src.utils.constants import EXT_HEADERS, TVL_BASE_URL, parse_position
 
 
 HEADERS = [
@@ -35,7 +35,7 @@ def _parse_row(cells: list[str], name: str) -> dict:
     player = {
         "name": re.sub(r"\s*\(C\)\s*$", "", cells[1]).strip(),
         "jersey_number": _number(cells[0]),
-        "position": POSITION_MAP.get(cells[2]),
+        "position": parse_position(cells[2]),
         "position_text": cells[2],
     }
     skill_values = []

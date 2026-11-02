@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 
 from src.utils.logger import get_logger
-from src.utils.constants import POSITION_MAP, EXT_HEADERS as HEADERS, TEAM_NAME_SHORT, TVL_BASE_URL as BASE_URL
+from src.utils.constants import parse_position, EXT_HEADERS as HEADERS, TEAM_NAME_SHORT, TVL_BASE_URL as BASE_URL
 
 logger = get_logger(__name__)
 
@@ -39,14 +39,6 @@ def fetch_page(url: str, allow_404: bool = False) -> BeautifulSoup | None:
     except requests.RequestException as e:
         logger.error("無法取得頁面 %s: %s", url, e)
         return None
-
-
-def parse_position(raw: str) -> str | None:
-    """從原始字串中比對位置並轉為英文縮寫，例如 '主攻手(隊長)' -> 'OH'。"""  # 官網原字
-    for zh, en in POSITION_MAP.items():
-        if zh in raw:
-            return en
-    return None
 
 
 def parse_number(text: str, suffix: str) -> float | None:

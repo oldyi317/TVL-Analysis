@@ -86,6 +86,16 @@ def test_unknown_position_is_none_and_warns():
     assert any("臺北鯨華" in w and "未知位置 未知" in w for w in home["warnings"])
 
 
+def test_dual_position_takes_first_without_warning():
+    soup = BeautifulSoup(fixture(), "html.parser")
+    soup.select('#boxscore_1 tbody tr')[0].select('td')[2].string = "自由球員 / 主攻手"  # 官網原字
+    home = parse_box_score(str(soup))
+    player = home["teams"][0]["players"][0]
+    assert player["position"] == "L"
+    assert player["position_text"] == "自由球員 / 主攻手"  # 官網原字
+    assert not any("未知位置" in w for w in home["warnings"])
+
+
 def test_official_player_id_is_read_from_links():
     men = parse_box_score(fixture("game_331"))
     ids = [p["official_player_id"] for t in men["teams"] for p in t["players"]]
