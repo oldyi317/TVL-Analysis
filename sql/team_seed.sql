@@ -42,6 +42,7 @@ INSERT INTO team_aliases (alias, team_id, gender, source) VALUES
     ('美津濃男子排球隊', 2, 'M', 'official'),
     ('臺北鳳凰男子排球隊', 4, 'M', 'official'),
     ('龍脈建設', 5, 'M', 'match'),
+    ('桃園龍邁建設', 5, 'M', 'match'),
     ('臺北國北獅', 4, 'M', 'former'),
     ('桃園臺產', 5, 'M', 'former'),
     ('桃園臺產隼鷹排球隊', 5, 'M', 'former'),
