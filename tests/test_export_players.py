@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
-from tests.conftest import STAT_COLUMNS, seed_player, seed_registration, seed_stat
+from tests.conftest import STAT_COLUMNS, seed_player, seed_registration, seed_season_roster, seed_stat
 
 SCHEMA = Path(__file__).resolve().parents[1] / "web" / "schema" / "players.schema.json"
 
@@ -132,13 +132,6 @@ def test_player_who_changes_team_mid_season_sums_both_teams_under_latest_team(ex
 
 def test_empty_database_exports_empty_players(export):
     assert export(lambda conn: None) == []
-
-
-def seed_season_roster(conn, player_id, team_id, cup_id=22, jersey=None, position=None, gender="M"):
-    conn.execute(
-        "INSERT INTO season_rosters (player_id, team_id, gender, cup_id, jersey_number, position) VALUES (?, ?, ?, ?, ?, ?)",
-        (player_id, team_id, gender, cup_id, jersey, position),
-    )
 
 
 def test_season_roster_only_player_gets_season_entry_without_main_position(export):

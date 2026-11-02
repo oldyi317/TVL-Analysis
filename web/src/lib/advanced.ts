@@ -7,7 +7,7 @@ import type {
 	PositionDistribution,
 	StatRow
 } from '#lib/data/types.js';
-import type { Group, MatchView } from '#lib/site.js';
+import { displayPosition, type Group, type MatchView } from '#lib/site.js';
 
 export type MetricKey = keyof PositionDistribution['metrics'];
 export type PrKey = keyof NonNullable<PlayerAdvancedEntry['pr']>;
@@ -122,7 +122,7 @@ export function headlineStats(season: PlayerSeason): {
 	items: HeadlineStat[];
 	fewSets: boolean;
 } {
-	const headlines = HEADLINES[season.position ?? ''] ?? scoringHeadlines;
+	const headlines = HEADLINES[displayPosition(season) ?? ''] ?? scoringHeadlines;
 	return {
 		items: headlines(season),
 		fewSets: season.sets_played === null ? season.games < MIN_GAMES : season.sets_played < MIN_SETS
