@@ -78,6 +78,16 @@ POSITION_MAP = {
     "自由球員": "L",  # 官網原字
 }
 
+
+def parse_position(raw: str) -> str | None:
+    """官網位置字串轉代碼：雙位置取斜線前第一個，如 '自由球員 / 主攻手' -> 'L'、'主攻手(隊長)' -> 'OH'。"""  # 官網原字
+    first = raw.replace("／", "/").split("/", 1)[0]
+    for zh, en in POSITION_MAP.items():
+        if zh in first:
+            return en
+    return None
+
+
 # ── 外部統計系統（Match.ashx）位置用語 → 內部代碼 ─────────────
 # 用語與官網 POSITION_MAP 不同（官網：主攻手/中間手/副攻手/舉球員/自由球員）， # 官網原字
 # 已用資料庫既有球員資料交叉驗證（見 Phase 2 計畫文件）。

@@ -7,10 +7,10 @@ from bs4 import BeautifulSoup
 from src.etl.crawler import parse_player_card
 
 
-def _card(p_html: str, h5: str = ""):
+def _card(p_html: str, h5: str = "", position: str = "主攻手"):
     html = f"""<div class="col-md-3"><div class="PC_only">
 <h3 class="player_number"><small>#</small>7</h3>
-<h3 class="fs16">張祐晨 <span>主攻手</span></h3>
+<h3 class="fs16">張祐晨 <span>{position}</span></h3>
 <h5 class="fs12">{h5}</h5>
 <p>{p_html}</p></div></div>"""
     return BeautifulSoup(html, "html.parser").find("div", class_="col-md-3")
@@ -34,3 +34,8 @@ def test_date_only_card(caplog):
     assert (p["height_cm"], p["weight_kg"]) == (None, None)
     assert "dob" not in p
     assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+def test_dual_position_takes_first():
+    p = parse_player_card(_card("<i>178cm</i>", position="自由球員 / 主攻手"))  # 官網原字
+    assert p["position"] == "L"
+    assert p["name"] == "張祐晨"
