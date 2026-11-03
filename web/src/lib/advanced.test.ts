@@ -4,6 +4,7 @@ import type { MatchView } from '#lib/site.js';
 import {
 	availableMetrics,
 	METRIC_KEYS,
+	METRIC_LABELS,
 	PR_METRICS,
 	TREND_METRICS,
 	defaultTrendMetric,
@@ -433,4 +434,18 @@ it('未知局數時分佈、PR 與趨勢選項移除每局攔網，攔中預設�
 		expect(availableMetrics(keys, 0)).toContain('blocks_per_set');
 	}
 	expect(defaultTrendMetric('MB', null)).toBe('points');
+});
+
+it('分佈與 PR 指標的標籤與晶片順序維持原樣', () => {
+	expect(METRIC_KEYS.map((k) => METRIC_LABELS[k])).toEqual([
+		'攻擊成功率',
+		'接發球到位率',
+		'發球得分率',
+		'防守到位率',
+		'場均得分',
+		'舉球到位率',
+		'每局攔網',
+		'防守負荷',
+		'防守效率'
+	]);
 });

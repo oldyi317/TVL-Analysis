@@ -9,6 +9,7 @@
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import { displayPosition, findTeam, GROUP_LABEL, playerDisplayName, positionLabel } from '#lib/site.js';
+	import { STAT_LABELS } from '#lib/statLabels.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -95,7 +96,7 @@
 			<dd>{stats.sets_played ?? '—'}</dd>
 		</div>
 		<div>
-			<dt>總得分</dt>
+			<dt>{STAT_LABELS.total_points}</dt>
 			<dd>{stats.total_points}</dd>
 		</div>
 	</dl>
