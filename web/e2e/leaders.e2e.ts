@@ -11,12 +11,12 @@ test('七項跳轉、吸頂 chip 與捲動的當前項目', async ({ page }) => 
 	const nav = page.getByRole('navigation', { name: '計數榜項目' });
 	await expect(nav.getByRole('link')).toHaveCount(7);
 	await page.setViewportSize({ width: 1440, height: 900 });
-    for (const index of [0, 1]) {
-        const chip = nav.getByRole('link').nth(index);
-        await chip.click();
-        await expect(chip).toHaveAttribute('aria-current', 'location');
-    }
-    const last = nav.getByRole('link').last();
+	for (const index of [0, 1]) {
+		const chip = nav.getByRole('link').nth(index);
+		await chip.click();
+		await expect(chip).toHaveAttribute('aria-current', 'location');
+	}
+	const last = nav.getByRole('link').last();
 	await last.click();
 	await expect(last).toHaveAttribute('aria-current', 'location');
 	await expect(page.locator('#b-set_excellent h2')).toBeInViewport();
@@ -51,8 +51,8 @@ test('男女組長姓名、四王首屏、深淺模式與桌面欄數', async ({
 			const kingBox = (await kings.boundingBox())!;
 			expect(kingBox.y + kingBox.height).toBeLessThanOrEqual(900);
 			const first = page.locator('#b-total_points');
-            const leaderHeight = (await first.locator('tbody tr').first().boundingBox())!.height;
-            expect(leaderHeight).toBeLessThanOrEqual(49);
+			const leaderHeight = (await first.locator('tbody tr').first().boundingBox())!.height;
+			expect(leaderHeight).toBeLessThanOrEqual(49);
 			const expand = first.getByRole('button');
 			if (await expand.count()) await expand.click();
 			await expect(first.getByRole('link', { name: longest.name, exact: true })).toBeVisible();
@@ -60,7 +60,6 @@ test('男女組長姓名、四王首屏、深淺模式與桌面欄數', async ({
 			const columns = await page.locator('.boards').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
 			expect(columns).toBe(width < 640 ? 1 : width < 1024 ? 2 : 3);
 			await page.evaluate(() => window.scrollTo(0, 0));
-			await page.screenshot({ path: `/tmp/tvl109-${group}-${width}.png` });
 		}
 	}
 });

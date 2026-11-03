@@ -44,12 +44,12 @@
 							<span class="player">
 								<TeamBadge team={row.team} size="sm" label={row.team.short_name} />
 								<span class="identity">
-                                    <a href={playerHref(row.player_id)} title={row.name}>{row.name}</a>
-                                    {#if row.title}<span class="tag tag-glory">{row.title}</span>{/if}
-                                    {#if row.position}
-                                        <span class="position">{positionLabel(row.position)}</span>
-                                    {/if}
-                                </span>
+									<a href={playerHref(row.player_id)} title={row.name}>{row.name}</a>
+									{#if row.title}<span class="tag tag-glory">{row.title}</span>{/if}
+									{#if row.position}
+										<span class="position">{positionLabel(row.position)}</span>
+									{/if}
+								</span>
 							</span>
 						</td>
 						<td class="num">{row.value}</td>
@@ -133,17 +133,17 @@
 		min-inline-size: 0;
 	}
 
-    .identity {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        column-gap: var(--space-1);
-        min-inline-size: 0;
-        flex: 1;
-    }
+	.identity {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		column-gap: var(--space-1);
+		min-inline-size: 0;
+		flex: 1;
+	}
 
 	.player a {
-        line-height: 1.4;
+		line-height: 1.4;
 		min-inline-size: 0;
 		font-weight: 700;
 		color: var(--text);
@@ -159,8 +159,8 @@
 	}
 
 	.position {
-        grid-column: 1 / -1;
-        line-height: 1.4;
+		grid-column: 1 / -1;
+		line-height: 1.4;
 		font-size: var(--text-sm);
 		color: var(--text-muted);
 	}
