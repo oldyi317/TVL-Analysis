@@ -14,6 +14,7 @@ class BoardSpec:
     numerator: str | None = None
     denominator: str | None = None
     attempts: str | None = None
+    position: str | None = None
 
 
 COUNT_BOARDS = (
@@ -23,7 +24,7 @@ COUNT_BOARDS = (
     BoardSpec("serve_points", "發球得分", "count", "發球王"),
     BoardSpec("receive_excellent", "接發球到位", "count", None),
     BoardSpec("dig_excellent", "防守到位", "count", None),
-    BoardSpec("set_excellent", "舉球到位", "count", None),
+    BoardSpec("set_excellent", "舉球到位", "count", None, position="S"),
 )
 
 
@@ -32,7 +33,7 @@ RATE_BOARDS = (
     BoardSpec("serve_point_rate", "發球得分率", "rate", None, "serve_points", "serve_total", "發球 10 次"),
     BoardSpec("receive_excellent_rate", "接發球到位率", "rate", None, "receive_excellent", "receive_total", "接發球 10 次"),
     BoardSpec("dig_excellent_rate", "防守到位率", "rate", None, "dig_excellent", "dig_total", "防守 10 次"),
-    BoardSpec("set_excellent_rate", "舉球到位率", "rate", None, "set_excellent", "set_total", "舉球 10 次"),
+    BoardSpec("set_excellent_rate", "舉球到位率", "rate", None, "set_excellent", "set_total", "舉球 10 次", position="S"),
     BoardSpec("points_per_game", "場均得分", "rate", None, "total_points", "games", "出賽 10 場"),
     BoardSpec("blocks_per_set", "每局攔網", "rate", None, "block_points", "sets_played", "出賽 10 局"),
 )
@@ -46,6 +47,9 @@ def _board(spec: BoardSpec, rows: list[dict]) -> dict:
         if has_sets and spec.denominator != "sets_played" and any(r["sets_played"] is None for r in rows):
             participation += f"（無局數時 {MIN_GAMES} 場）"
         threshold = f"門檻：{participation}、{spec.attempts}"
+    if spec.position is not None:
+        rows = [r for r in rows if r["position"] == spec.position]
+    if spec.kind == "rate":
         rows = [
             {**r, spec.key: round(compute_ratios(r)[spec.key], 2)}
             for r in rows
