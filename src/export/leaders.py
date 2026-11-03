@@ -11,7 +11,15 @@ class BoardSpec:
     title: str | None
 
 
-COUNT_BOARDS = (BoardSpec("total_points", "總得分", "count", "得分王"),)
+COUNT_BOARDS = (
+    BoardSpec("total_points", "總得分", "count", "得分王"),
+    BoardSpec("attack_points", "攻擊得分", "count", "攻擊王"),
+    BoardSpec("block_points", "攔網得分", "count", "攔網王"),
+    BoardSpec("serve_points", "發球得分", "count", "發球王"),
+    BoardSpec("receive_excellent", "接發球到位", "count", None),
+    BoardSpec("dig_excellent", "防守到位", "count", None),
+    BoardSpec("set_excellent", "舉球到位", "count", None),
+)
 
 
 def _count_board(spec: BoardSpec, rows: list[dict]) -> dict:

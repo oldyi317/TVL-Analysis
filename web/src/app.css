@@ -267,7 +267,8 @@ a.card:hover {
 	white-space: nowrap;
 }
 
-.tag-win {
+.tag-win,
+.tag-glory {
 	background: var(--warn-tint);
 	color: var(--warn-ink);
 }

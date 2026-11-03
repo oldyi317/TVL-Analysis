@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import LeadersPage from './+page.svelte';
 import type { LeaderBoardView, LeaderRowView } from '#lib/leaders.js';
 import { seasons, seasonTeam, teams } from '#lib/site.js';
+import { COUNT_STAT_KEYS, STAT_LABELS } from '#lib/statLabels.js';
 import type { PageProps } from './$types';
 
 const season = seasons[0];
@@ -70,4 +71,27 @@ describe('排行榜頁整組無單場數據', () => {
 		expect(html).not.toContain('總得分');
 		expect(html).not.toContain('統計至');
 	});
+});
+
+
+it('七個計數榜、四王卡與並列球員連結；稱號只出現在四榜及四王卡', () => {
+    const titles = ['得分王', '攻擊王', '攔網王', '發球王'];
+    const boards: LeaderBoardView[] = COUNT_STAT_KEYS.map((key, i) => ({
+        key, label: STAT_LABELS[key], kind: 'count', threshold: null,
+        rows: [row(1, 1), row(1, 2), row(3, 3)].map((r) => ({ ...r, title: r.rank === 1 ? titles[i] ?? null : null }))
+    }));
+    const props: PageProps = { params: { season: season.name, group: 'men' }, data: {
+        season, group: 'men', summary: { through_date: '2026-11-02', games: 6 }, boards
+    }};
+    const html = render(LeadersPage, { props, context }).body;
+    expect(html).toContain('本季四王');
+    for (const key of COUNT_STAT_KEYS) {
+        expect(html).toMatch(new RegExp(`<h2[^>]*>${STAT_LABELS[key]}</h2>`));
+        expect(html).toContain(`href="#b-${key}"`);
+    }
+    for (const title of titles) expect(html.split(`>${title}<`).length - 1).toBe(3);
+    const champions = html.slice(html.indexOf('aria-label="本季四王"'), html.indexOf('</section>', html.indexOf('aria-label="本季四王"')));
+    expect(champions).toContain('球員1號');
+    expect(champions).toContain('球員2號');
+    expect(champions).not.toContain('球員3號');
 });

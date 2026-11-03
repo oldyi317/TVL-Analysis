@@ -30,6 +30,9 @@ def test_group_with_stats_has_summary_and_total_points_board(export_json):
     payload, _ = export_json(build, "leaders")
     entry = payload["leaders"][0]
     assert (entry["cup_id"], entry["group"], entry["games"], entry["through_date"]) == (21, "men", 2, "2025-11-08")
+    assert [b["key"] for b in entry["boards"]] == [
+        "total_points", "attack_points", "block_points", "serve_points",
+        "receive_excellent", "dig_excellent", "set_excellent"]
     board = entry["boards"][0]
     assert board["key"] == "total_points"
     assert [(r["rank"], r["name"], r["team_short"], r["value"]) for r in board["rows"]] == [

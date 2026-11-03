@@ -22,3 +22,12 @@ FINISH：unreviewed and undocumented is unfinished; this build ends with the fin
 
 - 導覽 icon 圖形留給實作（本輪選三階頒獎台 `podium`）。
 - 四王卡、分段控制、吸頂 chip、比率榜門檻文案與「榮耀」Tag 變體、DESIGN.md 榮耀標籤規則：#109–#111。
+
+## #109 擴充方向（2026-11-03）
+
+THESIS：先給王，再給榜；七個計數榜沿用既有卡片。
+OWN-WORLD：維持賽後看板，榮耀標籤沿用 warn-tint／warn-ink。
+STORY：首屏辨識四王，點球員或用吸頂 chip 跳項目。並列共用稱號、每人各自連結。
+FIRST VIEWPORT：h1、統計範圍、本季四王（手機四列 56px，桌面四欄）、七項 chip、計數榜。
+FORM：#106 已確認 brief，code-led；深淺模式與 reduced-motion 沿用全站。
+FINISH：unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.

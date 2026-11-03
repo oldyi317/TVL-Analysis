@@ -554,9 +554,9 @@
       "name": "標籤 Tag",
       "kind": "chip",
       "refersTo": "tag",
-      "description": "狀態標籤：階段（灰）、勝（黃）、未開打（靛藍 tint）、近五場 W／L（勝敗語意色）。",
-      "html": "<span class=\"ds-tag\">總決賽 第 19 週</span> <span class=\"ds-tag ds-tag-win\">勝</span> <span class=\"ds-tag ds-tag-pending\">未開打</span> <span class=\"ds-tag ds-tag-w\">勝</span> <span class=\"ds-tag ds-tag-l\">敗</span>",
-      "css": ".ds-tag { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; background: var(--surface-2, #eef0f8); color: var(--text-muted, #5f6788); font-size: 0.875rem; font-weight: 700; line-height: 1.4; white-space: nowrap; } .ds-tag-win { background: var(--warn-tint, #fff3c4); color: var(--warn-ink, #7a5a00); } .ds-tag-pending { background: var(--accent-tint, #e9ebfb); color: var(--accent, #4f5bd5); } .ds-tag-w { padding: 0 0.5rem; background: var(--win-tint, #dff5ea); color: var(--win, #12804f); } .ds-tag-l { padding: 0 0.5rem; background: var(--loss-tint, #fde4e8); color: var(--loss, #cc3347); }"
+      "description": "狀態與榮耀標籤：階段（灰）、勝與王（警示黃）、未開打（靛藍 tint）、近五場 W／L（勝敗語意色）。",
+      "html": "<span class=\"ds-tag\">總決賽 第 19 週</span> <span class=\"ds-tag ds-tag-win\">勝</span> <span class=\"ds-tag ds-tag-glory\">得分王</span> <span class=\"ds-tag ds-tag-pending\">未開打</span> <span class=\"ds-tag ds-tag-w\">勝</span> <span class=\"ds-tag ds-tag-l\">敗</span>",
+      "css": ".ds-tag { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; background: var(--surface-2, #eef0f8); color: var(--text-muted, #5f6788); font-size: 0.875rem; font-weight: 700; line-height: 1.4; white-space: nowrap; } .ds-tag-win, .ds-tag-glory { background: var(--warn-tint, #fff3c4); color: var(--warn-ink, #7a5a00); } .ds-tag-pending { background: var(--accent-tint, #e9ebfb); color: var(--accent, #4f5bd5); } .ds-tag-w { padding: 0 0.5rem; background: var(--win-tint, #dff5ea); color: var(--win, #12804f); } .ds-tag-l { padding: 0 0.5rem; background: var(--loss-tint, #fde4e8); color: var(--loss, #cc3347); }"
     },
     {
       "name": "數據磚 StatTile",
@@ -626,8 +626,8 @@
         "section": "colors"
       },
       {
-        "name": "The Yellow Win Rule",
-        "body": "賽事卡勝方旁的「勝」標籤用 warn-tint／warn-ink（參考截圖的黃色 WIN 標），戰績表近五場的 W／L 才用 win／loss 語意色。兩者不互換。",
+        "name": "榮耀標籤規則：勝與王用警示黃",
+        "body": "賽事卡勝方旁的「勝」與排行榜的「得分王、攻擊王、攔網王、發球王」標籤用 warn-tint／warn-ink；王的稱號只出現在四個稱號榜的第一名列（並列都加）與本季四王卡。戰績表近五場的 W／L 仍用 win／loss 語意色。兩者不互換。",
         "section": "colors"
       },
       {

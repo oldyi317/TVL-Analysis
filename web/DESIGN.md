@@ -166,6 +166,9 @@ components:
   tag-win:
     backgroundColor: "{colors.warn-tint}"
     textColor: "{colors.warn-ink}"
+  tag-glory:
+    backgroundColor: "{colors.warn-tint}"
+    textColor: "{colors.warn-ink}"
   tag-pending:
     backgroundColor: "{colors.accent-tint}"
     textColor: "{colors.accent}"
@@ -266,7 +269,7 @@ components:
 ### Named Rules
 **The One Job Rule.** 靛藍只出現在「我在哪、可以點什麼」的位置：選中狀態、連結、焦點、進度。它不當裝飾、不當資料色；資料色只從 `series-*` 拿。
 
-**The Yellow Win Rule.** 賽事卡勝方旁的「勝」標籤用 `warn-tint`／`warn-ink`（參考截圖的黃色 WIN 標），戰績表近五場的 W／L 才用 `win`／`loss` 語意色。兩者不互換。
+**榮耀標籤規則：勝與王用警示黃。** 賽事卡勝方旁的「勝」與排行榜的「得分王、攻擊王、攔網王、發球王」標籤用 `warn-tint`／`warn-ink`；王的稱號只出現在四個稱號榜的第一名列（並列都加）與本季四王卡。戰績表近五場的 W／L 仍用 `win`／`loss` 語意色。兩者不互換。
 
 **The Contrast Gate Rule.** `src/lib/tokens.test.ts` 直接解析 `app.css`，淺深兩套各自檢查：`text`、`text-muted`、`win`、`loss`、`warn`、`focus` 對 `bg` 與 `surface`、`on-accent` 對 `accent`、`warn-ink` 對 `warn-tint` 皆 ≥4.5:1；`line` 對 `surface` ≥1.5:1；每條 `series` 對 `bg` ≥3:1；兩套模式必須定義同一組鍵名。`text-muted`、`line`、`series-*`、`win`、`loss` 的值都是為了過這道門而比原始規格更深的，改色先跑 `npm run test:unit`。
 
@@ -347,7 +350,7 @@ components:
 六項固定順序：首頁、賽事、戰績、球隊、球員、排行榜。手機：一列可橫捲的 pill（同 chip 規則但 700、`--text-md`、icon 隱藏），選中靛藍底白字；列設 `scroll-padding-inline: 12px`、末項 `scroll-margin-inline-end: 12px`，掛載時若選中項超出右緣就把它捲進可見範圍，讀者不必自己找「你在哪」。桌面 ≥64rem：直排，每項 44px 高、14px 圓角、icon 20px + 文字、靠左；選中改成靛藍 tint 底 + 靛藍字，並以 `::after` 在 sidebar 右緣畫 3px 寬、上下內縮 8px 的靛藍指示條（絕對定位到 `-24px`，不是 border）。
 
 ### 標籤 Tag
-藥丸形、14px 700、`padding: 2px 10px`、`nowrap`。預設 `surface-2`／附註灰（階段、週次、黃金決勝局）；`tag-win` 警示黃（賽事卡「勝」）；`tag-pending` 靛藍 tint／靛藍（「未開打」）；戰績表近五場 `.w`／`.l` 用 `win-tint`／`win`、`loss-tint`／`loss`，內距改 `0 8px`。
+藥丸形、14px 700、`padding: 2px 10px`、`nowrap`。預設 `surface-2`／附註灰（階段、週次、黃金決勝局）；`tag-win` 警示黃（賽事卡「勝」）、`tag-glory` 同樣使用 `warn-tint`／`warn-ink`（排行榜四個王的稱號）；`tag-pending` 靛藍 tint／靛藍（「未開打」）；戰績表近五場 `.w`／`.l` 用 `win-tint`／`win`、`loss-tint`／`loss`，內距改 `0 8px`。
 
 ### 區塊連結 Section link
 h2 同列右側，`--text-sm` 700 靛藍；hover `accent-strong` + underline。返回連結（「賽事列表」「球隊列表」）同色、600、44px 高、chevron icon。

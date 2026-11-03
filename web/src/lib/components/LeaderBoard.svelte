@@ -25,7 +25,7 @@
 		`${resolve('/[season]/[group]/players/[player]', { season, group, player: String(playerId) })}/`;
 </script>
 
-<section aria-labelledby="{uid}-h" bind:this={section}>
+<section id="b-{board.key}" aria-labelledby="{uid}-h" bind:this={section}>
 	<h2 id="{uid}-h">{board.label}</h2>
 	<div class="card">
 		<table id="{uid}-t">
@@ -43,10 +43,13 @@
 						<td>
 							<span class="player">
 								<TeamBadge team={row.team} size="sm" label={row.team.short_name} />
-								<a href={playerHref(row.player_id)} title={row.name}>{row.name}</a>
-								{#if row.position}
-									<span class="position">{positionLabel(row.position)}</span>
-								{/if}
+								<span class="identity">
+                                    <a href={playerHref(row.player_id)} title={row.name}>{row.name}</a>
+                                    {#if row.title}<span class="tag tag-glory">{row.title}</span>{/if}
+                                    {#if row.position}
+                                        <span class="position">{positionLabel(row.position)}</span>
+                                    {/if}
+                                </span>
 							</span>
 						</td>
 						<td class="num">{row.value}</td>
@@ -64,7 +67,7 @@
 
 <style>
 	section {
-		scroll-margin-block-start: var(--space-4);
+		scroll-margin-block-start: calc(var(--tap) + 2 * var(--space-2) + var(--space-4));
 	}
 
 	h2 {
@@ -130,7 +133,17 @@
 		min-inline-size: 0;
 	}
 
+    .identity {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        column-gap: var(--space-1);
+        min-inline-size: 0;
+        flex: 1;
+    }
+
 	.player a {
+        line-height: 1.4;
 		min-inline-size: 0;
 		font-weight: 700;
 		color: var(--text);
@@ -146,7 +159,8 @@
 	}
 
 	.position {
-		flex: none;
+        grid-column: 1 / -1;
+        line-height: 1.4;
 		font-size: var(--text-sm);
 		color: var(--text-muted);
 	}
