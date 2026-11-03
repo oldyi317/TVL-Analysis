@@ -1,8 +1,8 @@
 from src.export.leaders import compute_leaders
 
 
-def row(player_id, name, total_points):
-    return {"player_id": player_id, "name": name, "team_id": 1, "team_short": "甲隊", "position": "OH",
+def row(player_id, name, total_points, position="S"):
+    return {"player_id": player_id, "name": name, "team_id": 1, "team_short": "甲隊", "position": position,
             "total_points": total_points, "attack_points": total_points, "block_points": total_points,
             "serve_points": total_points, "receive_excellent": total_points,
             "dig_excellent": total_points, "set_excellent": total_points,
@@ -111,3 +111,28 @@ def test_mixed_sets_describe_the_unknown_sets_fallback():
     ]) if b["key"] == "attack_success_rate")
     assert attack["threshold"] == "門檻：出賽 5 局（無局數時 2 場）、攻擊 10 次"
     assert len(attack["rows"]) == 2
+
+
+def test_setting_boards_only_include_setters_while_other_boards_include_all_positions():
+    players = [
+        rate_row(1, name="舉球甲", position="S", set_excellent=30, set_total=50),
+        rate_row(2, name="舉球零", position="S", set_excellent=0, set_total=10),
+        rate_row(3, name="主攻", position="OH", set_excellent=40, set_total=40),
+        rate_row(4, name="攔中", position="MB", set_excellent=10, set_total=10),
+        rate_row(5, name="副攻", position="OP", set_excellent=10, set_total=10),
+        rate_row(6, name="自由", position="L", set_excellent=10, set_total=10),
+        rate_row(7, name="無位置", position=None, set_excellent=10, set_total=10),
+    ]
+    boards = {b["key"]: b for b in compute_leaders(players)}
+    assert [(r["player_id"], r["rank"], r["value"]) for r in boards["set_excellent"]["rows"]] == [
+        (1, 1, 30), (2, 2, 0),
+    ]
+    assert [(r["player_id"], r["rank"], r["value"], r["numerator"], r["denominator"])
+            for r in boards["set_excellent_rate"]["rows"]] == [
+        (1, 1, 60.0, 30, 50), (2, 2, 0.0, 0, 10),
+    ]
+    assert boards["set_excellent_rate"]["threshold"] == "門檻：出賽 5 局、舉球 10 次"
+    for key, board in boards.items():
+        if key not in ("set_excellent", "set_excellent_rate"):
+            assert {r["player_id"] for r in board["rows"]} == {1, 2, 3, 4, 5, 6, 7}
+
