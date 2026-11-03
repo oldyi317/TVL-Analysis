@@ -7,6 +7,7 @@ from pathlib import Path
 from statistics import median
 from zoneinfo import ZoneInfo
 
+from src.export.leaders import compute_leaders
 from src.export.player_advanced import compute_advanced, distributions
 from src.export.player_seasons import STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
 from src.export.standings import compute_standings
@@ -490,9 +491,8 @@ def _box_score_games(conn: sqlite3.Connection) -> dict[tuple[int, str], dict[int
     return games
 
 
-def _box_scores_payload(conn: sqlite3.Connection) -> dict:
+def _box_scores_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict[int, dict]]) -> dict:
     cup_ids = [r[0] for r in conn.execute("SELECT cup_id FROM seasons ORDER BY cup_id")]
-    games = _box_score_games(conn)
     box_scores = []
     for cup_id in cup_ids:
         for gender, group in GROUP_BY_GENDER.items():
@@ -503,6 +503,31 @@ def _box_scores_payload(conn: sqlite3.Connection) -> dict:
                 "games": [{k: v for k, v in g.items() if k != "date"} for g in ordered],
             })
     return {"box_scores": box_scores}
+
+
+def _leaders_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict[int, dict]]) -> dict:
+    names = dict(conn.execute("SELECT player_id, name FROM players"))
+    shorts = {
+        (team_id, gender): short_name or team_name
+        for team_id, gender, team_name, short_name in conn.execute(
+            "SELECT team_id, gender, team_name, short_name FROM teams"
+        )
+    }
+    leaders = []
+    for cup_id, gender, rows in _advanced_scopes(conn):
+        dates = [g["date"] for g in games.get((cup_id, gender), {}).values()]
+        named = [
+            {**r, "name": names[r["player_id"]], "team_short": shorts[(r["team_id"], gender)]}
+            for r in rows
+        ]
+        leaders.append({
+            "cup_id": cup_id,
+            "group": GROUP_BY_GENDER[gender],
+            "through_date": max(dates, default=None),
+            "games": len(dates),
+            "boards": compute_leaders(named),
+        })
+    return {"leaders": leaders}
 
 
 def _site_payload() -> dict:
@@ -524,7 +549,9 @@ def export_site_data(db_path: Path, out_dir: Path) -> None:
         _write_json(out_dir / "players.json", _players_payload(conn))
         _write_json(out_dir / "player_advanced.json", _player_advanced_payload(conn))
         _write_json(out_dir / "rosters.json", _rosters_payload(conn))
-        _write_json(out_dir / "box_scores.json", _box_scores_payload(conn))
+        games = _box_score_games(conn)
+        _write_json(out_dir / "box_scores.json", _box_scores_payload(conn, games))
+        _write_json(out_dir / "leaders.json", _leaders_payload(conn, games))
         _write_json(out_dir / "site.json", _site_payload())
     finally:
         conn.close()

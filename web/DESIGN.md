@@ -208,6 +208,11 @@ components:
     typography: "{typography.title}"
     rounded: "{rounded.full}"
     size: "1.5rem"
+  rank-dot:
+    backgroundColor: "transparent"
+    textColor: "{colors.text-muted}"
+    rounded: "{rounded.full}"
+    size: "1.5rem"
 ---
 
 # Design System: TVL 數據
@@ -322,7 +327,7 @@ components:
 
 圓角三級加圓形：卡片 20px（`--radius-lg`）、內嵌面板與桌面導覽項 14px（`--radius-md`）、chip／標籤／分段控制／PR 條 999px（`--radius-full`），隊徽、名次圓點、背號圓點、甜甜圈是正圓。ECharts tooltip 12px、長條頂端 `[6, 6, 0, 0]`。`--radius-sm: 0.5rem` 定義了但目前沒有元件使用。
 
-邊線極少：淺色模式卡片無邊線，表格只有列線（1px `--line`），有隊徽的圓標 1px 內描邊，深色模式卡片 1px 邊線。沒有彩色左邊條、沒有外框按鈕。Icon 全部是手寫 inline SVG：24 viewBox、`fill="none"`、`stroke="currentColor"`、stroke-width 1.75、round cap／join，預設 20px，集中在 `Icon.svelte`（home、calendar、trophy、shield、user、chevron-left、arrow-up-right、map-pin）。
+邊線極少：淺色模式卡片無邊線，表格只有列線（1px `--line`），有隊徽的圓標 1px 內描邊，深色模式卡片 1px 邊線。沒有彩色左邊條、沒有外框按鈕。Icon 全部是手寫 inline SVG：24 viewBox、`fill="none"`、`stroke="currentColor"`、stroke-width 1.75、round cap／join，預設 20px，集中在 `Icon.svelte`（home、calendar、trophy、shield、user、podium、chevron-left、arrow-up-right、map-pin）；podium 是三階頒獎台，給導覽「排行榜」。
 
 ## Components
 
@@ -339,7 +344,7 @@ components:
 軌道 `--surface-2` 藥丸形、內距 4px；兩個等寬項目各 36px 高、700；未選附註灰（hover 轉 `text`），選中白底（深色 `surface`）+ Card 陰影 + 1px `--card-edge` 內 outline + 靛藍文字。focus 時 outline 換回靛藍、offset 2px。
 
 ### 導覽 SiteNav
-手機：一列可橫捲的 pill（同 chip 規則但 700、`--text-md`、icon 隱藏），選中靛藍底白字。桌面 ≥64rem：直排，每項 44px 高、14px 圓角、icon 20px + 文字、靠左；選中改成靛藍 tint 底 + 靛藍字，並以 `::after` 在 sidebar 右緣畫 3px 寬、上下內縮 8px 的靛藍指示條（絕對定位到 `-24px`，不是 border）。
+六項固定順序：首頁、賽事、戰績、球隊、球員、排行榜。手機：一列可橫捲的 pill（同 chip 規則但 700、`--text-md`、icon 隱藏），選中靛藍底白字；列設 `scroll-padding-inline: 12px`、末項 `scroll-margin-inline-end: 12px`，掛載時若選中項超出右緣就把它捲進可見範圍，讀者不必自己找「你在哪」。桌面 ≥64rem：直排，每項 44px 高、14px 圓角、icon 20px + 文字、靠左；選中改成靛藍 tint 底 + 靛藍字，並以 `::after` 在 sidebar 右緣畫 3px 寬、上下內縮 8px 的靛藍指示條（絕對定位到 `-24px`，不是 border）。
 
 ### 標籤 Tag
 藥丸形、14px 700、`padding: 2px 10px`、`nowrap`。預設 `surface-2`／附註灰（階段、週次、黃金決勝局）；`tag-win` 警示黃（賽事卡「勝」）；`tag-pending` 靛藍 tint／靛藍（「未開打」）；戰績表近五場 `.w`／`.l` 用 `win-tint`／`win`、`loss-tint`／`loss`，內距改 `0 8px`。
@@ -361,6 +366,12 @@ h2 同列右側，`--text-sm` 700 靛藍；hover `accent-strong` + underline。�
 
 ### 表格（戰績、逐局比分、單場數據、進階數據）
 白卡內，`border-collapse`，16px；表頭 14px 600 附註灰、無底色、底線 1px `--line`；主列 48px 高、列間 1px `--line`（最後一列不畫）；數字欄右對齊，勝場 800、其他數字 600；戰績前三名名次是 24px 靛藍 tint 圓點 + 靛藍數字；展開列底 `--surface-2`、底角 14px，用 `dl` 兩欄顯示。可橫捲時只包一層 `overflow-x: auto` 的 div。PR 值是 6px 高藥丸形進度條（軌道 tint、填色靛藍、最寬 7rem）+ 數字。
+
+### 名次圓點 RankDot
+24px 正圓、置中、tabular 數字。前三名靛藍 tint 底 + 靛藍 700 數字（與戰績表前三名同一規則）；第 4 名起無底、附註灰 600 數字——名次是附註，數值才是結論。不另給獎牌色、不加 icon。
+
+### 排行榜卡 LeaderBoard
+每個統計項目一張卡，h2（項目名）在卡外。白卡內距縮為 8px／12px（≥64rem 12px／16px）讓表格貼邊；表頭「名次／球員／<項目>」14px 600 附註灰、底線 1px `--line`。列 48px、列線 1px `--line`（最後一列不畫）：名次欄 40px 寬置中放 RankDot；球員欄為 32px 隊徽圓標（sm）+ 姓名 700 `text` 連到球員頁（hover 靛藍 + underline offset 0.2em，過長省略）+ 位置 14px 附註灰；數值欄右對齊 800 tabular。預設只列前 10 名，第 10 名並列時全部顯示；超過時卡底加一顆 44px 全寬展開鈕（上緣 1px `--line`、透明底、14px 700 靛藍，同區塊連結樣式，hover `accent-strong` + underline），文案「展開全部（N 人）」／「收合」，`aria-expanded` + `aria-controls` 指向表格；收合時把該卡捲回視窗頂（`scroll-margin-block-start: 16px`）。頁面層：h1 下一行 14px 附註灰「統計至 X 月 X 日 · 共 N 場」，卡片格線間距 24px，≥40rem 兩欄、≥64rem 三欄，首屏卡片套 `.rise`。
 
 ### 球員列 PlayerCard
 56px 高一列：40px `--surface-2` 背號圓點（800）+ 姓名 700 + 位置附註灰；包成連結時 hover／active 靛藍 tint 底、14px 圓角。

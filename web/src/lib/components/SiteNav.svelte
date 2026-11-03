@@ -9,13 +9,24 @@
 
 	let { season, group }: { season: string; group: Group } = $props();
 
+	let nav = $state<HTMLElement>();
+
+	// 手機版導覽可橫捲：選中項若超出右緣就捲到可見，讓讀者一眼看到「你在哪」
+	$effect(() => {
+		const current = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+		if (!nav || !current) return;
+		const overflow = current.getBoundingClientRect().right - nav.getBoundingClientRect().right;
+		if (overflow > 0) nav.scrollLeft += overflow;
+	});
+
 	const base = $derived(`${resolve('/[season]/[group]', { season, group })}/`);
 	const items = $derived<{ label: string; icon: IconName; href: string; section: string }[]>([
 		{ label: '首頁', icon: 'home', href: base, section: '' },
 		{ label: '賽事', icon: 'calendar', href: `${base}matches/`, section: 'matches' },
 		{ label: '戰績', icon: 'trophy', href: `${base}standings/`, section: 'standings' },
 		{ label: '球隊', icon: 'shield', href: `${base}teams/`, section: 'teams' },
-		{ label: '球員', icon: 'user', href: `${base}players/`, section: 'players' }
+		{ label: '球員', icon: 'user', href: `${base}players/`, section: 'players' },
+		{ label: '排行榜', icon: 'podium', href: `${base}leaders/`, section: 'leaders' }
 	]);
 
 	function isCurrent(section: string): boolean {
@@ -24,7 +35,7 @@
 	}
 </script>
 
-<nav aria-label="頁面">
+<nav aria-label="頁面" bind:this={nav}>
 	{#each items as item (item.label)}
 		<a href={item.href} aria-current={isCurrent(item.section) ? 'page' : undefined}>
 			<Icon name={item.icon} />
@@ -38,7 +49,12 @@
 		display: flex;
 		gap: var(--space-1);
 		overflow-x: auto;
+		scroll-padding-inline: var(--space-3);
 		scrollbar-width: none;
+	}
+
+	a:last-child {
+		scroll-margin-inline-end: var(--space-3);
 	}
 
 	nav::-webkit-scrollbar {
