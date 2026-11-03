@@ -67,6 +67,15 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
   runner 與本機）；pages.yml 的匯出器只用標準庫、不裝 pip 套件，改匯出器時不要引入第三方套件。前端依賴在
   `web/package.json`，改動要考慮 pages.yml 的 npm ci。
 
+## Ticket 實作流程
+
+- 開工前從最新 main 開 `feat/issue-<N>-<簡述>` 分支，不在 main 上 commit；
+  skill 說「commit 到目前分支」時，指的就是這個分支。
+- 縮排沿用檔案既有風格（web/ 一律 tab），不混用。
+- 測試不寫檔到 repo 外，也不留除錯用截圖；截圖腳本不進 commit。
+- 收工前四項全過才算完成：pytest、`npm run check`、`npm run test:unit`、`npm run test:e2e`。
+- push 分支後開 PR，PR 內文寫 `Closes #<N>`；合併由使用者做，合併後才關票。
+
 ## 資料品質原則
 
 只標記與警告異常，不插補、不竄改原始數據（cleaner 的既有原則，維持它）。
