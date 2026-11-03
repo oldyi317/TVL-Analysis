@@ -23,6 +23,14 @@ Do not rely on automatic remote selection; use the explicit target above.
 
 `gh issue create`, `gh pr create`, `gh issue list --json`, `gh pr list --json`, `gh issue comment` and `gh issue close` work as-is.
 
+### Timeout variant (WSL)
+
+`gh issue view` / `gh issue create` use GraphQL, which can time out in WSL (`Post "https://api.github.com/graphql": dial tcp ...:443: i/o timeout`) while REST `gh api` still works. After one timeout in a session, switch fully to `gh api` and do not retry the GraphQL forms:
+
+- **Read body**: `gh api repos/<o>/<r>/issues/<n>`; **comments**: `.../issues/<n>/comments`
+- **Create issue**: `gh api --method POST repos/<o>/<r>/issues -f title=... -f body=... -f 'labels[]=...'`
+- **Dependencies**: `gh api .../issues/<n>/dependencies/blocked_by`
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
