@@ -96,7 +96,7 @@ test('逐場趨勢預設依主要位置選指標，可切換其他指標', async
 		S: '舉球到位率',
 		L: '接發球到位率',
 		OH: '攻擊成功率',
-		MB: '每局攔網',
+		MB: a!.sets_played === null ? '攔網得分' : '每局攔網',
 		OP: '攻擊成功率'
 	};
 	const group = page.getByRole('group', { name: '選擇逐場趨勢指標' });
@@ -108,6 +108,32 @@ test('逐場趨勢預設依主要位置選指標，可切換其他指標', async
 	await group.getByRole('button', { name: next, exact: true }).click();
 	await expect(group.getByRole('button', { name: next, exact: true })).toHaveAttribute('aria-pressed', 'true');
 	await expect(chart).toHaveAttribute('aria-label', `${next}逐場趨勢折線圖`);
+});
+
+const BLOCK_LABELS = ['每局攔網', '場均攔網', '攔網得分'];
+const pickAt = (match: (position: string) => boolean) =>
+	advanced.find(
+		(x) => x.cup_id === cup && !x.insufficient_sets && x.position !== null && match(x.position) && played(x) && hasGameLog(x)
+	);
+
+test('非自由（L）球員的 PR 表、分佈與趨勢可選場均攔網／攔網得分', async ({ page }) => {
+	const a = pickAt((pos) => pos !== 'L');
+	test.skip(!a, '用於比對的賽季沒有局數足夠的非自由（L）球員');
+	await open(page, a!);
+	const chip = (group: string, name: string) =>
+		page.getByRole('group', { name: group }).getByRole('button', { name, exact: true });
+	await expect(page.getByRole('table', { name: 'PR 值' }).getByRole('row', { name: /場均攔網/ })).toBeVisible();
+	await expect(chip('選擇分佈指標', '場均攔網')).toBeVisible();
+	await expect(chip('選擇逐場趨勢指標', '攔網得分')).toBeVisible();
+});
+
+test('自由（L）球員進階數據區不出現任何攔網指標', async ({ page }) => {
+	const a = pickAt((pos) => pos === 'L');
+	test.skip(!a, '用於比對的賽季沒有局數足夠的自由（L）球員');
+	await open(page, a!);
+	await expect(page.getByRole('table', { name: 'PR 值' })).toBeVisible();
+	const panel = page.locator('[id$="-panel"]');
+	for (const label of BLOCK_LABELS) await expect(panel.getByText(label, { exact: true })).toHaveCount(0);
 });
 
 // 文案刻意寫死、不 import noPrReason：測試要獨立於實作，才能抓到頁面文案改了測試沒跟的情況（#84）

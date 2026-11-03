@@ -5,11 +5,12 @@ from tests.conftest import seed_player, seed_registration, seed_season_roster, s
 
 RATIO_KEYS = [
     "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
-    "points_per_game", "set_excellent_rate", "blocks_per_set", "defense_load", "defense_efficiency",
+    "points_per_game", "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_load",
+    "defense_efficiency",
 ]
 PR_KEYS = [
     "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
-    "set_excellent_rate", "blocks_per_set", "defense_efficiency",
+    "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_efficiency",
 ]
 
 
@@ -26,7 +27,7 @@ def _oh(conn, player_id, name, reg_id, team_id, sets, atk_pts, atk_tot=20, gende
 
 
 def test_ratios_follow_old_site_formulas_and_count_golden_set_rows(export):
-    """九項比率沿用舊站公式（百分比、分母為 0 給 0）；黃金決勝局列照算且算一場。"""
+    """十項比率沿用舊站公式（百分比、分母為 0 給 0）；黃金決勝局列照算且算一場。"""
     def build(conn):
         seed_player(conn, 1, "男甲")
         seed_registration(conn, 1, 1, team_id=1, position="OH")
@@ -49,6 +50,7 @@ def test_ratios_follow_old_site_formulas_and_count_golden_set_rows(export):
         "points_per_game": 8.0,          # 24 / 3
         "set_excellent_rate": 50.0,      # 5 / 10
         "blocks_per_set": 0.5,           # 3 / 6
+        "blocks_per_game": 1.0,          # 3 / 3
         "defense_load": 26,              # 10 + 16
         "defense_efficiency": 50.0,      # 13 / 26
     }
@@ -150,7 +152,7 @@ def test_pr_pools_are_split_by_group_and_season(export):
 
 
 def test_distribution_lists_pool_values_sorted_with_median(export):
-    """分佈 = 計算池內每位球員的指標值（升冪）與中位數，九項指標都有，前端不自己算。"""
+    """分佈 = 計算池內每位球員的指標值（升冪）與中位數，十項指標都有，前端不自己算。"""
     def build(conn):
         _oh(conn, 1, "甲", 1, 1, sets=10, atk_pts=15)
         _oh(conn, 2, "乙", 2, 1, sets=10, atk_pts=5)
@@ -187,10 +189,13 @@ def test_unknown_sets_preserve_null_and_use_games_for_pr(export, sets):
     assert full["sets_played"] is None
     assert full["ratios"]["blocks_per_set"] is None
     assert full["pr"]["blocks_per_set"] is None
+    assert full["ratios"]["blocks_per_game"] == 2.0
+    assert full["pr"]["blocks_per_game"] == 100.0
     assert full["insufficient_sets"] is False
     assert full["pr"]["attack_success_rate"] == 100.0
     assert short["insufficient_sets"] is True
     assert all(value is None for value in short["pr"].values())
     metrics = payload["distributions"][0]["metrics"]
     assert metrics["blocks_per_set"] == {"median": None, "values": []}
+    assert metrics["blocks_per_game"] == {"median": 2.0, "values": [2.0]}
     assert metrics["attack_success_rate"]["values"] == [37.5]

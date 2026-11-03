@@ -75,7 +75,7 @@ test('舉球員的主卡顯示舉球到位率等匯出值，位置顯示中文�
 	const stats = page.locator('.stats');
 	for (const [label, value, detail] of [
 		['舉球到位率', setRate, `到位 ${s.set_excellent}／${s.set_total}`],
-		['舉球次數', String(s.set_total), null]
+		['攔網得分', String(s.block_points), null]
 	] as const) {
 		const cell = stats.locator('div', { has: page.getByText(label, { exact: true }) });
 		await expect(cell.locator('.value')).toHaveText(value);

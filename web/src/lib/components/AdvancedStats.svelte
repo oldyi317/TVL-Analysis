@@ -27,11 +27,13 @@
 		advanced,
 		distribution,
 		gameLog,
+		position,
 		setsPlayed
 	}: {
 		advanced: PlayerAdvancedEntry | null;
 		distribution: PositionDistribution | null;
 		gameLog: GameLogEntry[];
+		position: string | null;
 		setsPlayed: number | null;
 	} = $props();
 
@@ -41,8 +43,11 @@
 	onMount(() => {
 		if (window.matchMedia('(min-width: 64rem)').matches) open = true;
 	});
+	const metricKeys = $derived(availableMetrics(METRIC_KEYS, setsPlayed, position));
+	const prKeys = $derived(availableMetrics(PR_METRICS, setsPlayed, position));
+	const trendKeys = $derived(availableMetrics(TREND_METRICS, setsPlayed, position));
 	let selectedMetric = $state<MetricKey>('attack_success_rate');
-	const metric = $derived(setsPlayed === null && selectedMetric === 'blocks_per_set' ? 'attack_success_rate' : selectedMetric);
+	const metric = $derived(metricKeys.includes(selectedMetric) ? selectedMetric : 'attack_success_rate');
 
 	const positionText = $derived(
 		advanced?.position ? positionLabel(advanced.position, true) : ''
@@ -54,12 +59,9 @@
 			? distributionOption(distribution.metrics[metric], advanced?.ratios[metric] ?? null, METRIC_LABELS[metric])
 			: null
 	);
-	const hasSets = $derived(setsPlayed !== null);
 	let selectedTrend = $state<TrendMetric | null>(null);
 	const trendMetric = $derived(
-		selectedTrend && (hasSets || selectedTrend !== 'blocks_per_set')
-			? selectedTrend
-			: defaultTrendMetric(advanced?.position ?? null, setsPlayed)
+		selectedTrend && trendKeys.includes(selectedTrend) ? selectedTrend : defaultTrendMetric(position, setsPlayed)
 	);
 	const trend = $derived(trendOption(gameLog, trendMetric));
 </script>
@@ -88,7 +90,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each availableMetrics(PR_METRICS, setsPlayed) as key (key)}
+						{#each prKeys as key (key)}
 							<tr>
 								<th scope="row">{METRIC_LABELS[key]}</th>
 								<td class="num">{fmt(key, advanced.ratios[key])}</td>
@@ -111,7 +113,7 @@
 			<section class="card">
 				<h3>同位置分佈</h3>
 				<div class="metrics" role="group" aria-label="選擇分佈指標">
-					{#each availableMetrics(METRIC_KEYS, setsPlayed) as key (key)}
+					{#each metricKeys as key (key)}
 						<button type="button" class="chip" aria-pressed={metric === key ? 'true' : 'false'} onclick={() => (selectedMetric = key)}>
 							{METRIC_LABELS[key]}
 						</button>
@@ -128,7 +130,7 @@
 				<EmptyState title="本季尚無單場數據" />
 			{:else}
 				<div class="metrics" role="group" aria-label="選擇逐場趨勢指標">
-					{#each availableMetrics(TREND_METRICS, setsPlayed) as key (key)}
+					{#each trendKeys as key (key)}
 						<button type="button" class="chip" aria-pressed={trendMetric === key ? 'true' : 'false'} onclick={() => (selectedTrend = key)}>
 							{trendLabel(key)}
 						</button>

@@ -21,6 +21,7 @@ export const METRIC_LABELS: Record<MetricKey, string> = {
 	points_per_game: STAT_LABELS.points_per_game,
 	set_excellent_rate: STAT_LABELS.set_excellent_rate,
 	blocks_per_set: STAT_LABELS.blocks_per_set,
+	blocks_per_game: '場均攔網',
 	defense_load: '防守負荷',
 	defense_efficiency: '防守效率'
 };
@@ -32,13 +33,22 @@ export const PR_METRICS: readonly PrKey[] = [
 	'dig_excellent_rate',
 	'set_excellent_rate',
 	'blocks_per_set',
+	'blocks_per_game',
 	'defense_efficiency'
 ];
 
 export const METRIC_KEYS = Object.keys(METRIC_LABELS) as MetricKey[];
 
-export const availableMetrics = <T extends string>(keys: readonly T[], setsPlayed: number | null): T[] =>
-	keys.filter((key) => setsPlayed !== null || key !== 'blocks_per_set');
+const BLOCK_METRICS: ReadonlySet<string> = new Set(['blocks_per_set', 'blocks_per_game', 'block_points']);
+
+export const availableMetrics = <T extends string>(
+	keys: readonly T[],
+	setsPlayed: number | null,
+	position: string | null = null
+): T[] =>
+	keys.filter(
+		(key) => (setsPlayed !== null || key !== 'blocks_per_set') && (position !== 'L' || !BLOCK_METRICS.has(key))
+	);
 
 const RATE_METRICS: ReadonlySet<string> = new Set([
 	'attack_success_rate',
@@ -78,6 +88,8 @@ const count = (label: string, value: number): HeadlineStat => ({
 	detail: null
 });
 
+const blockPoints = (s: PlayerSeason) => count(STAT_LABELS.block_points, s.block_points);
+
 const attackRate = (s: PlayerSeason) => rate(STAT_LABELS.attack_success_rate, s.attack_points, s.attack_total, '得分');
 
 const blocksPerSet = (s: PlayerSeason): HeadlineStat =>
@@ -92,8 +104,8 @@ const blocksPerSet = (s: PlayerSeason): HeadlineStat =>
 const HEADLINES: Record<string, (s: PlayerSeason) => HeadlineStat[]> = {
 	S: (s) => [
 		excellentRate(STAT_LABELS.set_excellent_rate, s.set_excellent, s.set_total),
-		count('舉球次數', s.set_total),
-		excellentRate(STAT_LABELS.dig_excellent_rate, s.dig_excellent, s.dig_total)
+		excellentRate(STAT_LABELS.dig_excellent_rate, s.dig_excellent, s.dig_total),
+		blockPoints(s)
 	],
 	L: (s) => [
 		excellentRate(STAT_LABELS.receive_excellent_rate, s.receive_excellent, s.receive_total),
@@ -103,14 +115,14 @@ const HEADLINES: Record<string, (s: PlayerSeason) => HeadlineStat[]> = {
 	OH: (s) => [
 		attackRate(s),
 		excellentRate(STAT_LABELS.receive_excellent_rate, s.receive_excellent, s.receive_total),
-		count(STAT_LABELS.attack_points, s.attack_points)
+		blockPoints(s)
 	],
 	MB: (s) => [
 		...(s.sets_played === null ? [] : [blocksPerSet(s)]),
 		attackRate(s),
-		count(STAT_LABELS.block_points, s.block_points)
+		blockPoints(s)
 	],
-	OP: (s) => [attackRate(s), count(STAT_LABELS.attack_points, s.attack_points), count(STAT_LABELS.serve_points, s.serve_points)]
+	OP: (s) => [attackRate(s), count(STAT_LABELS.attack_points, s.attack_points), blockPoints(s)]
 };
 
 const scoringHeadlines = (s: PlayerSeason) => [
@@ -271,6 +283,12 @@ const TREND_DEFS = {
 						detail: `攔網 ${s.block_points}／${s.sets_played} 局`
 					}
 	},
+	block_points: {
+		label: STAT_LABELS.block_points,
+		isRate: false,
+		integer: true,
+		compute: (s) => ({ value: s.block_points, detail: null })
+	},
 	receive_excellent_rate: {
 		label: METRIC_LABELS.receive_excellent_rate,
 		isRate: true,
@@ -303,7 +321,7 @@ const DEFAULT_TREND: Record<string, TrendMetric> = {
 };
 
 export const defaultTrendMetric = (position: string | null, setsPlayed: number | null = 0): TrendMetric =>
-	setsPlayed === null && position === 'MB' ? 'points' : DEFAULT_TREND[position ?? ''] ?? 'points';
+	setsPlayed === null && position === 'MB' ? 'block_points' : DEFAULT_TREND[position ?? ''] ?? 'points';
 
 const goldenPoint = (value: number) => ({ value, symbol: 'diamond', symbolSize: 14, golden: true });
 

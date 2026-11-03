@@ -9,11 +9,12 @@ MIN_SETS = 5
 MIN_GAMES = 2
 RATIO_KEYS = (
     "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
-    "points_per_game", "set_excellent_rate", "blocks_per_set", "defense_load", "defense_efficiency",
+    "points_per_game", "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_load",
+    "defense_efficiency",
 )
 PR_KEYS = (
     "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
-    "set_excellent_rate", "blocks_per_set", "defense_efficiency",
+    "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_efficiency",
 )
 
 
@@ -26,7 +27,7 @@ def _per(numerator: float, denominator: float) -> float:
 
 
 def compute_ratios(totals: Mapping) -> dict[str, float | None]:
-    """九項比率，沿用舊站公式：率類為百分比，分母為 0 給 0；局數未知時每局攔網為 None。"""
+    """十項比率，沿用舊站公式：率類為百分比，分母為 0 給 0；局數未知時每局攔網為 None。"""
     defense_total = totals["receive_total"] + totals["dig_total"]
     return {
         "attack_success_rate": _pct(totals["attack_points"], totals["attack_total"]),
@@ -37,6 +38,7 @@ def compute_ratios(totals: Mapping) -> dict[str, float | None]:
         "set_excellent_rate": _pct(totals["set_excellent"], totals["set_total"]),
         "blocks_per_set": (None if totals["sets_played"] is None
                            else _per(totals["block_points"], totals["sets_played"])),
+        "blocks_per_game": _per(totals["block_points"], totals["games"]),
         "defense_load": defense_total,
         "defense_efficiency": _pct(totals["receive_excellent"] + totals["dig_excellent"], defense_total),
     }
