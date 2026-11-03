@@ -2,6 +2,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
+from src.export.player_advanced import MIN_GAMES, MIN_SETS, compute_ratios
+
 
 @dataclass(frozen=True)
 class BoardSpec:
@@ -9,6 +11,9 @@ class BoardSpec:
     label: str
     kind: Literal["count", "rate"]
     title: str | None
+    numerator: str | None = None
+    denominator: str | None = None
+    attempts: str | None = None
 
 
 COUNT_BOARDS = (
@@ -22,8 +27,34 @@ COUNT_BOARDS = (
 )
 
 
-def _count_board(spec: BoardSpec, rows: list[dict]) -> dict:
-    ordered = sorted(rows, key=lambda r: (-r[spec.key], r["name"]))
+RATE_BOARDS = (
+    BoardSpec("attack_success_rate", "攻擊成功率", "rate", None, "attack_points", "attack_total", "攻擊 10 次"),
+    BoardSpec("serve_point_rate", "發球得分率", "rate", None, "serve_points", "serve_total", "發球 10 次"),
+    BoardSpec("receive_excellent_rate", "接發球到位率", "rate", None, "receive_excellent", "receive_total", "接發球 10 次"),
+    BoardSpec("dig_excellent_rate", "防守到位率", "rate", None, "dig_excellent", "dig_total", "防守 10 次"),
+    BoardSpec("set_excellent_rate", "舉球到位率", "rate", None, "set_excellent", "set_total", "舉球 10 次"),
+    BoardSpec("points_per_game", "場均得分", "rate", None, "total_points", "games", "出賽 10 場"),
+    BoardSpec("blocks_per_set", "每局攔網", "rate", None, "block_points", "sets_played", "出賽 10 局"),
+)
+
+
+def _board(spec: BoardSpec, rows: list[dict]) -> dict:
+    threshold = None
+    if spec.kind == "rate":
+        has_sets = any(r["sets_played"] is not None for r in rows)
+        participation = f"出賽 {MIN_SETS} 局" if has_sets else f"出賽 {MIN_GAMES} 場"
+        if has_sets and spec.denominator != "sets_played" and any(r["sets_played"] is None for r in rows):
+            participation += f"（無局數時 {MIN_GAMES} 場）"
+        threshold = f"門檻：{participation}、{spec.attempts}"
+        rows = [
+            {**r, spec.key: round(compute_ratios(r)[spec.key], 2)}
+            for r in rows
+            if (r["games"] >= MIN_GAMES if r["sets_played"] is None else r["sets_played"] >= MIN_SETS)
+            and r[spec.denominator] is not None and r[spec.denominator] >= 10
+        ]
+    ordered = sorted(rows, key=lambda r: (
+        -r[spec.key], -(r[spec.denominator]) if spec.kind == "rate" else 0, r["name"]
+    ))
     leaders = []
     for index, r in enumerate(ordered):
         rank = leaders[-1]["rank"] if index and r[spec.key] == ordered[index - 1][spec.key] else index + 1
@@ -35,12 +66,13 @@ def _count_board(spec: BoardSpec, rows: list[dict]) -> dict:
             "team_short": r["team_short"],
             "position": r["position"],
             "value": r[spec.key],
-            "numerator": None,
-            "denominator": None,
+            "numerator": r[spec.numerator] if spec.numerator else None,
+            "denominator": r[spec.denominator] if spec.denominator else None,
             "title": spec.title if rank == 1 else None,
         })
-    return {"key": spec.key, "label": spec.label, "kind": spec.kind, "threshold": None, "rows": leaders}
+    return {"key": spec.key, "label": spec.label, "kind": spec.kind, "threshold": threshold, "rows": leaders}
 
 
-def compute_leaders(rows: list[dict], boards: Sequence[BoardSpec] = COUNT_BOARDS) -> list[dict]:
-    return [_count_board(spec, rows) for spec in boards]
+def compute_leaders(rows: list[dict], boards: Sequence[BoardSpec] = COUNT_BOARDS + RATE_BOARDS) -> list[dict]:
+    return [_board(spec, rows) for spec in boards
+            if spec.key != "blocks_per_set" or any(r["sets_played"] is not None for r in rows)]

@@ -1,9 +1,10 @@
 import { render } from 'svelte/server';
 import { describe, expect, it } from 'vitest';
 import LeadersPage from './+page.svelte';
+import LeaderBoard from '#lib/components/LeaderBoard.svelte';
 import type { LeaderBoardView, LeaderRowView } from '#lib/leaders.js';
 import { seasons, seasonTeam, teams } from '#lib/site.js';
-import { COUNT_STAT_KEYS, STAT_LABELS } from '#lib/statLabels.js';
+import { COUNT_STAT_KEYS, RATE_STAT_KEYS, STAT_LABELS } from '#lib/statLabels.js';
 import type { PageProps } from './$types';
 
 const season = seasons[0];
@@ -93,4 +94,37 @@ it('七個計數榜、四王卡與並列球員連結；稱號只出現在四榜�
 	expect(champions).toContain('球員1號');
 	expect(champions).toContain('球員2號');
 	expect(champions).not.toContain('球員3號');
+});
+
+it('預設計數榜並提供兩個可操作的分段', () => {
+	const html = renderPage([row(1, 1)]);
+	expect(html).toMatch(/<button[^>]*aria-pressed="true"[^>]*>計數榜<\/button>/);
+	expect(html).toMatch(/<button[^>]*aria-pressed="false"[^>]*>比率榜<\/button>/);
+});
+
+it('比率卡顯示標題、門檻、比率與分子分母，無人達門檻時顯示空狀態', () => {
+	const board: LeaderBoardView = {
+		key: 'attack_success_rate', label: '攻擊成功率', kind: 'rate', threshold: '門檻：出賽 5 局、攻擊 10 次',
+		rows: [{ ...row(1, 1), value: 37.5, numerator: 45, denominator: 120, title: null }]
+	};
+	const html = render(LeaderBoard, { props: { board, season: season.name, group: 'men' }, context }).body;
+	expect(html).toMatch(/<h2[^>]*>攻擊成功率<\/h2>/);
+	expect(html).toContain('門檻：出賽 5 局、攻擊 10 次');
+	expect(html).toContain('37.5%');
+	expect(html).toContain('45／120');
+	const empty = render(LeaderBoard, { props: { board: { ...board, rows: [] }, season: season.name, group: 'men' }, context }).body;
+	expect(empty).toContain('尚無球員達門檻');
+});
+
+it('只傳入計數榜與六個比率榜時，不產生每局攔網卡與 chip', () => {
+	const boards: LeaderBoardView[] = [
+		{ key: 'total_points', label: '總得分', kind: 'count', threshold: null, rows: [row(1, 1)] },
+		...RATE_STAT_KEYS.filter((key) => key !== 'blocks_per_set').map((key): LeaderBoardView => ({
+			key, label: STAT_LABELS[key], kind: 'rate', threshold: '門檻：出賽 2 場', rows: []
+		}))
+	];
+	const props: PageProps = { params: { season: season.name, group: 'men' }, data: { season, group: 'men', summary: null, boards } };
+	const html = render(LeadersPage, { props, context }).body;
+	expect(html).not.toContain('每局攔網');
+	expect(html).not.toContain('#b-blocks_per_set');
 });

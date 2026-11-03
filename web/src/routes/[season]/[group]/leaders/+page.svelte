@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount, tick } from 'svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import LeaderBoard from '#lib/components/LeaderBoard.svelte';
 	import SeasonChampions from '#lib/components/SeasonChampions.svelte';
@@ -8,26 +9,52 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	let kind = $state<'count' | 'rate'>('count');
+	const visibleBoards = $derived(data.boards.filter((board) => board.kind === kind));
+	const segmentLabel = $derived(kind === 'count' ? '計數榜' : '比率榜');
+
+	function select(next: 'count' | 'rate') {
+		kind = next;
+		current = data.boards.find((board) => board.kind === next)?.key;
+	}
+
+	onMount(() => {
+		let active = true;
+		const followHash = async () => {
+			const board = data.boards.find((board) => window.location.hash === `#b-${board.key}`);
+			if (!board) return;
+			kind = board.kind;
+			current = board.key;
+			await tick();
+			if (active) document.getElementById(`b-${board.key}`)?.scrollIntoView({ block: 'start' });
+		};
+		void followHash();
+		window.addEventListener('hashchange', followHash);
+		return () => { active = false; window.removeEventListener('hashchange', followHash); };
+	});
+
 	let current = $state<string>();
 	let sections = $state<HTMLElement[]>([]);
 	function track() {
-		if (!sections.length) return;
+		// 分段更換卡片時，bind:this 會短暫清空舊節點，待新卡綁定後再追蹤。
+		if (!sections[0]?.isConnected) return;
 		if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1) {
-			current = data.boards.at(-1)?.key;
+			current = visibleBoards.at(-1)?.key;
 			return;
 		}
 		const threshold = parseFloat(getComputedStyle(sections[0]).scrollMarginBlockStart) + 1;
 		// 同列多卡以第一張為預設；若讀者已點同列項目，保留該選擇。
 		let rowTop = -Infinity;
 		let active: number[] = [];
-		sections.forEach((section, i) => {
+		sections.slice(0, visibleBoards.length).forEach((section, i) => {
+			if (!section?.isConnected) return;
 			const top = section.getBoundingClientRect().top;
 			if (top > threshold) return;
 			if (top > rowTop + 1) { rowTop = top; active = [i]; }
 			else if (Math.abs(top - rowTop) <= 1) active.push(i);
 		});
-		if (!active.some((i) => data.boards[i]?.key === current)) {
-			current = data.boards[active[0] ?? 0]?.key;
+		if (!active.some((i) => visibleBoards[i]?.key === current)) {
+			current = visibleBoards[active[0] ?? 0]?.key;
 		}
 	}
 	$effect(() => {
@@ -58,13 +85,17 @@
 		<p class="scope">統計至 {formatThroughDate(data.summary.through_date)} · 共 {data.summary.games} 場</p>
 	{/if}
 	<SeasonChampions boards={data.boards} season={data.season.name} group={data.group} />
-	<nav class="items" aria-label="計數榜項目">
-		{#each data.boards as board (board.key)}
-			<a class="chip" href="#b-{board.key}" aria-current={(current ?? data.boards[0]?.key) === board.key ? 'location' : undefined} onclick={() => (current = board.key)}>{board.label}</a>
+	<div class="segments" role="group" aria-label="榜單類型">
+		<button type="button" aria-pressed={kind === 'count'} onclick={() => select('count')}>計數榜</button>
+		<button type="button" aria-pressed={kind === 'rate'} onclick={() => select('rate')}>比率榜</button>
+	</div>
+	<nav class="items" aria-label="{segmentLabel}項目">
+		{#each visibleBoards as board (board.key)}
+			<a class="chip" href="#b-{board.key}" aria-current={(current ?? visibleBoards[0]?.key) === board.key ? 'location' : undefined} onclick={() => (current = board.key)}>{board.label}</a>
 		{/each}
 	</nav>
 	<div class="boards">
-		{#each data.boards as board, i (board.key)}
+		{#each visibleBoards as board, i (board.key)}
 			<div class="board-anchor" bind:this={sections[i]}>
 				<LeaderBoard {board} season={data.season.name} group={data.group} />
 			</div>
@@ -82,6 +113,35 @@
 		font-size: var(--text-sm);
 		color: var(--text-muted);
 	}
+
+	.segments {
+		display: flex;
+		gap: var(--space-1);
+		padding: var(--space-1);
+		margin-block-end: var(--space-3);
+		background: var(--surface-2);
+		border-radius: var(--radius-full);
+	}
+	.segments button {
+		flex: 1;
+		min-block-size: calc(var(--tap) - var(--space-2));
+		border: 0;
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--text-muted);
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+	}
+	.segments button:hover { color: var(--text); }
+	.segments button[aria-pressed='true'] {
+		background: var(--surface);
+		color: var(--accent);
+		box-shadow: var(--shadow-card);
+		outline: 1px solid var(--card-edge);
+		outline-offset: -1px;
+	}
+	.segments button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 	.items {
 		position: sticky;

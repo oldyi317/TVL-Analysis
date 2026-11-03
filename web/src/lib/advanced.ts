@@ -40,7 +40,7 @@ export const METRIC_KEYS = Object.keys(METRIC_LABELS) as MetricKey[];
 export const availableMetrics = <T extends string>(keys: readonly T[], setsPlayed: number | null): T[] =>
 	keys.filter((key) => setsPlayed !== null || key !== 'blocks_per_set');
 
-const RATE_METRICS: ReadonlySet<MetricKey> = new Set([
+const RATE_METRICS: ReadonlySet<string> = new Set([
 	'attack_success_rate',
 	'receive_excellent_rate',
 	'serve_point_rate',
@@ -49,7 +49,10 @@ const RATE_METRICS: ReadonlySet<MetricKey> = new Set([
 	'defense_efficiency'
 ]);
 
-export const isRateMetric = (key: MetricKey) => RATE_METRICS.has(key);
+export const isRateMetric = (key: string) => RATE_METRICS.has(key);
+
+export const formatMetricValue = (key: string, value: number | null): string =>
+	value === null ? '—' : (isRateMetric(key) ? `${value}%` : String(value));
 
 export type HeadlineStat = {
 	label: string;
