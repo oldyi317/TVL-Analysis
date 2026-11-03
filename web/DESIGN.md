@@ -374,7 +374,7 @@ h2 同列右側，`--text-sm` 700 靛藍；hover `accent-strong` + underline。�
 24px 正圓、置中、tabular 數字。前三名靛藍 tint 底 + 靛藍 700 數字（與戰績表前三名同一規則）；第 4 名起無底、附註灰 600 數字——名次是附註，數值才是結論。不另給獎牌色、不加 icon。
 
 ### 排行榜卡 LeaderBoard
-每個統計項目一張卡，h2（項目名）在卡外。白卡內距縮為 8px／12px（≥64rem 12px／16px）讓表格貼邊；表頭「名次／球員／<項目>」14px 600 附註灰、底線 1px `--line`。列 48px、列線 1px `--line`（最後一列不畫）：名次欄 40px 寬置中放 RankDot；球員欄為 32px 隊徽圓標（sm）+ 姓名 700 `text` 連到球員頁（hover 靛藍 + underline offset 0.2em，過長省略）+ 位置 14px 附註灰；數值欄右對齊 800 tabular。預設只列前 10 名，第 10 名並列時全部顯示；超過時卡底加一顆 44px 全寬展開鈕（上緣 1px `--line`、透明底、14px 700 靛藍，同區塊連結樣式，hover `accent-strong` + underline），文案「展開全部（N 人）」／「收合」，`aria-expanded` + `aria-controls` 指向表格；收合時把該卡捲回視窗頂（`scroll-margin-block-start: 16px`）。頁面層：h1 下一行 14px 附註灰「統計至 X 月 X 日 · 共 N 場」，卡片格線間距 24px，≥40rem 兩欄、≥64rem 三欄，首屏卡片套 `.rise`。
+每個統計項目一張卡，h2（項目名）在卡外。白卡內距縮為 8px／12px（≥64rem 12px／16px）讓表格貼邊；表頭「名次／球員／<項目>」14px 600 附註灰、底線 1px `--line`。列 48px、列線 1px `--line`（最後一列不畫）：名次欄 40px 寬置中放 RankDot；球員欄為 32px 隊徽圓標（sm）+ 姓名 700 `text` 連到球員頁（hover 靛藍 + underline offset 0.2em，過長省略）+ 位置 14px 附註灰；數值欄右對齊 800 tabular。比率榜數值沿用進階數據格式，數值下附 14px／600／附註灰的「分子／分母」；h2 下附同樣字級的匯出門檻文字。門檻為出賽局數 ≥5（無局數時出賽場數 ≥2）且該項分母 ≥10；同值依分母較大者優先。單榜空狀態保留標題、門檻與項目 chip，卡內使用 EmptyState。預設只列前 10 名，第 10 名並列時全部顯示；超過時卡底加一顆 44px 全寬展開鈕（上緣 1px `--line`、透明底、14px 700 靛藍，同區塊連結樣式，hover `accent-strong` + underline），文案「展開全部（N 人）」／「收合」，`aria-expanded` + `aria-controls` 指向表格；收合時把該卡捲回視窗頂（`scroll-margin-block-start: 16px`）。頁面層：h1 下一行 14px 附註灰「統計至 X 月 X 日 · 共 N 場」，其後本季四王，再接計數榜／比率榜分段（預設計數榜，`aria-pressed`），每次只顯示一類卡與對應項目 chip。chip 依類型換名；有效 `#b-<key>` 錨點會切換到所屬類型並捲至卡片。chip 列吸頂，卡片捲動距離預留觸控列與上下留白。格線間距 24px，≥40rem 兩欄、≥64rem 三欄，首屏卡片套 `.rise`。
 
 ### 球員列 PlayerCard
 56px 高一列：40px `--surface-2` 背號圓點（800）+ 姓名 700 + 位置附註灰；包成連結時 hover／active 靛藍 tint 底、14px 圓角。

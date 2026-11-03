@@ -42,4 +42,10 @@ FINISH：unreviewed and undocumented is unfinished; this build ends with the fin
 - 單榜無達門檻者保留標題與門檻，卡內顯示「尚無球員達門檻」；整組沒有榜單時顯示「本季尚無單場數據」。前十名含第十名並列、逐卡展開／收合與球員連結沿用既有榜卡；切換分段會重建卡片，展開狀態回到收合。
 - 卡片維持手機單欄、40rem 起兩欄、64rem 起三欄。吸頂列與收合後卡片跳轉預留相同頂端距離（44px 觸控列 + 16px 上下留白 + 16px 間距），避免標題被遮住。
 
+## #110 Finish review（2026-11-03）
+
+**Verdict：通過。** 依 issue #110 驗收清單核對匯出門檻、七項比率、並列排序、無局數時省略每局攔網、空榜狀態、分段與 hash 導覽；實作符合 brief。手機／桌面、深淺色、鍵盤切換與返回錨點由 Playwright 驗證；未發現需阻擋上線的互動或版面問題。設計規則已同步至 `DESIGN.md` 的「排行榜卡 LeaderBoard」。本次無新增 raster，因此沒有新增素材 provenance。
+
+驗證：`python -m pytest -q`（366 passed）、`npm run check`（0 errors／0 warnings）、`npm run test:unit`（209 passed）、production build 完成、Playwright（62 passed／6 skipped）。Playwright 需先啟動 `npm run preview` 再執行 `npx playwright test`；直接執行串接指令時其 webServer 啟動失敗，分開啟動後全數可執行。Build 有 Vite 大型 chunk 提示，未由本票引入或處理。
+
 核對來源：`src/routes/[season]/[group]/leaders/+page.svelte`、`src/lib/components/LeaderBoard.svelte`、`src/lib/leaders.ts`、`src/lib/advanced.ts`、`../src/export/leaders.py`、`src/app.css`、`PRODUCT.md`、`DESIGN.md` 與 `.impeccable/design.json`。此為原始碼紀錄，不取代瀏覽器驗證。
