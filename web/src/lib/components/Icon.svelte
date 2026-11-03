@@ -7,7 +7,8 @@
 		| 'user'
 		| 'chevron-left'
 		| 'arrow-up-right'
-		| 'map-pin';
+		| 'map-pin'
+		| 'podium';
 
 	let { name, size = 20 }: { name: Name; size?: number } = $props();
 </script>
@@ -53,5 +54,10 @@
 	{:else if name === 'map-pin'}
 		<path d="M12 21s-6.5-5.7-6.5-11a6.5 6.5 0 0 1 13 0c0 5.3-6.5 11-6.5 11Z" />
 		<circle cx="12" cy="10" r="2.5" />
+	{:else if name === 'podium'}
+		<path d="M9 20V7a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v13" />
+		<path d="M3 20v-8a1 1 0 0 1 1-1h5" />
+		<path d="M21 20v-5a1 1 0 0 0-1-1h-5" />
+		<path d="M2 20h20" />
 	{/if}
 </svg>

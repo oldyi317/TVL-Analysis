@@ -70,7 +70,8 @@
 		'user',
 		'chevron-left',
 		'arrow-up-right',
-		'map-pin'
+		'map-pin',
+		'podium'
 	] as const;
 	const TAGS = [
 		{ cls: 'tag-win', text: '勝' },
