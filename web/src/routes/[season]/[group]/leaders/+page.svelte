@@ -124,7 +124,7 @@
 	}
 	.segments button {
 		flex: 1;
-		min-block-size: calc(var(--tap) - var(--space-2));
+		min-block-size: var(--tap);
 		border: 0;
 		border-radius: var(--radius-full);
 		background: transparent;

@@ -47,16 +47,17 @@
 						<tr>
 							<td class="rank"><RankDot rank={row.rank} /></td>
 							<td>
-								<span class="player">
+								<a class="player" href={playerHref(row.player_id)} aria-label={row.name} aria-describedby="{uid}-{row.player_id}-info" title={row.name}>
+									<span id="{uid}-{row.player_id}-info" hidden>{row.team.short_name}{row.position ? ` · ${positionLabel(row.position)}` : ''}{row.title ? ` · ${row.title}` : ''}</span>
 									<TeamBadge team={row.team} size="sm" label={row.team.short_name} />
 									<span class="identity">
-										<a href={playerHref(row.player_id)} title={row.name}>{row.name}</a>
+										<span class="name">{row.name}</span>
 										{#if row.title}<span class="tag tag-glory">{row.title}</span>{/if}
 										{#if row.position}
 											<span class="position">{positionLabel(row.position)}</span>
 										{/if}
 									</span>
-								</span>
+								</a>
 							</td>
 							<td class="num">
 								{board.kind === 'rate' ? formatMetricValue(board.key, row.value) : row.value}
@@ -141,6 +142,8 @@
 	}
 
 	.player {
+		min-block-size: var(--tap);
+		color: var(--text);
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
@@ -156,7 +159,7 @@
 		flex: 1;
 	}
 
-	.player a {
+	.name {
 		line-height: 1.4;
 		min-inline-size: 0;
 		font-weight: 700;
@@ -166,7 +169,7 @@
 		white-space: nowrap;
 	}
 
-	.player a:hover {
+	.player:hover .name {
 		color: var(--accent);
 		text-decoration: underline;
 		text-underline-offset: 0.2em;

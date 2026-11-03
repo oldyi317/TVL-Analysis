@@ -49,3 +49,19 @@ FINISH：unreviewed and undocumented is unfinished; this build ends with the fin
 驗證：`python -m pytest -q`（366 passed）、`npm run check`（0 errors／0 warnings）、`npm run test:unit`（209 passed）、production build 完成、Playwright（62 passed／6 skipped）。Playwright 需先啟動 `npm run preview` 再執行 `npx playwright test`；直接執行串接指令時其 webServer 啟動失敗，分開啟動後全數可執行。Build 有 Vite 大型 chunk 提示，未由本票引入或處理。
 
 核對來源：`src/routes/[season]/[group]/leaders/+page.svelte`、`src/lib/components/LeaderBoard.svelte`、`src/lib/leaders.ts`、`src/lib/advanced.ts`、`../src/export/leaders.py`、`src/app.css`、`PRODUCT.md`、`DESIGN.md` 與 `.impeccable/design.json`。此為原始碼紀錄，不取代瀏覽器驗證。
+
+## #111 Finish 與 audit（2026-11-03）
+
+Finish reviewer：`disposition: ship`，`material_fixes` 無。本次以既有 code-led brief 與 DESIGN.md 為準，未提供獨立 QUALITY BAR 卡。保留「先給王，再給榜」、靛藍定位與黃色榮耀標籤。
+
+修正清單（全部結案）：
+- 分段按鈕實測只有 36px；改為至少 44px。新增三季 smoke 先重現三個失敗，再以最終建置驗證通過。
+- 球員入口原只包文字；擴為隊徽、姓名與位置區域，至少 44px，維持 48px 列高。
+- Standards 審查指出姓名 aria-label 會遮蔽其他資訊；以 aria-describedby 補當季隊名、位置、稱號，複審確認結案。
+- Documenter 補四王卡、分段／chip、歷史隊徽與隊名規則；錨點留白修正為實作的 76px 公式。榮耀標籤規則已存在並核對一致。
+
+Audit（僅排行榜範圍）：a11y 3/4、效能 3/4、響應式 4/4、主題 4/4、實作完整度 4/4，共 18/20。原生連結與按鈕、ARIA 狀態與讀屏描述齊備；深淺文字與榮耀標籤對比由 token 測試守門，鍵盤分段／chip／展開由 e2e 驗證。44px 分段與球員入口通過實測；reduced-motion 下首屏 rise 停用，靜態選中狀態保留。機械 detector 回傳空陣列。沒有未修的 a11y、對比或 reduced-motion 項；這是限定範圍的檢查，不代表全站 WCAG 認證。既有 Vite 大型 chunk 提示保留，不在本票擴大重構。
+
+本 session 驗證：pytest 366 passed；check 0 errors／0 warnings；unit 209 passed（含詞彙、token 對比）；build `Wrote site to "build"`／done；Playwright 66 passed、6 skipped（資料條件不適用，無新增 skip）。Standards 最終 0 未結項；Spec 0 findings。
+
+實際執行匯出器，leaders 輸出涵蓋 cup 20／21／22；逐季檢視 390px 與 1440px、計數與比率畫面（cup 21 深色，另有既有深淺模式 e2e）。三季頁面無空白、無錯字、無「排名」字樣；2024-25 桃園臺產沿用當季隊名，不用現行龍邁建設。阻擋隊徽請求的 smoke 確認退回可見簡稱，球員入口仍可使用。截圖與臨時腳本只留在 git 忽略的 review 目錄，未納入 commit。

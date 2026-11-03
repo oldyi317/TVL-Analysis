@@ -128,3 +128,35 @@ test('無局數的賽季缺每局攔網，空榜仍保留 chip', async ({ page }
 	await expect(page.locator('#b-points_per_game').getByText('尚無球員達門檻')).toBeVisible();
 	await expect(page.getByRole('navigation', { name: '比率榜項目' }).getByRole('link', { name: '場均得分', exact: true })).toBeVisible();
 });
+
+for (const cup of [20, 21, 22]) {
+	test(`第 ${cup} 季排行榜 smoke、觸控與減少動態`, async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: cup === 21 ? 'dark' : 'light' });
+		await page.goto(`${BASE}/${seasonName(cup)}/men/leaders/`);
+		await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${seasonName(cup)} 男子組 排行榜`);
+		await expect(page.getByRole('region', { name: '本季四王' })).toBeVisible();
+		await expect(page.locator('main')).not.toContainText('排名');
+		const rate = page.getByRole('button', { name: '比率榜', exact: true });
+		expect((await rate.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+		const player = page.locator('#b-total_points tbody a').first();
+		expect((await player.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+		await rate.focus();
+		await page.keyboard.press('Enter');
+		await expect(rate).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByRole('navigation', { name: '比率榜項目' }).getByRole('link')).toHaveCount(cup === 22 ? 6 : 7);
+		await expect(page.getByRole('region', { name: '本季四王' })).toHaveCSS('animation-name', 'none');
+	});
+}
+
+test('歷史榜單沿用當季隊名，隊徽載入失敗退回簡稱', async ({ page }) => {
+	await page.route('**/logos/**', (route) => route.abort());
+	await page.goto(`${BASE}/2024-25/men/leaders/`);
+	const card = page.locator('#b-total_points');
+	await card.getByRole('button', { name: /展開全部/ }).click();
+	// 第 20 季的隊名仍為桃園臺產，第 22 季才改為龍邁建設。
+	await expect(card.getByRole('img', { name: '桃園臺產', exact: true }).first()).toBeVisible();
+	await expect(card.getByRole('img', { name: '龍邁建設', exact: true })).toHaveCount(0);
+	await expect(card.locator('img')).toHaveCount(0);
+	await card.getByRole('link').first().click();
+	await expect(page).toHaveURL(/\/2024-25\/men\/players\/\d+\//);
+});
