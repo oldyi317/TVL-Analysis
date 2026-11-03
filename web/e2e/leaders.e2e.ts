@@ -63,3 +63,68 @@ test('男女組長姓名、四王首屏、深淺模式與桌面欄數', async ({
 		}
 	}
 });
+
+test('鍵盤切分段、chip 與展開，切換不重新載入', async ({ page }) => {
+	await page.goto(url);
+	let navigations = 0;
+	page.on('framenavigated', (frame) => { if (frame === page.mainFrame()) navigations++; });
+	const rate = page.getByRole('button', { name: '比率榜', exact: true });
+	await expect(async () => {
+		await rate.focus();
+		await page.keyboard.press('Enter');
+		await expect(rate).toHaveAttribute('aria-pressed', 'true', { timeout: 500 });
+	}).toPass({ timeout: 10_000 });
+	await expect(page.locator('#b-total_points')).toHaveCount(0);
+	const nav = page.getByRole('navigation', { name: '比率榜項目' });
+	const rates = entry.boards.filter((b: { kind: string }) => b.kind === 'rate');
+	await expect(nav.getByRole('link')).toHaveCount(rates.length);
+	for (const board of rates) {
+		const card = page.locator(`#b-${board.key}`);
+		await expect(card.getByRole('heading', { name: board.label, exact: true })).toBeAttached();
+		await expect(card.getByText(board.threshold, { exact: true })).toBeAttached();
+		if (board.rows.length) {
+			const row = board.rows[0];
+			await expect(card.getByText(`${row.numerator}／${row.denominator}`, { exact: true }).first()).toBeAttached();
+		} else await expect(card.getByText('尚無球員達門檻')).toBeAttached();
+	}
+	const expandable = rates.find((b: { rows: { rank: number }[] }) => b.rows.length > 10 && b.rows.at(-1)!.rank > b.rows[9].rank);
+	if (expandable) {
+		const chip = nav.getByRole('link', { name: expandable.label, exact: true });
+		await chip.focus();
+		await page.keyboard.press('Enter');
+		await expect(page.locator(`#b-${expandable.key} h2`)).toBeInViewport();
+		const button = page.locator(`#b-${expandable.key}`).getByRole('button');
+		await button.focus();
+		await page.keyboard.press('Enter');
+		await expect(button).toHaveAttribute('aria-expanded', 'true');
+		await page.keyboard.press('Enter');
+		await expect(button).toHaveAttribute('aria-expanded', 'false');
+	}
+	// 錨點會觸發同文件導航；分段本身應維持相同 document。
+	const before = navigations;
+	await page.getByRole('button', { name: '計數榜', exact: true }).click();
+	await expect(page.locator('#b-total_points')).toBeVisible();
+	expect(navigations).toBe(before);
+});
+
+test('比率榜錨點進站與歷史返回會選對分段並捲到卡片', async ({ page }) => {
+	await page.goto(`${url}#b-serve_point_rate`);
+	await expect(page.getByRole('button', { name: '比率榜', exact: true })).toHaveAttribute('aria-pressed', 'true');
+	await expect(page.locator('#b-serve_point_rate h2')).toBeInViewport();
+	await page.getByRole('button', { name: '計數榜', exact: true }).click();
+	await page.getByRole('navigation', { name: '計數榜項目' }).getByRole('link', { name: '總得分', exact: true }).click();
+	await page.goBack();
+	await expect(page.getByRole('button', { name: '比率榜', exact: true })).toHaveAttribute('aria-pressed', 'true');
+	await expect(page.locator('#b-serve_point_rate h2')).toBeInViewport();
+});
+
+test('無局數的賽季缺每局攔網，空榜仍保留 chip', async ({ page }) => {
+	const noSets = entries.find((e: typeof entry) => e.boards.some((b: { kind: string }) => b.kind === 'rate') && !e.boards.some((b: { key: string }) => b.key === 'blocks_per_set'));
+	expect(noSets).toBeTruthy();
+	await page.goto(`${BASE}/${seasonName(noSets.cup_id)}/${noSets.group}/leaders/#b-points_per_game`);
+	await expect(page.getByRole('navigation', { name: '比率榜項目' }).getByRole('link')).toHaveCount(6);
+	await expect(page.locator('#b-blocks_per_set')).toHaveCount(0);
+	await expect(page.getByRole('link', { name: '每局攔網', exact: true })).toHaveCount(0);
+	await expect(page.locator('#b-points_per_game').getByText('尚無球員達門檻')).toBeVisible();
+	await expect(page.getByRole('navigation', { name: '比率榜項目' }).getByRole('link', { name: '場均得分', exact: true })).toBeVisible();
+});

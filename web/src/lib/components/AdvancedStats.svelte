@@ -3,7 +3,7 @@
 		availableMetrics,
 		defaultTrendMetric,
 		distributionOption,
-		isRateMetric,
+		formatMetricValue,
 		METRIC_KEYS,
 		METRIC_LABELS,
 		noPrReason as prReason,
@@ -48,7 +48,7 @@
 		advanced?.position ? positionLabel(advanced.position, true) : ''
 	);
 	const noPrReason = $derived(prReason(advanced));
-	const fmt = (key: MetricKey, value: number | null) => value === null ? '—' : (isRateMetric(key) ? `${value}%` : String(value));
+	const fmt = formatMetricValue;
 	const distOption = $derived(
 		distribution
 			? distributionOption(distribution.metrics[metric], advanced?.ratios[metric] ?? null, METRIC_LABELS[metric])

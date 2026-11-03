@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { formatMetricValue } from '#lib/advanced.js';
+	import EmptyState from './EmptyState.svelte';
 	import { visibleRows, type LeaderBoardView } from '#lib/leaders.js';
 	import { positionLabel, type Group } from '#lib/site.js';
 	import RankDot from './RankDot.svelte';
@@ -27,40 +29,48 @@
 
 <section id="b-{board.key}" aria-labelledby="{uid}-h" bind:this={section}>
 	<h2 id="{uid}-h">{board.label}</h2>
+	{#if board.threshold}<p class="threshold">{board.threshold}</p>{/if}
 	<div class="card">
-		<table id="{uid}-t">
-			<thead>
-				<tr>
-					<th scope="col" class="rank">名次</th>
-					<th scope="col">球員</th>
-					<th scope="col" class="num">{board.label}</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each rows as row (row.player_id)}
+		{#if board.rows.length === 0}
+			<EmptyState title="尚無球員達門檻" />
+		{:else}
+			<table id="{uid}-t">
+				<thead>
 					<tr>
-						<td class="rank"><RankDot rank={row.rank} /></td>
-						<td>
-							<span class="player">
-								<TeamBadge team={row.team} size="sm" label={row.team.short_name} />
-								<span class="identity">
-									<a href={playerHref(row.player_id)} title={row.name}>{row.name}</a>
-									{#if row.title}<span class="tag tag-glory">{row.title}</span>{/if}
-									{#if row.position}
-										<span class="position">{positionLabel(row.position)}</span>
-									{/if}
-								</span>
-							</span>
-						</td>
-						<td class="num">{row.value}</td>
+						<th scope="col" class="rank">名次</th>
+						<th scope="col">球員</th>
+						<th scope="col" class="num">{board.label}</th>
 					</tr>
-				{/each}
-			</tbody>
-		</table>
-		{#if expandable}
-			<button type="button" aria-expanded={open} aria-controls="{uid}-t" onclick={toggle}>
-				{open ? '收合' : `展開全部（${board.rows.length} 人）`}
-			</button>
+				</thead>
+				<tbody>
+					{#each rows as row (row.player_id)}
+						<tr>
+							<td class="rank"><RankDot rank={row.rank} /></td>
+							<td>
+								<span class="player">
+									<TeamBadge team={row.team} size="sm" label={row.team.short_name} />
+									<span class="identity">
+										<a href={playerHref(row.player_id)} title={row.name}>{row.name}</a>
+										{#if row.title}<span class="tag tag-glory">{row.title}</span>{/if}
+										{#if row.position}
+											<span class="position">{positionLabel(row.position)}</span>
+										{/if}
+									</span>
+								</span>
+							</td>
+							<td class="num">
+								{board.kind === 'rate' ? formatMetricValue(board.key, row.value) : row.value}
+								{#if board.kind === 'rate'}<span class="sample">{row.numerator}／{row.denominator}</span>{/if}
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+			{#if expandable}
+				<button type="button" aria-expanded={open} aria-controls="{uid}-t" onclick={toggle}>
+					{open ? '收合' : `展開全部（${board.rows.length} 人）`}
+				</button>
+			{/if}
 		{/if}
 	</div>
 </section>
@@ -73,6 +83,10 @@
 	h2 {
 		margin-block: 0 var(--space-3);
 	}
+
+	.threshold { margin-block: calc(-1 * var(--space-2)) var(--space-3); }
+	.threshold, .sample { font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); }
+	.sample { display: block; white-space: nowrap; }
 
 	.card {
 		padding-block: var(--space-2);

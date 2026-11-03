@@ -31,3 +31,15 @@ STORY：首屏辨識四王，點球員或用吸頂 chip 跳項目。並列共用
 FIRST VIEWPORT：h1、統計範圍、本季四王（手機四列 56px，桌面四欄）、七項 chip、計數榜。
 FORM：#106 已確認 brief，code-led；深淺模式與 reduced-motion 沿用全站。
 FINISH：unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
+
+## #110 比率榜實作紀錄（2026-11-03）
+
+本節追加目前程式碼的互動事實；上方 #108／#109 為各階段已確認方向，保留原文。視覺仍繼承 `DESIGN.md`，未新增設計 token 或改變全站系統。
+
+- 四王之後顯示「計數榜／比率榜」分段，預設計數榜；兩個按鈕以 `aria-pressed` 表達選中，沿用組別分段的內嵌面板軌道、白色選中面與靛藍文字。
+- 比率榜依匯出資料呈現攻擊成功率、發球得分率、接發球到位率、防守到位率、舉球到位率、場均得分、每局攔網；整組缺局數資料時匯出器省略每局攔網，呈現六卡。各榜 h2 下直接顯示匯出器提供的門檻附註；主要比率值下顯示「分子／分母」，兩者皆為 14px、600、附註灰，主要數字維持 16px、800、tabular。
+- 切換分段時只顯示該類型的卡片與項目 chip；chip 列以頁底色吸頂、橫向捲動。點擊 chip 使用 `#b-<項目鍵>` 跳至卡片；直接開啟或變更有效 hash 會先切到對應分段再捲動。捲動追蹤目前項目並以 `aria-current="location"` 標記；桌面同列多卡保留讀者已點的項目，到頁底標記最後項目。
+- 單榜無達門檻者保留標題與門檻，卡內顯示「尚無球員達門檻」；整組沒有榜單時顯示「本季尚無單場數據」。前十名含第十名並列、逐卡展開／收合與球員連結沿用既有榜卡；切換分段會重建卡片，展開狀態回到收合。
+- 卡片維持手機單欄、40rem 起兩欄、64rem 起三欄。吸頂列與收合後卡片跳轉預留相同頂端距離（44px 觸控列 + 16px 上下留白 + 16px 間距），避免標題被遮住。
+
+核對來源：`src/routes/[season]/[group]/leaders/+page.svelte`、`src/lib/components/LeaderBoard.svelte`、`src/lib/leaders.ts`、`src/lib/advanced.ts`、`../src/export/leaders.py`、`src/app.css`、`PRODUCT.md`、`DESIGN.md` 與 `.impeccable/design.json`。此為原始碼紀錄，不取代瀏覽器驗證。
