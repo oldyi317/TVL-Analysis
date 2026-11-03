@@ -102,7 +102,7 @@
 	</dl>
 {/if}
 
-<AdvancedStats setsPlayed={stats.sets_played} advanced={data.advanced} distribution={data.distribution} gameLog={data.gameLog} />
+<AdvancedStats setsPlayed={stats.sets_played} position={displayPosition(stats)} advanced={data.advanced} distribution={data.distribution} gameLog={data.gameLog} />
 
 <style>
 	.back {

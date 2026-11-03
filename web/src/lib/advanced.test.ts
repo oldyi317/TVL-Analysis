@@ -216,6 +216,14 @@ describe('trendOption', () => {
 		expect(o.yAxis.max).toBeUndefined();
 	});
 
+	it('攔網得分是每場原始計數，y 軸取整數', () => {
+		const blocks = [entry('2026-01-03', { block_points: 2, sets_played: null }), entry('2026-01-10', { block_points: 0 })];
+		const o = trendOption(blocks, 'block_points') as O & { yAxis: { minInterval?: number } };
+		expect(o.series[0].data).toEqual([2, 0]);
+		expect(o.series[0].name).toBe('攔網得分');
+		expect(o.yAxis.minInterval).toBe(1);
+	});
+
 	it('每局攔網取兩位小數，上場 0 局沒有值', () => {
 		const blocks = [
 			entry('2026-01-03', { block_points: 2, sets_played: 3 }),
@@ -345,16 +353,16 @@ const season = (over: Partial<PlayerSeason> = {}): PlayerSeason => ({
 });
 
 describe('headlineStats', () => {
-	it('舉球：舉球到位率、舉球次數、防守到位率，率類附分子／分母', () => {
+	it('舉球：舉球到位率、防守到位率、攔網得分，率類附分子／分母', () => {
 		expect(headlineStats(season()).items).toEqual([
 			{ label: '舉球到位率', value: '65.0%', detail: '到位 312／480' },
-			{ label: '舉球次數', value: '480', detail: null },
-			{ label: '防守到位率', value: '37.5%', detail: '到位 30／80' }
+			{ label: '防守到位率', value: '37.5%', detail: '到位 30／80' },
+			{ label: '攔網得分', value: '6', detail: null }
 		]);
 	});
 
 	it('分母為 0 的率顯示「—」，不顯示 0%', () => {
-		const [, , dig] = headlineStats(season({ dig_total: 0, dig_excellent: 0 })).items;
+		const [, dig] = headlineStats(season({ dig_total: 0, dig_excellent: 0 })).items;
 		expect(dig).toEqual({ label: '防守到位率', value: '—', detail: null });
 	});
 
@@ -378,7 +386,7 @@ describe('headlineStats', () => {
 				{ label: '防守總次數', value: '100', detail: null }
 			]
 		],
-		['OH', [attackRate, receiveRate, { label: '攻擊得分', value: '18', detail: null }]],
+		['OH', [attackRate, receiveRate, { label: '攔網得分', value: '6', detail: null }]],
 		[
 			'MB',
 			[
@@ -392,11 +400,17 @@ describe('headlineStats', () => {
 			[
 				attackRate,
 				{ label: '攻擊得分', value: '18', detail: null },
-				{ label: '發球得分', value: '5', detail: null }
+				{ label: '攔網得分', value: '6', detail: null }
 			]
 		]
 	])('%s 的主卡指標', (position, expected) => {
 		expect(headlineStats(season({ position })).items).toEqual(expected);
+	});
+
+	it.each(['S', 'OH', 'OP'])('%s 的攔網卡在未知局數時照樣顯示攔網得分', (position) => {
+		const items = headlineStats(season({ position, sets_played: null })).items;
+		expect(items).toHaveLength(3);
+		expect(items[2]).toEqual({ label: '攔網得分', value: '6', detail: null });
 	});
 
 	it('沒有主要位置時依賽季報名名單位置選主卡', () => {
@@ -428,12 +442,28 @@ it('未知局數的球員以兩場為樣本門檻，隱藏每局攔網', () => {
 });
 
 
-it('未知局數時分佈、PR 與趨勢選項移除每局攔網，攔中預設改看得分', () => {
+it('未知局數時分佈、PR 與趨勢選項移除每局攔網，攔中預設改看攔網得分', () => {
 	for (const keys of [METRIC_KEYS, PR_METRICS, TREND_METRICS]) {
 		expect(availableMetrics(keys, null)).not.toContain('blocks_per_set');
 		expect(availableMetrics(keys, 0)).toContain('blocks_per_set');
 	}
-	expect(defaultTrendMetric('MB', null)).toBe('points');
+	expect(defaultTrendMetric('MB', null)).toBe('block_points');
+});
+
+it('場均攔網與攔網得分不需出賽局數，未知局數時仍可選', () => {
+	expect(availableMetrics(METRIC_KEYS, null)).toContain('blocks_per_game');
+	expect(availableMetrics(PR_METRICS, null)).toContain('blocks_per_game');
+	expect(availableMetrics(TREND_METRICS, null)).toContain('block_points');
+});
+
+it('自由（L）的進階數據不出現任何攔網指標', () => {
+	const blockKeys = ['blocks_per_set', 'blocks_per_game', 'block_points'];
+	for (const keys of [METRIC_KEYS, PR_METRICS, TREND_METRICS] as readonly string[][]) {
+		for (const sets of [36, null]) {
+			expect(availableMetrics(keys, sets, 'L').filter((k) => blockKeys.includes(k))).toEqual([]);
+			expect(availableMetrics(keys, sets, 'MB').some((k) => blockKeys.includes(k))).toBe(true);
+		}
+	}
 });
 
 it('分佈與 PR 指標的標籤與晶片順序維持原樣', () => {
@@ -445,6 +475,7 @@ it('分佈與 PR 指標的標籤與晶片順序維持原樣', () => {
 		'場均得分',
 		'舉球到位率',
 		'每局攔網',
+		'場均攔網',
 		'防守負荷',
 		'防守效率'
 	]);

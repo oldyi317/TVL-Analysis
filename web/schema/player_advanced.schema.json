@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "player_advanced.schema.json",
   "title": "PlayerAdvancedData",
-  "description": "球員進階數據：每位球員每賽季的九項比率與七項 PR 值（同組別同位置內計算，0 到 100），以及每組別每位置各指標的分佈；黃金決勝局的統計計入；由 src.export.site_data 產出",
+  "description": "球員進階數據：每位球員每賽季的十項比率與八項 PR 值（同組別同位置內計算，0 到 100），以及每組別每位置各指標的分佈；黃金決勝局的統計計入；由 src.export.site_data 產出",
   "type": "object",
   "additionalProperties": false,
   "required": ["players", "distributions"],
@@ -13,7 +13,7 @@
       "additionalProperties": false,
       "required": [
         "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
-        "points_per_game", "set_excellent_rate", "blocks_per_set", "defense_load", "defense_efficiency"
+        "points_per_game", "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_load", "defense_efficiency"
       ],
       "properties": {
         "attack_success_rate": { "type": "number", "description": "攻擊成功率（%）" },
@@ -23,6 +23,7 @@
         "points_per_game": { "type": "number", "description": "場均得分" },
         "set_excellent_rate": { "type": "number", "description": "舉球到位率（%）" },
         "blocks_per_set": { "type": ["number", "null"], "description": "每局攔網" },
+        "blocks_per_game": { "type": "number", "description": "場均攔網" },
         "defense_load": { "type": "number", "description": "防守負荷：接發加防守次數" },
         "defense_efficiency": { "type": "number", "description": "防守效率：接發加防守的到位率（%）" }
       }
@@ -33,7 +34,7 @@
       "additionalProperties": false,
       "required": [
         "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
-        "set_excellent_rate", "blocks_per_set", "defense_efficiency"
+        "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_efficiency"
       ],
       "properties": {
         "attack_success_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
@@ -42,6 +43,7 @@
         "dig_excellent_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
         "set_excellent_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
         "blocks_per_set": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "blocks_per_game": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
         "defense_efficiency": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }
       }
     },
@@ -94,7 +96,7 @@
             "additionalProperties": false,
             "required": [
               "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
-              "points_per_game", "set_excellent_rate", "blocks_per_set", "defense_load", "defense_efficiency"
+              "points_per_game", "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_load", "defense_efficiency"
             ],
             "properties": {
               "attack_success_rate": { "$ref": "#/$defs/MetricDistribution" },
@@ -104,6 +106,7 @@
               "points_per_game": { "$ref": "#/$defs/MetricDistribution" },
               "set_excellent_rate": { "$ref": "#/$defs/MetricDistribution" },
               "blocks_per_set": { "$ref": "#/$defs/MetricDistribution" },
+              "blocks_per_game": { "$ref": "#/$defs/MetricDistribution" },
               "defense_load": { "$ref": "#/$defs/MetricDistribution" },
               "defense_efficiency": { "$ref": "#/$defs/MetricDistribution" }
             }
