@@ -43,7 +43,7 @@
 						<td>
 							<span class="player">
 								<TeamBadge team={row.team} size="sm" label={row.team.short_name} />
-								<a href={playerHref(row.player_id)}>{row.name}</a>
+								<a href={playerHref(row.player_id)} title={row.name}>{row.name}</a>
 								{#if row.position}
 									<span class="position">{positionLabel(row.position)}</span>
 								{/if}
@@ -76,8 +76,10 @@
 		padding-inline: var(--space-3);
 	}
 
+	/* fixed layout 讓長名字截斷而不是撐寬表格；名次與數值欄給定寬，球員欄吃剩下的 */
 	table {
 		inline-size: 100%;
+		table-layout: fixed;
 		border-collapse: collapse;
 		font-size: var(--text-md);
 	}
@@ -108,7 +110,12 @@
 	}
 
 	.num {
+		inline-size: 4.5rem;
 		text-align: end;
+	}
+
+	th.num {
+		white-space: normal;
 	}
 
 	td.num {
