@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { TeamAdvanced, TeamAdvancedData, TeamMetric, TeamMetrics } from '#lib/data/types.js';
+import type { TeamAdvanced, TeamAdvancedData, TeamGameMetrics, TeamMetric, TeamMetrics, TeamTrendGame } from '#lib/data/types.js';
 import {
 	metricsConclusion,
 	metricsDotOption,
@@ -12,7 +12,10 @@ import {
 	sourcesBarOption,
 	sourcesConclusion,
 	sourcesTable,
-	teamComparison
+	teamComparison,
+	trendConclusion,
+	trendTable,
+	teamTrendOption
 } from './teamAdvanced.js';
 
 const metric = (value: number | null, rank: number | null): TeamMetric => ({
@@ -38,7 +41,8 @@ const team = (team_id: number, ranks: Partial<Record<keyof TeamMetrics, number |
 			dig_excellent_rate: m('dig_excellent_rate'),
 			set_excellent_rate: m('set_excellent_rate'),
 			blocks_per_set: m('blocks_per_set')
-		}
+		},
+		trend: []
 	};
 };
 
@@ -376,5 +380,109 @@ describe('pregameTable', () => {
 			away: { value: '40%', rank: '第 2 / 3' }
 		});
 		expect(rows[5].home).toEqual({ value: '—', rank: '—' });
+	});
+});
+
+describe('球隊逐場趨勢', () => {
+	const rate = (numerator: number, denominator: number) => ({
+		numerator,
+		denominator,
+		value: denominator === 0 ? null : Math.round((numerator / denominator) * 10000) / 100
+	});
+	const game = (game_id: number, date: string, opponent_id: number | null, attack: [number, number], blocks: [number, number] = [2, 3]): TeamTrendGame => {
+		const zero = rate(0, 0);
+		const metrics: TeamGameMetrics = {
+			attack_success_rate: rate(...attack),
+			serve_point_rate: zero,
+			receive_excellent_rate: zero,
+			dig_excellent_rate: zero,
+			set_excellent_rate: zero,
+			blocks_per_set: { numerator: blocks[0], denominator: blocks[1], value: Math.round((blocks[0] / blocks[1]) * 100) / 100 }
+		};
+		return { game_id, date, opponent_id, metrics };
+	};
+	const withTrend = (trend: TeamTrendGame[]): TeamAdvanced => {
+		const sum = (key: keyof TeamGameMetrics, part: 'numerator' | 'denominator') =>
+			trend.reduce((n, g) => n + g.metrics[key][part], 0);
+		const total = (key: keyof TeamGameMetrics, scale: number) => {
+			const den = sum(key, 'denominator');
+			return { numerator: sum(key, 'numerator'), denominator: den, value: den ? Math.round((sum(key, 'numerator') / den) * scale * 100) / 100 : null, rank: 1 };
+		};
+		return {
+			...team(4, {}, trend.length),
+			metrics: {
+				attack_success_rate: total('attack_success_rate', 100),
+				serve_point_rate: total('serve_point_rate', 100),
+				receive_excellent_rate: total('receive_excellent_rate', 100),
+				dig_excellent_rate: total('dig_excellent_rate', 100),
+				set_excellent_rate: total('set_excellent_rate', 100),
+				blocks_per_set: total('blocks_per_set', 1)
+			},
+			trend
+		};
+	};
+	const names: Record<number, string> = { 1: '台電', 2: '美津濃' };
+	const teamName = (id: number) => names[id];
+	// 前 2 場 攻擊 10/40 = 25%；近 3 場 30/60 = 50%；整季 40/100 = 40% → 高 10 個百分點
+	const season = withTrend([
+		game(1, '2026-01-03', 1, [5, 20]),
+		game(2, '2026-01-10', 2, [5, 20]),
+		game(3, '2026-01-17', 1, [10, 20]),
+		game(4, '2026-01-24', 2, [10, 20]),
+		game(5, '2026-01-31', null, [10, 20], [4, 4])
+	]);
+
+	type Fmt = (p: { dataIndex: number }[]) => string;
+	type O = {
+		xAxis: { data: string[] };
+		yAxis: { min?: number; max?: number; name: string };
+		series: { name: string; connectNulls: boolean; data: unknown[] }[];
+		tooltip: { formatter: Fmt };
+	};
+
+	it('折線沿用球員逐場趨勢的做法：MM/DD、比率 y 軸 0–100、分母為 0 是空點', () => {
+		const o = teamTrendOption(season, 'attack_success_rate', teamName) as O;
+		expect(o.xAxis.data).toEqual(['01/03', '01/10', '01/17', '01/24', '01/31']);
+		expect(o.yAxis).toMatchObject({ min: 0, max: 100, name: '%' });
+		expect(o.series.map((s) => s.name)).toEqual(['攻擊成功率']);
+		expect(o.series[0].connectNulls).toBe(false);
+		expect(o.series[0].data).toEqual([25, 25, 50, 50, 50]);
+		expect((teamTrendOption(season, 'serve_point_rate', teamName) as O).series[0].data).toEqual([null, null, null, null, null]);
+	});
+
+	it('提示框列出日期、對手與分子分母；對手不明時只列日期', () => {
+		const o = teamTrendOption(season, 'attack_success_rate', teamName) as O;
+		expect(o.tooltip.formatter([{ dataIndex: 1 }])).toBe('2026-01-10 對 美津濃<br/>攻擊成功率：25%（得分 5／20）');
+		expect(o.tooltip.formatter([{ dataIndex: 4 }])).toBe('2026-01-31<br/>攻擊成功率：50%（得分 10／20）');
+		const blocks = teamTrendOption(season, 'blocks_per_set', teamName) as O;
+		expect(blocks.yAxis.max).toBeUndefined();
+		expect(blocks.tooltip.formatter([{ dataIndex: 4 }])).toContain('每局攔網：1（攔網 4／4 局）');
+	});
+
+	it('結論是近 3 場加總後再除，與本季整體的差距', () => {
+		expect(trendConclusion(season, 'attack_success_rate')).toBe('近 3 場攻擊成功率比本季整體高 10 個百分點');
+		// 每局攔網：近 3 場 8/10 = 0.8；整季 12/16 = 0.75
+		expect(trendConclusion(season, 'blocks_per_set')).toBe('近 3 場每局攔網比本季整體多 0.05 次');
+	});
+
+	it('比本季低時說低，差距四捨五入為 0 時說持平', () => {
+		const down = withTrend([game(1, '2026-01-03', 1, [9, 10]), ...[2, 3, 4].map((i) => game(i, `2026-01-1${i}`, 1, [5, 10]))]);
+		expect(trendConclusion(down, 'attack_success_rate')).toBe('近 3 場攻擊成功率比本季整體低 10 個百分點');
+		const flat = withTrend([1, 2, 3].map((i) => game(i, `2026-01-1${i}`, 1, [5, 10])));
+		expect(trendConclusion(flat, 'attack_success_rate')).toBe('近 3 場攻擊成功率與本季整體持平');
+	});
+
+	it('已賽未滿 3 場、或近 3 場分母為 0 時不產生結論', () => {
+		const two = withTrend([game(1, '2026-01-03', 1, [5, 10]), game(2, '2026-01-10', 2, [6, 10])]);
+		expect(trendConclusion(two, 'attack_success_rate')).toBeNull();
+		expect(trendConclusion(season, 'serve_point_rate')).toBeNull();
+	});
+
+	it('表格每場一列，列出日期、對手與六項指標', () => {
+		const rows = trendTable(season, teamName);
+		expect(rows).toHaveLength(5);
+		expect(rows[0]).toMatchObject({ game_id: 1, date: '2026-01-03', opponent: '台電' });
+		expect(rows[4].opponent).toBe('—');
+		expect(rows[0].cells.map((c) => c.value)).toEqual(['25%', '—', '—', '—', '—', '0.67']);
 	});
 });

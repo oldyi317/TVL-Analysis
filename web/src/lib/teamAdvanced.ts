@@ -1,5 +1,5 @@
-import type { TeamAdvanced, TeamAdvancedData, TeamMetrics } from '#lib/data/types.js';
-import { formatMetricValue } from '#lib/advanced.js';
+import type { TeamAdvanced, TeamAdvancedData, TeamGameMetric, TeamMetrics, TeamTrendGame } from '#lib/data/types.js';
+import { formatMetricValue, trendLineOption } from '#lib/advanced.js';
 import type { Group } from '#lib/site.js';
 import { STAT_LABELS } from '#lib/statLabels.js';
 
@@ -318,4 +318,66 @@ export function pregameTable(m: PregameComparison): PregameTableRow[] {
 		rank: rankText(m.teams, t, key)
 	});
 	return TEAM_METRIC_KEYS.map((key) => ({ key, label: metricLabel(key), home: cell(m.home, key), away: cell(m.away, key) }));
+}
+
+export const TREND_RECENT_GAMES = 3;
+
+const trendDetail = (key: TeamMetricKey, { numerator, denominator }: TeamGameMetric): string =>
+	key === 'blocks_per_set'
+		? `攔網 ${numerator}／${denominator} 局`
+		: `${key === 'attack_success_rate' || key === 'serve_point_rate' ? '得分' : '到位'} ${numerator}／${denominator}`;
+
+const opponentName = (game: TeamTrendGame, teamName: (id: number) => string): string | null =>
+	game.opponent_id === null ? null : teamName(game.opponent_id);
+
+export function teamTrendOption(team: TeamAdvanced, key: TeamMetricKey, teamName: (id: number) => string): object {
+	return trendLineOption(
+		team.trend.map((game) => {
+			const metric = game.metrics[key];
+			const opponent = opponentName(game, teamName);
+			return {
+				value: metric.value,
+				detail: metric.value === null ? null : trendDetail(key, metric),
+				date: game.date,
+				heading: opponent ? `${game.date} 對 ${opponent}` : game.date,
+				golden: false
+			};
+		}),
+		key
+	);
+}
+
+// 近 3 場與整季都是分子總和除以分母總和，差距用未四捨五入的值計算
+export function trendConclusion(team: TeamAdvanced, key: TeamMetricKey): string | null {
+	if (team.games < MIN_CONCLUSION_GAMES || team.trend.length < TREND_RECENT_GAMES) return null;
+	const recent = team.trend.slice(-TREND_RECENT_GAMES).map((g) => g.metrics[key]);
+	const recentDen = recent.reduce((n, m) => n + m.denominator, 0);
+	const season = team.metrics[key];
+	if (recentDen === 0 || season.denominator === 0) return null;
+	const recentNum = recent.reduce((n, m) => n + m.numerator, 0);
+	const isBlocks = key === 'blocks_per_set';
+	const scale = isBlocks ? 1 : 100;
+	const diff = (recentNum / recentDen - season.numerator / season.denominator) * scale;
+	const size = isBlocks ? Math.round(Math.abs(diff) * 100) / 100 : Math.round(Math.abs(diff));
+	const subject = `近 ${TREND_RECENT_GAMES} 場${metricLabel(key)}`;
+	if (size === 0) return `${subject}與本季整體持平`;
+	return isBlocks
+		? `${subject}比本季整體${diff > 0 ? '多' : '少'} ${size} 次`
+		: `${subject}比本季整體${diff > 0 ? '高' : '低'} ${size} 個百分點`;
+}
+
+export type TrendTableRow = {
+	game_id: number;
+	date: string;
+	opponent: string;
+	cells: { key: TeamMetricKey; value: string }[];
+};
+
+export function trendTable(team: TeamAdvanced, teamName: (id: number) => string): TrendTableRow[] {
+	return team.trend.map((game) => ({
+		game_id: game.game_id,
+		date: game.date,
+		opponent: opponentName(game, teamName) ?? '—',
+		cells: TEAM_METRIC_KEYS.map((key) => ({ key, value: formatMetricValue(key, game.metrics[key].value) }))
+	}));
 }

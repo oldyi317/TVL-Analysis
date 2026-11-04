@@ -249,9 +249,17 @@ a.card:hover {
 	background: var(--accent-tint);
 }
 
-.chip[aria-current] {
+.chip[aria-current],
+.chip[aria-pressed='true'] {
 	background: var(--accent);
 	color: var(--on-accent);
+}
+
+button.chip {
+	border: 0;
+	font: inherit;
+	font-size: var(--text-sm);
+	cursor: pointer;
 }
 
 .tag {

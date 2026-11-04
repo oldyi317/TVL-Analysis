@@ -269,16 +269,4 @@
 		gap: var(--space-1);
 		margin-block-end: var(--space-2);
 	}
-
-	.metrics button {
-		border: 0;
-		font: inherit;
-		font-size: var(--text-sm);
-		cursor: pointer;
-	}
-
-	.metrics button[aria-pressed='true'] {
-		background: var(--accent);
-		color: var(--on-accent);
-	}
 </style>

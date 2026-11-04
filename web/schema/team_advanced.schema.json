@@ -23,7 +23,7 @@
               "title": "TeamAdvanced",
               "type": "object",
               "additionalProperties": false,
-              "required": ["team_id", "games", "points", "metrics"],
+              "required": ["team_id", "games", "points", "metrics", "trend"],
               "properties": {
                 "team_id": { "type": "integer" },
                 "games": { "type": "integer", "minimum": 1, "description": "已有單場數據且對得回賽程的場次數" },
@@ -57,6 +57,38 @@
                     "set_excellent_rate": { "$ref": "#/$defs/metric" },
                     "blocks_per_set": { "$ref": "#/$defs/metric", "description": "分母為該隊在比分中實際打的局數" }
                   }
+                },
+                "trend": {
+                  "description": "逐場趨勢：每場的六項球隊指標，依日期排序，不含黃金決勝局",
+                  "type": "array",
+                  "items": {
+                    "title": "TeamTrendGame",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["game_id", "date", "opponent_id", "metrics"],
+                    "properties": {
+                      "game_id": { "type": "integer" },
+                      "date": { "type": "string", "format": "date" },
+                      "opponent_id": { "type": ["integer", "null"], "description": "對手球隊編號；比分列沒有對應到球隊時為 null" },
+                      "metrics": {
+                        "title": "TeamGameMetrics",
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "attack_success_rate", "serve_point_rate", "receive_excellent_rate",
+                          "dig_excellent_rate", "set_excellent_rate", "blocks_per_set"
+                        ],
+                        "properties": {
+                          "attack_success_rate": { "$ref": "#/$defs/gameMetric" },
+                          "serve_point_rate": { "$ref": "#/$defs/gameMetric" },
+                          "receive_excellent_rate": { "$ref": "#/$defs/gameMetric" },
+                          "dig_excellent_rate": { "$ref": "#/$defs/gameMetric" },
+                          "set_excellent_rate": { "$ref": "#/$defs/gameMetric" },
+                          "blocks_per_set": { "$ref": "#/$defs/gameMetric", "description": "分母為該場比分的局數" }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -66,6 +98,17 @@
     }
   },
   "$defs": {
+    "gameMetric": {
+      "title": "TeamGameMetric",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator", "value"],
+      "properties": {
+        "numerator": { "type": "integer", "minimum": 0 },
+        "denominator": { "type": "integer", "minimum": 0 },
+        "value": { "type": ["number", "null"], "description": "同 TeamMetric.value；分母為 0 時為 null" }
+      }
+    },
     "metric": {
       "title": "TeamMetric",
       "type": "object",

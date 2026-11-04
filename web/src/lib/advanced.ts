@@ -325,26 +325,35 @@ export const defaultTrendMetric = (position: string | null, setsPlayed: number |
 
 const goldenPoint = (value: number) => ({ value, symbol: 'diamond', symbolSize: 14, golden: true });
 
+export type TrendPoint = TrendValue & { date: string; heading: string; golden: boolean };
+
 export function trendOption(log: GameLogEntry[], metric: TrendMetric): object {
+	const compute = TREND_DEFS[metric].compute as TrendDef['compute'];
+	return trendLineOption(
+		log.map((e) => ({ ...compute(e.stats), date: e.date, heading: e.date, golden: e.golden })),
+		metric
+	);
+}
+
+// 球員與球隊逐場趨勢共用的折線圖
+export function trendLineOption(points: TrendPoint[], metric: TrendMetric): object {
 	const def: TrendDef = TREND_DEFS[metric];
-	const values = log.map((e) => def.compute(e.stats));
 	const unit = def.isRate ? '%' : '';
 	return {
 		legend: { show: false },
 		tooltip: {
 			trigger: 'axis',
 			formatter: (params: { dataIndex: number }[]) => {
-				const i = params[0].dataIndex;
-				const { value, detail } = values[i];
+				const { value, detail, heading, golden } = points[params[0].dataIndex];
 				const shown = value === null ? '—' : `${value}${unit}${detail ? `（${detail}）` : ''}`;
-				const lines = [log[i].date, `${def.label}：${shown}`];
-				if (log[i].golden) lines.push('此場另有黃金決勝局，未計入');
+				const lines = [heading, `${def.label}：${shown}`];
+				if (golden) lines.push('此場另有黃金決勝局，未計入');
 				return lines.join('<br/>');
 			}
 		},
 		xAxis: {
 			type: 'category',
-			data: log.map((e) => `${e.date.slice(5, 7)}/${e.date.slice(8, 10)}`),
+			data: points.map((p) => `${p.date.slice(5, 7)}/${p.date.slice(8, 10)}`),
 			axisLabel: { interval: 'auto' }
 		},
 		yAxis: def.isRate
@@ -355,9 +364,7 @@ export function trendOption(log: GameLogEntry[], metric: TrendMetric): object {
 				type: 'line',
 				name: def.label,
 				connectNulls: false,
-				data: values.map(({ value }, i) =>
-					log[i].golden && value !== null ? goldenPoint(value) : value
-				)
+				data: points.map(({ value, golden }) => (golden && value !== null ? goldenPoint(value) : value))
 			}
 		]
 	};

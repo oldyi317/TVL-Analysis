@@ -11,6 +11,7 @@
 		emptyTitle,
 		note,
 		height,
+		controls,
 		table
 	}: {
 		title: string;
@@ -20,6 +21,7 @@
 		emptyTitle: string;
 		note?: string;
 		height?: string;
+		controls?: Snippet;
 		table: Snippet;
 	} = $props();
 
@@ -44,6 +46,7 @@
 	{#if !option}
 		<EmptyState title={emptyTitle} />
 	{:else}
+		{@render controls?.()}
 		{#if conclusion}
 			<p class="conclusion">{conclusion}</p>
 		{/if}
