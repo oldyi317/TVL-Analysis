@@ -99,3 +99,65 @@ test('歷史賽季賽事卡與賽事頁顯示當季隊名', async ({ page }) => 
 	await expect(page.getByRole('heading', { level: 1 })).toContainText('臺北國北獅');
 	await expect(page).toHaveTitle(/臺北國北獅/);
 });
+
+type Entry = { game_id: number; home_team_id: number; away_team_id: number; sets: unknown[] };
+const PREGAME = '兩隊球隊指標對照';
+const seasonName = (cup: number) =>
+	seasonsData.seasons.find((s: { cup_id: number }) => s.cup_id === cup).name as string;
+const withData = new Set(
+	readJson('team_advanced').team_advanced.flatMap((s: { cup_id: number; group: string; teams: { team_id: number; games: number }[] }) =>
+		s.teams.filter((t) => t.games > 0).map((t) => `${s.cup_id}-${s.group}-${t.team_id}`)
+	)
+);
+const allGames = readJson('matches').matches.flatMap((g: { cup_id: number; group: string; matches: Entry[] }) =>
+	g.matches.map((m) => ({ ...m, cup: g.cup_id, group: g.group }))
+) as (Entry & { cup: number; group: string })[];
+const bothHaveData = (m: Entry & { cup: number; group: string }) =>
+	[m.home_team_id, m.away_team_id].every((id) => withData.has(`${m.cup}-${m.group}-${id}`));
+const gameUrl = (m: { cup: number; group: string; game_id: number }) =>
+	`${BASE}/${seasonName(m.cup)}/${m.group}/matches/${m.game_id}/`;
+
+test('未開打賽事頁：賽前對戰比較的蝴蝶長條、以表格檢視、本季交手戰績，無橫向捲動', async ({ page }) => {
+	const game = allGames.find((m) => !isPlayed(m) && bothHaveData(m));
+	test.skip(!game, '沒有兩隊都有單場數據的未開打賽事');
+	await page.goto(gameUrl(game!));
+	await expect(page.getByRole('heading', { level: 2, name: '賽前對戰比較' })).toBeVisible();
+	const frame = page.getByRole('region', { name: PREGAME });
+	await expect(frame.locator('[role="img"]')).toBeVisible();
+	await expect(frame.getByText(/已賽 \d+ 場/)).toBeVisible();
+	const toggle = frame.getByRole('button', { name: '以表格檢視' });
+	await expect(async () => {
+		if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+		await expect(toggle).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 });
+	}).toPass({ timeout: 15000 });
+	const table = frame.getByRole('table', { name: PREGAME });
+	await expect(table.getByRole('row')).toHaveCount(7);
+	await expect(page.getByText(/^本季(交手 \d+ 場|尚未交手)/)).toBeVisible();
+	const overflow = await page.evaluate(
+		() => document.documentElement.scrollWidth - document.documentElement.clientWidth
+	);
+	expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('已開打賽事頁不出現賽前對戰比較', async ({ page }) => {
+	const game = allGames.find((m) => isPlayed(m));
+	test.skip(!game, '沒有已開打賽事');
+	await page.goto(gameUrl(game!));
+	await expect(page.getByRole('heading', { level: 2, name: '逐局比分' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: '賽前對戰比較' })).toHaveCount(0);
+	await expect(page.getByRole('region', { name: PREGAME })).toHaveCount(0);
+});
+
+test('未開打賽事有一隊本季沒有單場數據：顯示空狀態，不畫圖', async ({ page }) => {
+	const game = allGames.find((m) => !isPlayed(m) && !bothHaveData(m));
+	test.skip(!game, '目前每場未開打賽事的兩隊本季都有單場數據');
+	await page.goto(gameUrl(game!));
+	const frame = page.getByRole('region', { name: PREGAME });
+	await expect(frame.getByText('至少一隊本季尚無單場數據')).toBeVisible();
+	await expect(frame.locator('[role="img"]')).toHaveCount(0);
+	await expect(page.getByText(/^本季(交手 \d+ 場|尚未交手)/)).toBeVisible();
+	const overflow = await page.evaluate(
+		() => document.documentElement.scrollWidth - document.documentElement.clientWidth
+	);
+	expect(overflow).toBeLessThanOrEqual(0);
+});

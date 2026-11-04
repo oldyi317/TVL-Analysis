@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	groupByMonth,
+	headToHead,
+	headToHeadText,
 	isPlayed,
 	latestMatchDay,
 	nextMatch,
@@ -129,5 +131,39 @@ describe('WIN_PROB_NOTE', () => {
 	it('註明交叉驗證 F1 與僅供參考', () => {
 		expect(WIN_PROB_NOTE).toContain('F1 約 0.61');
 		expect(WIN_PROB_NOTE).toContain('僅供參考');
+	});
+});
+
+describe('headToHead', () => {
+	const game = (home: number, away: number, s: [number, number][], golden: [number, number] | null = null) => ({
+		home: { team_id: home },
+		away: { team_id: away },
+		sets: s,
+		golden_set: golden
+	});
+	const win: [number, number][] = [[25, 20], [25, 20], [25, 20]];
+	const lose: [number, number][] = [[20, 25], [20, 25], [20, 25]];
+
+	it('不分主客場，算兩隊本季交手各贏幾場', () => {
+		const matches = [game(1, 2, win), game(2, 1, win), game(2, 1, lose), game(1, 3, win)];
+		expect(headToHead(matches, 1, 2)).toEqual([2, 1]);
+		expect(headToHead(matches, 2, 1)).toEqual([1, 2]);
+	});
+
+	it('未開打賽事不算', () => {
+		expect(headToHead([game(1, 2, []), game(1, 2, win)], 1, 2)).toEqual([1, 0]);
+	});
+
+	it('黃金決勝局不計入戰績：勝負只看正規局數', () => {
+		expect(headToHead([game(1, 2, win, [10, 15])], 1, 2)).toEqual([1, 0]);
+	});
+});
+
+describe('headToHeadText', () => {
+	it('本季尚未交手', () => {
+		expect(headToHeadText([0, 0], '台電', '鳳凰')).toBe('本季尚未交手');
+	});
+	it('列出交手場數與兩隊各贏幾場', () => {
+		expect(headToHeadText([2, 1], '台電', '鳳凰')).toBe('本季交手 3 場：台電 2 勝，鳳凰 1 勝');
 	});
 });

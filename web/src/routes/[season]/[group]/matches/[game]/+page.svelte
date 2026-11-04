@@ -1,22 +1,30 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import BoxScoreTable from '#lib/components/BoxScoreTable.svelte';
+	import ChartFrame from '#lib/components/ChartFrame.svelte';
 	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import MatchCard from '#lib/components/MatchCard.svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import type { BoxRow } from '#lib/boxScore.js';
-	import { isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
+	import { headToHeadText, isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
+	import { pregameBarOption, pregameConclusion, pregameTable } from '#lib/teamAdvanced.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	const match = $derived(data.match);
 	const played = $derived(isPlayed(match));
+	const PREGAME_TITLE = '兩隊球隊指標對照';
 	const homeTotal = $derived(match.sets.reduce((sum, [h]) => sum + h, 0));
 	const awayTotal = $derived(match.sets.reduce((sum, [, a]) => sum + a, 0));
+	const names = $derived({ home: match.home.short_name, away: match.away.short_name });
+	const pregame = $derived(data.pregame?.comparison ?? null);
+	const pregameOption = $derived(
+		pregame ? pregameBarOption(pregame, names, { home: match.home.color, away: match.away.color }) : null
+	);
 	const listHref = $derived(
 		`${resolve('/[season]/[group]/matches', { season: data.season.name, group: data.group })}/#m-${match.date.slice(0, 7)}`
 	);
@@ -40,8 +48,48 @@
 
 <MatchCard {match} stage={stageLabel(match.stage, match.week)} showSets={false} />
 
-{#if !played}
+{#if data.pregame}
 	<div class="note"><DataNote text={WIN_PROB_NOTE} /></div>
+
+	<h2>賽前對戰比較</h2>
+	<ChartFrame
+		title={PREGAME_TITLE}
+		games={pregame
+			? [
+					{ name: names.home, games: pregame.home.games },
+					{ name: names.away, games: pregame.away.games }
+				]
+			: 0}
+		conclusion={pregame ? pregameConclusion(pregame, names.home, names.away) : null}
+		option={pregameOption}
+		emptyTitle="至少一隊本季尚無單場數據"
+		note="截至目前的本季數據。每列一項球隊指標，左邊是{names.home}、右邊是{names.away}，長條以組內最高為滿格。"
+		height="20rem"
+	>
+		{#snippet table()}
+			{#if pregame}
+				<table aria-label={PREGAME_TITLE}>
+					<thead>
+						<tr>
+							<th scope="col">指標</th>
+							<th scope="col" class="num">{names.home}</th>
+							<th scope="col" class="num">{names.away}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each pregameTable(pregame) as row (row.key)}
+							<tr>
+								<th scope="row">{row.label}</th>
+								<td class="num">{row.home.value}<span class="rank">{row.home.rank}</span></td>
+								<td class="num">{row.away.value}<span class="rank">{row.away.rank}</span></td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+		{/snippet}
+	</ChartFrame>
+	<p class="record">{headToHeadText(data.pregame.record, names.home, names.away)}</p>
 {/if}
 
 {#if played}
@@ -175,6 +223,11 @@
 	.total td {
 		color: var(--text);
 		font-weight: 700;
+	}
+
+	.record {
+		margin: 0;
+		font-weight: 600;
 	}
 
 	.basis {

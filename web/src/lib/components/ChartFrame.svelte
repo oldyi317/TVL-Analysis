@@ -14,7 +14,7 @@
 		table
 	}: {
 		title: string;
-		games: number;
+		games: number | readonly { name: string; games: number }[];
 		conclusion: string | null;
 		option: object | null;
 		emptyTitle: string;
@@ -26,14 +26,19 @@
 	const uid = $props.id();
 	const tableId = `${uid}-table`;
 	let showTable = $state(false);
-	const ariaLabel = $derived(conclusion ? `${title}：${conclusion}` : `${title}，已賽 ${games} 場`);
+	const gamesText = $derived.by(() => {
+		if (typeof games === 'number') return `已賽 ${games} 場`;
+		if (games.every((t) => t.games === games[0].games)) return `已賽 ${games[0].games} 場`;
+		return games.map((t) => `${t.name} 已賽 ${t.games} 場`).join('・');
+	});
+	const ariaLabel = $derived(conclusion ? `${title}：${conclusion}` : `${title}，${gamesText}`);
 </script>
 
 <section class="card" aria-label={title}>
 	<div class="head">
 		<h3>{title}</h3>
 		{#if option}
-			<span class="games">已賽 {games} 場</span>
+			<span class="games">{gamesText}</span>
 		{/if}
 	</div>
 	{#if !option}
@@ -72,6 +77,7 @@
 	.head {
 		display: flex;
 		align-items: baseline;
+		flex-wrap: wrap;
 		justify-content: space-between;
 		gap: var(--space-2);
 		margin-block-end: var(--space-2);

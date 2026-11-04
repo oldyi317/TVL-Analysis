@@ -41,7 +41,7 @@ export function chartTheme(mode: 'light' | 'dark'): object {
 			extraCssText: 'box-shadow: 0 12px 32px rgba(38, 43, 74, 0.14); border-radius: 12px;',
 			textStyle: { color: c.text, fontSize: 16, fontFamily: FONT }
 		},
-		bar: { barMaxWidth: 18, itemStyle: { borderRadius: [6, 6, 0, 0] } },
+		bar: { barMaxWidth: 18, itemStyle: { borderRadius: [6, 6, 0, 0] }, label: { color: c.text, textBorderWidth: 0 } },
 		line: { smooth: 0.3, symbol: 'circle', symbolSize: 6, lineStyle: { width: 2.5 } },
 		categoryAxis: { ...axis, splitLine: { show: false }, axisLabel: { ...axis.axisLabel, interval: 0 } },
 		valueAxis: axis
