@@ -11,6 +11,8 @@
 		emptyTitle,
 		note,
 		height,
+		label,
+		heading = 'h3',
 		controls,
 		table
 	}: {
@@ -21,6 +23,8 @@
 		emptyTitle: string;
 		note?: string;
 		height?: string;
+		label?: string;
+		heading?: 'h2' | 'h3';
 		controls?: Snippet;
 		table: Snippet;
 	} = $props();
@@ -33,20 +37,20 @@
 		if (games.every((t) => t.games === games[0].games)) return `已賽 ${games[0].games} 場`;
 		return games.map((t) => `${t.name} 已賽 ${t.games} 場`).join('・');
 	});
-	const ariaLabel = $derived(conclusion ? `${title}：${conclusion}` : `${title}，${gamesText}`);
+	const ariaLabel = $derived(label ?? (conclusion ? `${title}：${conclusion}` : `${title}，${gamesText}`));
 </script>
 
 <section class="card" aria-label={title}>
 	<div class="head">
-		<h3>{title}</h3>
+		<svelte:element this={heading} class="title">{title}</svelte:element>
 		{#if option}
 			<span class="games">{gamesText}</span>
 		{/if}
 	</div>
+	{@render controls?.()}
 	{#if !option}
 		<EmptyState title={emptyTitle} />
 	{:else}
-		{@render controls?.()}
 		{#if conclusion}
 			<p class="conclusion">{conclusion}</p>
 		{/if}
@@ -86,7 +90,7 @@
 		margin-block-end: var(--space-2);
 	}
 
-	h3 {
+	.title {
 		margin: 0;
 		font-size: var(--text-md);
 		font-weight: 700;

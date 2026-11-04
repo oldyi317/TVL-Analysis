@@ -52,3 +52,64 @@ def test_only_groups_with_stats_have_entries_men_before_women(export_json):
     payload, _ = export_json(with_women, "leaders")
     assert [(e["cup_id"], e["group"]) for e in payload["leaders"]] == [(21, "men"), (21, "women")]
     assert payload["leaders"][1]["games"] == 1
+
+
+def test_golden_set_rows_are_excluded_from_counts_rates_and_thresholds(export_json):
+    """黃金決勝局統計列不進計數、比率，也不算出賽一場或局數。"""
+    def build_golden(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1, position="OH")
+        conn.execute(MATCH_SQL, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2))
+        conn.execute(MATCH_SQL, (2, "M", 21, "2025-11-08", "雲林美津濃", "屏東台電", 2, 1))
+        # (sets, atk_tot, atk_pts, blk, srv_tot, srv_pts, rcv_tot, rcv_exc, dig_tot, dig_exc, set_tot, set_exc, pts)
+        seed_stat(conn, 1, (3, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5), "2025-11-01", "雲林美津濃")
+        seed_stat(conn, 1, (1, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4), "2025-11-08", "雲林美津濃")
+        seed_stat(conn, 1, (1, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6), "2025-11-08", "雲林美津濃", golden=1)
+
+    payload, _ = export_json(build_golden, "leaders")
+    boards = {b["key"]: b for b in payload["leaders"][0]["boards"]}
+    assert boards["total_points"]["rows"][0]["value"] == 9
+    assert boards["attack_points"]["rows"][0]["value"] == 9
+    # 正規場次 4 局、攻擊 14 次；含黃金決勝局才會是 5 局、20 次而跨過門檻
+    assert boards["attack_success_rate"]["rows"] == []
+    assert boards["points_per_game"]["rows"] == []
+
+
+def test_golden_set_only_appearance_does_not_count_as_a_game(export_json):
+    def build_golden(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1, position="OH")
+        conn.execute(MATCH_SQL, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2))
+        conn.execute(MATCH_SQL, (2, "M", 21, "2025-11-08", "雲林美津濃", "屏東台電", 2, 1))
+        # 局數未知時門檻是出賽 2 場
+        seed_stat(conn, 1, (None, 20, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10), "2025-11-01", "雲林美津濃")
+        seed_stat(conn, 1, (None, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1), "2025-11-08", "雲林美津濃", golden=1)
+
+    payload, _ = export_json(build_golden, "leaders")
+    boards = {b["key"]: b for b in payload["leaders"][0]["boards"]}
+    assert boards["attack_success_rate"]["rows"] == []
+
+
+def test_each_group_has_four_volume_rates_without_golden_set_rows(export_json):
+    def build_volume(conn):
+        seed_player(conn, 1, "王小明")
+        seed_player(conn, 2, "陳小美", gender="F")
+        seed_registration(conn, 1, 1, 1, position="S")
+        seed_registration(conn, 2, 2, 4, gender="F", position="OH")
+        conn.execute(MATCH_SQL, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2))
+        conn.execute(MATCH_SQL, (2, "F", 21, "2025-11-01", "高雄台電", "新北中纖", 4, 5))
+        # (sets, atk_tot, atk_pts, blk, srv_tot, srv_pts, rcv_tot, rcv_exc, dig_tot, dig_exc, set_tot, set_exc, pts)
+        seed_stat(conn, 1, (5, 20, 10, 0, 0, 0, 10, 4, 10, 5, 30, 12, 10), "2025-11-01", "雲林美津濃")
+        seed_stat(conn, 1, (1, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10), "2025-11-01", "雲林美津濃", golden=1)
+        seed_stat(conn, 2, (5, 30, 12, 0, 0, 0, 10, 6, 10, 2, 20, 10, 12), "2025-11-01", "新北中纖")
+
+    payload, _ = export_json(build_volume, "leaders")
+    men, women = payload["leaders"]
+    assert [v["key"] for v in men["volume_rates"]] == [
+        "attack_success_rate", "receive_excellent_rate", "dig_excellent_rate", "set_excellent_rate"]
+    assert men["volume_rates"][0] == {
+        "key": "attack_success_rate", "median_count": 20, "median_rate": 50.0,
+        "points": [{"player_id": 1, "name": "王小明", "team_id": 1, "team_short": "屏東台電", "count": 20, "rate": 50.0}],
+    }
+    assert [p["player_id"] for p in women["volume_rates"][0]["points"]] == [2]
+    assert women["volume_rates"][3]["points"] == []

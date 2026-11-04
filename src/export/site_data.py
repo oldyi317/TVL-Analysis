@@ -7,7 +7,7 @@ from pathlib import Path
 from statistics import median
 from zoneinfo import ZoneInfo
 
-from src.export.leaders import compute_leaders
+from src.export.leaders import compute_leaders, compute_volume_rates
 from src.export.player_advanced import compute_advanced, distributions
 from src.export.player_seasons import STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
 from src.export.standings import compute_standings
@@ -256,7 +256,7 @@ def _matches_payload(conn: sqlite3.Connection) -> dict:
     ]}
 
 
-def _player_seasons(conn: sqlite3.Connection) -> dict[int, list[dict]]:
+def _player_seasons(conn: sqlite3.Connection, exclude_golden_set: bool = False) -> dict[int, list[dict]]:
     sums = ", ".join(("CASE WHEN COUNT(s.sets_played) = COUNT(*) THEN SUM(s.sets_played) ELSE NULL END"
                       if f == "sets_played" else f"COALESCE(SUM(s.{f}), 0)") for f in STAT_FIELDS)
     totals = {
@@ -266,6 +266,7 @@ def _player_seasons(conn: sqlite3.Connection) -> dict[int, list[dict]]:
             SELECT r.player_id, r.cup_id, COUNT(*), {sums}
             FROM player_match_stats s
             JOIN roster_registrations r ON r.registration_id = s.registration_id
+            {"WHERE s.is_golden_set = 0" if exclude_golden_set else ""}
             GROUP BY r.player_id, r.cup_id
             """
         )
@@ -306,11 +307,11 @@ def _players_payload(conn: sqlite3.Connection) -> dict:
     return {"players": players}
 
 
-def _advanced_scopes(conn: sqlite3.Connection) -> list[tuple[int, str, list[dict]]]:
+def _advanced_scopes(conn: sqlite3.Connection, exclude_golden_set: bool = False) -> list[tuple[int, str, list[dict]]]:
     """有統計列的球員賽季合計，依 (賽季, 組別) 分池，池內依 player_id 排序。"""
     genders = dict(conn.execute("SELECT player_id, gender FROM players"))
     scopes: dict[tuple[int, str], list[dict]] = {}
-    for player_id, seasons in _player_seasons(conn).items():
+    for player_id, seasons in _player_seasons(conn, exclude_golden_set).items():
         for season in seasons:
             if season["games"] == 0:
                 continue
@@ -515,7 +516,7 @@ def _leaders_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict
         )
     }
     leaders = []
-    for cup_id, gender, rows in _advanced_scopes(conn):
+    for cup_id, gender, rows in _advanced_scopes(conn, exclude_golden_set=True):
         dates = [g["date"] for g in games.get((cup_id, gender), {}).values()]
         named = [
             {**r, "name": names[r["player_id"]], "team_short": shorts[(r["team_id"], gender)]}
@@ -527,6 +528,7 @@ def _leaders_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict
             "through_date": max(dates, default=None),
             "games": len(dates),
             "boards": compute_leaders(named),
+            "volume_rates": compute_volume_rates(named),
         })
     return {"leaders": leaders}
 

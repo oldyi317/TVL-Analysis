@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import ChartFrame from '#lib/components/ChartFrame.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import LeaderBoard from '#lib/components/LeaderBoard.svelte';
 	import SeasonChampions from '#lib/components/SeasonChampions.svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
-	import { formatThroughDate } from '#lib/leaders.js';
+	import { formatThroughDate, VOLUME_RATE_TECHNIQUES, volumeRateNote, volumeRateOption, type VolumeRateKey } from '#lib/leaders.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -12,6 +13,9 @@
 	let kind = $state<'count' | 'rate'>('count');
 	const visibleBoards = $derived(data.boards.filter((board) => board.kind === kind));
 	const segmentLabel = $derived(kind === 'count' ? '計數榜' : '比率榜');
+	let technique = $state<VolumeRateKey>('attack_success_rate');
+	const volumeRate = $derived(data.volumeRates.find((v) => v.key === technique));
+	const volumeThreshold = $derived(data.boards.find((board) => board.key === technique)?.threshold ?? null);
 
 	function select(next: 'count' | 'rate') {
 		kind = next;
@@ -101,6 +105,51 @@
 			</div>
 		{/each}
 	</div>
+	{#if volumeRate}
+		<ChartFrame
+			title="量率散點"
+			heading="h2"
+			label="量率散點：{volumeRate.technique}"
+			games={data.summary?.games ?? 0}
+			conclusion={null}
+			option={volumeRateOption(volumeRate)}
+			emptyTitle="尚無球員達門檻"
+			note={volumeRateNote(volumeRate, volumeThreshold)}
+			height="22rem"
+		>
+			{#snippet controls()}
+				<div class="techniques" role="group" aria-label="選擇量率散點技術">
+					{#each VOLUME_RATE_TECHNIQUES as t (t.key)}
+						<button type="button" class="chip" aria-pressed={technique === t.key ? 'true' : 'false'} onclick={() => (technique = t.key)}>
+							{t.label}
+						</button>
+					{/each}
+				</div>
+			{/snippet}
+			{#snippet table()}
+				<table aria-label="量率散點：{volumeRate.technique}">
+					<thead>
+						<tr>
+							<th scope="col">球員</th>
+							<th scope="col">球隊</th>
+							<th scope="col" class="num">{volumeRate.countLabel}</th>
+							<th scope="col" class="num">{volumeRate.rateLabel}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each volumeRate.points as p (p.player_id)}
+							<tr>
+								<th scope="row">{p.name}</th>
+								<td>{p.team}</td>
+								<td class="num">{p.count}</td>
+								<td class="num">{p.rate}%</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/snippet}
+		</ChartFrame>
+	{/if}
 {/if}
 
 <style>
@@ -161,6 +210,14 @@
 		display: grid;
 		gap: var(--space-5);
 		align-items: start;
+		margin-block-end: var(--space-6);
+	}
+
+	.techniques {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1);
+		margin-block-end: var(--space-2);
 	}
 
 	@media (min-width: 40rem) {

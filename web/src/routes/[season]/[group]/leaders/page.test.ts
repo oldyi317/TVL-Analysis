@@ -2,7 +2,7 @@ import { render } from 'svelte/server';
 import { describe, expect, it } from 'vitest';
 import LeadersPage from './+page.svelte';
 import LeaderBoard from '#lib/components/LeaderBoard.svelte';
-import type { LeaderBoardView, LeaderRowView } from '#lib/leaders.js';
+import { toVolumeRateView, type LeaderBoardView, type LeaderRowView, type VolumeRateView } from '#lib/leaders.js';
 import { seasons, seasonTeam, teams } from '#lib/site.js';
 import { COUNT_STAT_KEYS, RATE_STAT_KEYS, STAT_LABELS } from '#lib/statLabels.js';
 import type { PageProps } from './$types';
@@ -22,12 +22,12 @@ function row(rank: number, id: number, position: string | null = 'OH'): LeaderRo
 	};
 }
 
-function renderPage(rows: LeaderRowView[], summary = { through_date: '2026-11-02', games: 6 }) {
+function renderPage(rows: LeaderRowView[], summary = { through_date: '2026-11-02', games: 6 }, volumeRates: VolumeRateView[] = []) {
 	const boards: LeaderBoardView[] =
 		rows.length === 0 ? [] : [{ key: 'total_points', label: '總得分', kind: 'count', threshold: null, rows }];
 	const props: PageProps = {
 		params: { season: season.name, group: 'men' },
-		data: { season, group: 'men', summary: rows.length === 0 ? null : summary, boards }
+		data: { season, group: 'men', summary: rows.length === 0 ? null : summary, boards, volumeRates }
 	};
 	return render(LeadersPage, { props, context }).body;
 }
@@ -81,7 +81,7 @@ it('七個計數榜、四王卡與並列球員連結；稱號只出現在四榜�
 		rows: [row(1, 1), row(1, 2), row(3, 3)].map((r) => ({ ...r, title: r.rank === 1 ? titles[i] ?? null : null }))
 	}));
 	const props: PageProps = { params: { season: season.name, group: 'men' }, data: {
-		season, group: 'men', summary: { through_date: '2026-11-02', games: 6 }, boards
+		season, group: 'men', summary: { through_date: '2026-11-02', games: 6 }, boards, volumeRates: []
 	}};
 	const html = render(LeadersPage, { props, context }).body;
 	expect(html).toContain('本季四王');
@@ -123,8 +123,36 @@ it('只傳入計數榜與六個比率榜時，不產生每局攔網卡與 chip',
 			key, label: STAT_LABELS[key], kind: 'rate', threshold: '門檻：出賽 2 場', rows: []
 		}))
 	];
-	const props: PageProps = { params: { season: season.name, group: 'men' }, data: { season, group: 'men', summary: null, boards } };
+	const props: PageProps = { params: { season: season.name, group: 'men' }, data: { season, group: 'men', summary: null, boards, volumeRates: [] } };
 	const html = render(LeadersPage, { props, context }).body;
 	expect(html).not.toContain('每局攔網');
 	expect(html).not.toContain('#b-blocks_per_set');
+});
+
+describe('量率散點', () => {
+	const point = { player_id: 1, name: '球員1號', team_id: team.team_id, team_short: team.short_name, count: 40, rate: 60 };
+	const volumeRates = (['attack_success_rate', 'receive_excellent_rate', 'dig_excellent_rate', 'set_excellent_rate'] as const)
+		.map((key) => toVolumeRateView({ key, median_count: 40, median_rate: 60, points: [point] }, 'men', season.cup_id));
+
+	it('四個技術分頁預設攻擊，按鈕有 aria-pressed，無障礙文字用圖名加技術名稱', () => {
+		const html = renderPage([row(1, 1)], undefined, volumeRates);
+		expect(html).toMatch(/<h2[^>]*>量率散點(<!---->)?<\/h2>/);
+		expect(html).toMatch(/<button[^>]*aria-pressed="true"[^>]*>\s*攻擊\s*<\/button>/);
+		for (const label of ['接發球', '防守', '舉球']) {
+			expect(html).toMatch(new RegExp(`<button[^>]*aria-pressed="false"[^>]*>\\s*${label}\\s*</button>`));
+		}
+		expect(html).toContain('aria-label="量率散點：攻擊"');
+		expect(html).toContain('以表格檢視');
+	});
+
+	it('該技術無人達門檻時顯示空狀態，分頁仍在', () => {
+		const empty = volumeRates.map((v) => ({ ...v, points: [], median_count: null, median_rate: null }));
+		const html = renderPage([row(1, 1)], undefined, empty);
+		expect(html).toContain('尚無球員達門檻');
+		expect(html).toMatch(/<button[^>]*aria-pressed="false"[^>]*>\s*舉球\s*<\/button>/);
+	});
+
+	it('整組無單場數據時不出現', () => {
+		expect(renderPage([])).not.toContain('量率散點');
+	});
 });

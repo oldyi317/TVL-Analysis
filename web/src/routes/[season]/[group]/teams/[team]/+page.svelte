@@ -221,13 +221,15 @@
 	note="依日期排列本隊每場的球隊指標，不含黃金決勝局；某場該項分母為 0 時不畫點。"
 >
 	{#snippet controls()}
-		<div class="metrics" role="group" aria-label="選擇逐場趨勢指標">
-			{#each TEAM_METRIC_KEYS as key (key)}
-				<button type="button" class="chip" aria-pressed={trendMetric === key ? 'true' : 'false'} onclick={() => (trendMetric = key)}>
-					{metricLabel(key)}
-				</button>
-			{/each}
-		</div>
+		{#if comparison}
+			<div class="metrics" role="group" aria-label="選擇逐場趨勢指標">
+				{#each TEAM_METRIC_KEYS as key (key)}
+					<button type="button" class="chip" aria-pressed={trendMetric === key ? 'true' : 'false'} onclick={() => (trendMetric = key)}>
+						{metricLabel(key)}
+					</button>
+				{/each}
+			</div>
+		{/if}
 	{/snippet}
 	{#snippet table()}
 		{#if comparison}
