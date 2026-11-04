@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "leaders.schema.json",
   "title": "LeadersData",
-  "description": "各賽季各組別的排行榜（只計有單場數據的球員、排除黃金決勝局）；由 src.export.site_data 產出，沒有單場數據的季組不輸出",
+  "description": "各賽季各組別的排行榜與量率散點（只計有單場數據的球員；所有數字排除黃金決勝局統計列，黃金決勝局不算出賽一場，也不計入局數）；由 src.export.site_data 產出，沒有單場數據的季組不輸出",
   "type": "object",
   "additionalProperties": false,
   "required": ["leaders"],
@@ -13,7 +13,7 @@
         "title": "GroupLeaders",
         "type": "object",
         "additionalProperties": false,
-        "required": ["cup_id", "group", "through_date", "games", "boards"],
+        "required": ["cup_id", "group", "through_date", "games", "boards", "volume_rates"],
         "properties": {
           "cup_id": { "type": "integer" },
           "group": { "type": "string", "enum": ["men", "women"] },
@@ -52,6 +52,42 @@
                       "numerator": { "type": ["integer", "null"], "description": "比率榜的分子；計數榜為 null" },
                       "denominator": { "type": ["integer", "null"], "description": "比率榜的分母；計數榜為 null" },
                       "title": { "type": ["string", "null"], "description": "第一名稱號（如得分王）；其餘為 null" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "volume_rates": {
+            "type": "array",
+            "description": "量率散點，依序為攻擊、接發球、防守、舉球；點即同技術比率榜的上榜球員（門檻相同，舉球只列 S）",
+            "items": {
+              "title": "VolumeRate",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["key", "median_count", "median_rate", "points"],
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": ["attack_success_rate", "receive_excellent_rate", "dig_excellent_rate", "set_excellent_rate"],
+                  "description": "對應的比率榜 key"
+                },
+                "median_count": { "type": ["number", "null"], "description": "各點次數的中位數；沒有點時為 null" },
+                "median_rate": { "type": ["number", "null"], "description": "各點率的中位數（百分比）；沒有點時為 null" },
+                "points": {
+                  "type": "array",
+                  "items": {
+                    "title": "VolumeRatePoint",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["player_id", "name", "team_id", "team_short", "count", "rate"],
+                    "properties": {
+                      "player_id": { "type": "integer" },
+                      "name": { "type": "string" },
+                      "team_id": { "type": "integer" },
+                      "team_short": { "type": "string" },
+                      "count": { "type": "integer", "description": "該技術總次數（比率榜分母）" },
+                      "rate": { "type": "number", "description": "百分比，四捨五入到小數 2 位" }
                     }
                   }
                 }

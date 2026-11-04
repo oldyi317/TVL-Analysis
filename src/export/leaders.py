@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
+from statistics import median
 from typing import Literal
 
 from src.export.player_advanced import MIN_GAMES, MIN_SETS, compute_ratios
@@ -80,3 +81,29 @@ def _board(spec: BoardSpec, rows: list[dict]) -> dict:
 def compute_leaders(rows: list[dict], boards: Sequence[BoardSpec] = COUNT_BOARDS + RATE_BOARDS) -> list[dict]:
     return [_board(spec, rows) for spec in boards
             if spec.key != "blocks_per_set" or any(r["sets_played"] is not None for r in rows)]
+
+
+VOLUME_RATE_KEYS = ("attack_success_rate", "receive_excellent_rate", "dig_excellent_rate", "set_excellent_rate")
+
+
+def _median(values: list[float]) -> float | None:
+    return round(median(values), 2) if values else None
+
+
+def compute_volume_rates(rows: list[dict]) -> list[dict]:
+    """量率散點：直接取同技術比率榜的上榜球員，門檻與舉球限 S 都與比率榜同一份邏輯。"""
+    specs = {spec.key: spec for spec in RATE_BOARDS}
+    result = []
+    for key in VOLUME_RATE_KEYS:
+        points = [
+            {"player_id": r["player_id"], "name": r["name"], "team_id": r["team_id"],
+             "team_short": r["team_short"], "count": r["denominator"], "rate": r["value"]}
+            for r in _board(specs[key], rows)["rows"]
+        ]
+        result.append({
+            "key": key,
+            "median_count": _median([p["count"] for p in points]),
+            "median_rate": _median([p["rate"] for p in points]),
+            "points": points,
+        })
+    return result

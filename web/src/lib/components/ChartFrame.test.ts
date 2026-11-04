@@ -4,7 +4,16 @@ import { describe, expect, it } from 'vitest';
 import ChartFrame from './ChartFrame.svelte';
 
 const table = createRawSnippet(() => ({ render: () => '<table aria-label="表"></table>' }));
-const frame = (props: { option: object | null; conclusion: string | null; games?: number | { name: string; games: number }[] }) =>
+const controls = createRawSnippet(() => ({ render: () => '<div role="group" aria-label="選擇技術"></div>' }));
+type FrameProps = {
+	option: object | null;
+	conclusion: string | null;
+	games?: number | { name: string; games: number }[];
+	label?: string;
+	heading?: 'h2' | 'h3';
+	controls?: typeof controls;
+};
+const frame = (props: FrameProps) =>
 	render(ChartFrame, {
 		props: { title: '球隊指標對照組內各隊', games: props.games ?? 3, emptyTitle: '本季尚無單場數據', table, ...props }
 	}).body;
@@ -42,5 +51,22 @@ describe('ChartFrame', () => {
 		expect(two(3, 2)).toContain('台電 已賽 3 場・鳳凰 已賽 2 場');
 		expect(two(3, 2)).toContain('aria-label="球隊指標對照組內各隊，台電 已賽 3 場・鳳凰 已賽 2 場"');
 		expect(two(3, 3)).toContain('>已賽 3 場<');
+	});
+
+	it('指定無障礙文字時取代預設的圖名加場數', () => {
+		const body = frame({ option: {}, conclusion: null, label: '量率散點：攻擊' });
+		expect(body).toContain('aria-label="量率散點：攻擊"');
+		expect(body).not.toContain('aria-label="球隊指標對照組內各隊，已賽 3 場"');
+	});
+
+	it('標題預設 h3，可指定 h2', () => {
+		expect(frame({ option: {}, conclusion: null })).toMatch(/<h3[^>]*>球隊指標對照組內各隊(<!---->)?<\/h3>/);
+		expect(frame({ option: {}, conclusion: null, heading: 'h2' })).toMatch(/<h2[^>]*>球隊指標對照組內各隊(<!---->)?<\/h2>/);
+	});
+
+	it('空狀態仍保留切換控制，讀者可以換到有數據的分頁', () => {
+		const body = frame({ option: null, conclusion: null, controls });
+		expect(body).toContain('aria-label="選擇技術"');
+		expect(body).toContain('本季尚無單場數據');
 	});
 });

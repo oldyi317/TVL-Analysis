@@ -1,4 +1,4 @@
-from src.export.leaders import compute_leaders
+from src.export.leaders import compute_leaders, compute_volume_rates
 
 
 def row(player_id, name, total_points, position="S"):
@@ -136,3 +136,53 @@ def test_setting_boards_only_include_setters_while_other_boards_include_all_posi
         if key not in ("set_excellent", "set_excellent_rate"):
             assert {r["player_id"] for r in board["rows"]} == {1, 2, 3, 4, 5, 6, 7}
 
+
+
+def test_volume_rates_use_the_same_threshold_as_rate_boards():
+    players = [
+        rate_row(1, attack_points=30, attack_total=40),
+        rate_row(2, sets_played=4),
+        rate_row(3, attack_total=9, receive_total=9),
+        rate_row(4, sets_played=None, games=2, dig_total=10),
+        rate_row(5, sets_played=None, games=1),
+    ]
+    boards = {b["key"]: b for b in compute_leaders(players)}
+    volume_rates = compute_volume_rates(players)
+    assert [v["key"] for v in volume_rates] == [
+        "attack_success_rate", "receive_excellent_rate", "dig_excellent_rate", "set_excellent_rate"]
+    for v in volume_rates:
+        assert {p["player_id"] for p in v["points"]} == {r["player_id"] for r in boards[v["key"]]["rows"]}
+    attack = volume_rates[0]
+    assert {p["player_id"] for p in attack["points"]} == {1, 4}
+    assert next(p for p in attack["points"] if p["player_id"] == 1) == {
+        "player_id": 1, "name": "球員1", "team_id": 1, "team_short": "甲隊", "count": 40, "rate": 75.0}
+
+
+def test_volume_rates_for_setting_only_list_setters():
+    players = [
+        rate_row(1, position="S", set_excellent=30, set_total=50),
+        rate_row(2, position="OH", set_excellent=40, set_total=40),
+        rate_row(3, position=None, set_excellent=10, set_total=10),
+    ]
+    setting = compute_volume_rates(players)[3]
+    assert [p["player_id"] for p in setting["points"]] == [1]
+    assert {p["player_id"] for p in compute_volume_rates(players)[0]["points"]} == {1, 2, 3}
+
+
+def test_volume_rate_medians_are_precomputed_for_both_axes():
+    players = [
+        rate_row(1, attack_points=10, attack_total=20),
+        rate_row(2, attack_points=30, attack_total=40),
+        rate_row(3, attack_points=10, attack_total=50),
+        rate_row(4, attack_points=1, attack_total=3),
+    ]
+    attack = compute_volume_rates(players)[0]
+    # 次數 20、40、50 → 中位數 40；率 50、75、20 → 中位數 50；第 4 人未達門檻不計
+    assert (attack["median_count"], attack["median_rate"]) == (40, 50.0)
+    even = compute_volume_rates(players[:2])[0]
+    assert (even["median_count"], even["median_rate"]) == (30, 62.5)
+
+
+def test_volume_rate_medians_are_null_without_points():
+    empty = compute_volume_rates([rate_row(1, sets_played=1)])
+    assert all(v["points"] == [] and v["median_count"] is None and v["median_rate"] is None for v in empty)

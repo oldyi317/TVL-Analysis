@@ -160,3 +160,34 @@ test('歷史榜單沿用當季隊名，隊徽載入失敗退回簡稱', async ({
 	await card.getByRole('link').first().click();
 	await expect(page).toHaveURL(/\/2024-25\/men\/players\/\d+\//);
 });
+
+for (const [cup, group] of [[22, 'men'], [22, 'women'], [20, 'men']] as const) {
+	test(`第 ${cup} 季${group === 'men' ? '男' : '女'}子組量率散點：四個技術分頁與以表格檢視`, async ({ page }) => {
+		const scope = entries.find((e: { cup_id: number; group: string }) => e.cup_id === cup && e.group === group);
+		test.skip(!scope, '該季該組沒有單場數據');
+		await page.goto(`${BASE}/${seasonName(cup)}/${group}/leaders/`);
+		const frame = page.getByRole('region', { name: '量率散點' });
+		await expect(frame.getByRole('heading', { level: 2, name: '量率散點' })).toBeVisible();
+		const tabs = frame.getByRole('group', { name: '選擇量率散點技術' }).getByRole('button');
+		await expect(tabs).toHaveText(['攻擊', '接發球', '防守', '舉球']);
+		await expect(tabs.first()).toHaveAttribute('aria-pressed', 'true');
+		await expect(frame.getByRole('img', { name: '量率散點：攻擊' })).toBeVisible();
+		const setting = frame.getByRole('button', { name: '舉球', exact: true });
+		await expect(async () => {
+			if ((await setting.getAttribute('aria-pressed')) !== 'true') await setting.click();
+			await expect(setting).toHaveAttribute('aria-pressed', 'true', { timeout: 1000 });
+		}).toPass({ timeout: 15000 });
+		await expect(tabs.first()).toHaveAttribute('aria-pressed', 'false');
+		const points = scope.volume_rates.find((v: { key: string }) => v.key === 'set_excellent_rate').points;
+		if (points.length === 0) {
+			await expect(frame.getByText('尚無球員達門檻')).toBeVisible();
+			return;
+		}
+		await expect(frame.getByRole('img', { name: '量率散點：舉球' })).toBeVisible();
+		await frame.getByRole('button', { name: '以表格檢視' }).click();
+		const table = frame.getByRole('table', { name: '量率散點：舉球' });
+		await expect(table.getByRole('columnheader', { name: '舉球到位率' })).toBeVisible();
+		await expect(table.getByRole('row')).toHaveCount(points.length + 1);
+		expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+	});
+}
