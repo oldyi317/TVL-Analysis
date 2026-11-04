@@ -26,6 +26,28 @@ export function winnerSide(sets: readonly SetScore[]): Side | null {
 	return null;
 }
 
+type TeamMatch = { home: { team_id: number }; away: { team_id: number }; sets: readonly SetScore[] };
+
+// 兩隊交手各贏幾場：只看正規局數（黃金決勝局不計入戰績），未開打或資料不全不算
+export function headToHead(matches: readonly TeamMatch[], teamA: number, teamB: number): [number, number] {
+	let a = 0;
+	let b = 0;
+	for (const m of matches) {
+		const ids = [m.home.team_id, m.away.team_id];
+		if (!ids.includes(teamA) || !ids.includes(teamB)) continue;
+		const side = winnerSide(m.sets);
+		if (!side) continue;
+		if (m[side].team_id === teamA) a++;
+		else b++;
+	}
+	return [a, b];
+}
+
+export function headToHeadText([a, b]: [number, number], nameA: string, nameB: string): string {
+	if (a + b === 0) return '本季尚未交手';
+	return `本季交手 ${a + b} 場：${nameA} ${a} 勝，${nameB} ${b} 勝`;
+}
+
 export type StyleMatch = {
 	date: string;
 	weekday: string;

@@ -217,3 +217,105 @@ export function sourcesTable(c: TeamComparison, teamName: (id: number) => string
 		cells: SCORE_SOURCES.map(({ key }) => ({ key, points: t.points[key], share: percent(share(t, key)) }))
 	}));
 }
+
+export type PregameComparison = { home: TeamAdvanced; away: TeamAdvanced; teams: readonly TeamAdvanced[] };
+
+export function pregameComparison(
+	data: TeamAdvancedData,
+	cupId: number,
+	group: Group,
+	homeId: number,
+	awayId: number
+): PregameComparison | undefined {
+	const scope = data.team_advanced.find((s) => s.cup_id === cupId && s.group === group);
+	const withGames = (id: number) => scope?.teams.find((t) => t.team_id === id && t.games > 0);
+	const home = withGames(homeId);
+	const away = withGames(awayId);
+	return scope && home && away ? { home, away, teams: scope.teams } : undefined;
+}
+
+// 兩隊各在幾項球隊指標領先（六項都是越高越好；數值相同或任一方缺值不算）
+function leads(m: PregameComparison): [number, number] {
+	let home = 0;
+	let away = 0;
+	for (const key of TEAM_METRIC_KEYS) {
+		const h = m.home.metrics[key].value;
+		const a = m.away.metrics[key].value;
+		if (h === null || a === null || h === a) continue;
+		if (h > a) home++;
+		else away++;
+	}
+	return [home, away];
+}
+
+export function pregameConclusion(m: PregameComparison, homeName: string, awayName: string): string | null {
+	if (Math.min(m.home.games, m.away.games) < MIN_CONCLUSION_GAMES) return null;
+	const [home, away] = leads(m);
+	if (home === away) return home === 0 ? null : `兩隊各在 ${home} 項指標領先`;
+	const sides = [
+		{ name: homeName, count: home },
+		{ name: awayName, count: away }
+	];
+	const [leader, trailer] = home > away ? sides : sides.reverse();
+	const first = `${leader.name} 在 ${leader.count} 項指標領先`;
+	return trailer.count === 0 ? first : `${first}，${trailer.name} 在 ${trailer.count} 項領先`;
+}
+
+type Pair<T> = { home: T; away: T };
+type PregameBar = { value: number | null; actual: string };
+
+// 六項尺度不同，每列以組內最高值為滿格 100；主隊畫在左（負值）、客隊在右
+function pregameBars(m: PregameComparison, side: 'home' | 'away'): PregameBar[] {
+	return TEAM_METRIC_KEYS.map((key) => {
+		const value = m[side].metrics[key].value;
+		const max = Math.max(0, ...m.teams.map((t) => t.metrics[key].value ?? 0));
+		const length = value === null ? null : max === 0 ? 0 : Math.round((value / max) * 100);
+		return {
+			value: length === null ? null : side === 'home' ? -length : length,
+			actual: formatMetricValue(key, value)
+		};
+	});
+}
+
+export function pregameBarOption(m: PregameComparison, names: Pair<string>, colors: Pair<string>): object {
+	const sides = (['home', 'away'] as const).map((side) => ({ side, bars: pregameBars(m, side) }));
+	const tooltipText = (row: number) =>
+		[metricLabel(TEAM_METRIC_KEYS[row]), ...sides.map(({ side, bars }) => `${names[side]}：${bars[row].actual}`)].join(
+			'<br/>'
+		);
+	return {
+		legend: { data: [names.home, names.away] },
+		grid: { top: 8 },
+		tooltip: {
+			trigger: 'axis',
+			axisPointer: { type: 'shadow' },
+			formatter: (params: { dataIndex: number }[]) => tooltipText(params[0].dataIndex)
+		},
+		// 兩側多留空間給長條末端的數值標籤，手機寬度下不與指標名稱重疊
+		xAxis: { type: 'value', min: -170, max: 170, show: false },
+		yAxis: { type: 'category', inverse: true, data: TEAM_METRIC_KEYS.map(metricLabel), axisTick: { show: false } },
+		series: sides.map(({ side, bars }) => ({
+			type: 'bar',
+			name: names[side],
+			stack: 'pregame',
+			itemStyle: { color: colors[side], borderRadius: side === 'home' ? [6, 0, 0, 6] : [0, 6, 6, 0] },
+			label: {
+				show: true,
+				position: side === 'home' ? 'left' : 'right',
+				formatter: (p: { data: PregameBar }) => p.data.actual
+			},
+			data: bars
+		}))
+	};
+}
+
+type PregameCell = { value: string; rank: string };
+export type PregameTableRow = { key: TeamMetricKey; label: string } & Pair<PregameCell>;
+
+export function pregameTable(m: PregameComparison): PregameTableRow[] {
+	const cell = (t: TeamAdvanced, key: TeamMetricKey): PregameCell => ({
+		value: formatMetricValue(key, t.metrics[key].value),
+		rank: rankText(m.teams, t, key)
+	});
+	return TEAM_METRIC_KEYS.map((key) => ({ key, label: metricLabel(key), home: cell(m.home, key), away: cell(m.away, key) }));
+}

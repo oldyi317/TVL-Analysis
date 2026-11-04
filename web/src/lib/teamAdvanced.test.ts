@@ -4,6 +4,10 @@ import {
 	metricsConclusion,
 	metricsDotOption,
 	metricsTable,
+	pregameBarOption,
+	pregameComparison,
+	pregameConclusion,
+	pregameTable,
 	SCORE_SOURCES,
 	sourcesBarOption,
 	sourcesConclusion,
@@ -272,5 +276,105 @@ describe('sourcesTable', () => {
 		expect(rows.map((r) => [r.name, r.isTeam, r.total])).toEqual([['臺北鳳凰', true, 100], ['屏東台電', false, 60]]);
 		expect(rows[0].cells[3]).toEqual({ key: 'opponent_error', points: 50, share: '50%' });
 		expect(rows[1].cells[3]).toEqual({ key: 'opponent_error', points: 10, share: '17%' });
+	});
+});
+
+describe('pregameComparison', () => {
+	it('依賽季、組別找出主客兩隊與組內各隊', () => {
+		const home = team(4, {});
+		const away = team(1, {});
+		const m = pregameComparison(data([home, away, team(2, {})]), 21, 'men', 4, 1);
+		expect(m?.home).toBe(home);
+		expect(m?.away).toBe(away);
+		expect(m?.teams).toHaveLength(3);
+	});
+
+	it('任一隊本季沒有單場數據就沒有對戰比較，也不拿別季代替', () => {
+		const d: TeamAdvancedData = {
+			team_advanced: [
+				{ cup_id: 21, group: 'men', teams: [team(4, {}), team(1, {})] },
+				{ cup_id: 22, group: 'men', teams: [team(4, {})] }
+			]
+		};
+		expect(pregameComparison(d, 22, 'men', 4, 1)).toBeUndefined();
+		expect(pregameComparison(d, 21, 'women', 4, 1)).toBeUndefined();
+		expect(pregameComparison(data([team(4, {}), team(1, {}, 0)]), 21, 'men', 4, 1)).toBeUndefined();
+	});
+});
+
+describe('pregameConclusion', () => {
+	const pair = (home: TeamAdvanced, away: TeamAdvanced) => ({ home, away, teams: [home, away] });
+	const better = { attack_success_rate: 1, serve_point_rate: 1, receive_excellent_rate: 1, dig_excellent_rate: 1 };
+	const worse = { attack_success_rate: 2, serve_point_rate: 2, receive_excellent_rate: 2, dig_excellent_rate: 2 };
+
+	it('領先項數多的隊伍先講，再講另一隊', () => {
+		const home = team(4, { ...better, set_excellent_rate: 2, blocks_per_set: 2 });
+		const away = team(1, { ...worse, set_excellent_rate: 1, blocks_per_set: 1 });
+		expect(pregameConclusion(pair(home, away), '台電', '鳳凰')).toBe('台電 在 4 項指標領先，鳳凰 在 2 項領先');
+		expect(pregameConclusion(pair(away, home), '鳳凰', '台電')).toBe('台電 在 4 項指標領先，鳳凰 在 2 項領先');
+	});
+
+	it('一隊全面領先時只講領先的一隊；數值相同與缺值的項目不算', () => {
+		const home = team(4, { ...worse, set_excellent_rate: 1, blocks_per_set: null });
+		const away = team(1, { ...better, set_excellent_rate: 1, blocks_per_set: 1 });
+		expect(pregameConclusion(pair(home, away), '台電', '鳳凰')).toBe('鳳凰 在 4 項指標領先');
+	});
+
+	it('兩隊領先項數相同', () => {
+		const home = team(4, { attack_success_rate: 1, serve_point_rate: 1, receive_excellent_rate: 1, dig_excellent_rate: 2, set_excellent_rate: 2, blocks_per_set: 2 });
+		const away = team(1, { attack_success_rate: 2, serve_point_rate: 2, receive_excellent_rate: 2, dig_excellent_rate: 1, set_excellent_rate: 1, blocks_per_set: 1 });
+		expect(pregameConclusion(pair(home, away), '台電', '鳳凰')).toBe('兩隊各在 3 項指標領先');
+	});
+
+	it('任一隊已賽未滿 3 場不產生結論', () => {
+		expect(pregameConclusion(pair(team(4, better), team(1, worse, 2)), '台電', '鳳凰')).toBeNull();
+		expect(pregameConclusion(pair(team(4, better, 2), team(1, worse)), '台電', '鳳凰')).toBeNull();
+	});
+});
+
+describe('pregameBarOption', () => {
+	const home = team(4, { attack_success_rate: 1, blocks_per_set: null });
+	const away = team(1, { attack_success_rate: 2 });
+	const m = { home, away, teams: [home, away, team(2, { attack_success_rate: 3 })] };
+	const option = () =>
+		pregameBarOption(m, { home: '台電', away: '鳳凰' }, { home: '#c00000', away: '#0050a0' }) as any;
+
+	it('主隊在左、客隊在右，各用自己的隊色', () => {
+		const [h, a] = option().series;
+		expect(h).toMatchObject({ name: '台電', itemStyle: { color: '#c00000' } });
+		expect(a).toMatchObject({ name: '鳳凰', itemStyle: { color: '#0050a0' } });
+		expect(h.data.every((d: { value: number | null }) => d.value === null || d.value <= 0)).toBe(true);
+		expect(a.data.every((d: { value: number | null }) => d.value === null || d.value >= 0)).toBe(true);
+	});
+
+	it('長條以組內最高值為滿格；缺值不畫', () => {
+		const [h, a] = option().series;
+		expect(h.data[0].value).toBe(-100);
+		expect(a.data[0].value).toBe(80);
+		expect(h.data[5].value).toBeNull();
+	});
+
+	it('tooltip 顯示兩隊數值', () => {
+		const text = option().tooltip.formatter([{ dataIndex: 0 }]);
+		expect(text).toContain('攻擊成功率');
+		expect(text).toContain('台電：50%');
+		expect(text).toContain('鳳凰：40%');
+		expect(option().tooltip.formatter([{ dataIndex: 5 }])).toContain('台電：—');
+	});
+});
+
+describe('pregameTable', () => {
+	it('每項指標一列，並列兩隊數值與組內名次', () => {
+		const home = team(4, { attack_success_rate: 1, blocks_per_set: null });
+		const away = team(1, { attack_success_rate: 2 });
+		const rows = pregameTable({ home, away, teams: [home, away, team(2, { attack_success_rate: 3 })] });
+		expect(rows).toHaveLength(6);
+		expect(rows[0]).toEqual({
+			key: 'attack_success_rate',
+			label: '攻擊成功率',
+			home: { value: '50%', rank: '第 1 / 3' },
+			away: { value: '40%', rank: '第 2 / 3' }
+		});
+		expect(rows[5].home).toEqual({ value: '—', rank: '—' });
 	});
 });
