@@ -32,6 +32,7 @@ const teamAdvanced: GroupTeamAdvanced[] = readJson('team_advanced').team_advance
 const seasonName = (cup: number): string =>
 	seasonsData.seasons.find((s: { cup_id: number }) => s.cup_id === cup).name;
 const METRICS_CHART = '球隊指標對照組內各隊';
+const SOURCES_CHART = '得分來源組成';
 
 type Week = { week_label: string; week_start_date: string | null; players: RosterPlayer[] };
 type RosterPlayer = { player_id: number; jersey_number: number | null; position: string | null };
@@ -274,6 +275,30 @@ for (const [label, cup, group] of [
 	});
 }
 
+for (const [label, cup, group] of [
+	['男子組最近有單場數據的賽季', findSeason('teamadvanced')?.cupId, 'men'],
+	['女子組最近有單場數據的賽季', findSeason('teamadvanced', 'women')?.cupId, 'women']
+] as const) {
+	test(`球隊頁進階數據（${label}）：得分來源組成與以表格檢視`, async ({ page }) => {
+		const scope = teamAdvanced.find((s) => s.cup_id === cup && s.group === group);
+		test.skip(!scope || scope.teams.length === 0, '該季該組沒有單場數據');
+		const team = scope!.teams[0];
+		await page.goto(`${BASE}/${seasonName(cup!)}/${group}/teams/${team.team_id}/`);
+		const frame = page.getByRole('region', { name: SOURCES_CHART });
+		await expect(frame.locator('[role="img"]')).toBeVisible();
+		const toggle = frame.getByRole('button', { name: '以表格檢視' });
+		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		await expect(async () => {
+			if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+			await expect(toggle).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 });
+		}).toPass({ timeout: 15000 });
+		const table = frame.getByRole('table', { name: SOURCES_CHART });
+		await expect(table.getByRole('columnheader', { name: '對手失誤得分' })).toBeVisible();
+		await expect(table.getByRole('rowheader').first()).toContainText('（本隊）');
+		expect(await noOverflow(page)).toBeLessThanOrEqual(0);
+	});
+}
+
 test('該季沒有單場數據的球隊，進階數據顯示空狀態', async ({ page }) => {
 	const has = new Set(teamAdvanced.flatMap((s) => s.teams.map((t) => `${s.cup_id}-${s.group}-${t.team_id}`)));
 	const missing = teams
@@ -285,4 +310,6 @@ test('該季沒有單場數據的球隊，進階數據顯示空狀態', async ({
 	const frame = page.getByRole('region', { name: METRICS_CHART });
 	await expect(frame.getByText('本季尚無單場數據')).toBeVisible();
 	await expect(frame.locator('[role="img"]')).toHaveCount(0);
+	const sources = page.getByRole('region', { name: SOURCES_CHART });
+	await expect(sources.getByText('本季尚無單場數據')).toBeVisible();
 });

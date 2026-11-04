@@ -533,17 +533,22 @@ def _leaders_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict
 
 def _team_advanced_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict[int, dict]]) -> dict:
     set_columns = ", ".join(f"{side}_set{n}" for side in ("home", "away") for n in range(1, 6))
-    sets: dict[str, dict[int, int]] = {gender: {} for gender in GROUP_BY_GENDER}
-    for gender, game_id, *scores in conn.execute(
+    scores: dict[str, dict[int, dict[str, int]]] = {gender: {} for gender in GROUP_BY_GENDER}
+    for gender, game_id, *set_scores in conn.execute(
         f"SELECT gender, game_id, {set_columns} FROM matches WHERE is_golden_set = 0"
     ):
-        sets[gender][game_id] = len(_set_pairs(scores))
+        pairs = _set_pairs(set_scores)
+        scores[gender][game_id] = {
+            "sets": len(pairs),
+            "home_points": sum(h for h, _ in pairs),
+            "away_points": sum(a for _, a in pairs),
+        }
     team_advanced = []
     for cup_id, gender in sorted(games, key=lambda k: (k[0], GROUP_ORDER.index(GROUP_BY_GENDER[k[1]]))):
         team_advanced.append({
             "cup_id": cup_id,
             "group": GROUP_BY_GENDER[gender],
-            "teams": compute_team_advanced(games[(cup_id, gender)].values(), sets[gender]),
+            "teams": compute_team_advanced(games[(cup_id, gender)].values(), scores[gender]),
         })
     return {"team_advanced": team_advanced}
 

@@ -1,8 +1,11 @@
 """球隊指標的純函式：全隊分子總和除以分母總和，再算組別內名次。
 
-輸入為單一賽季單一組別的單場數據（box score 的正規列，不含黃金決勝局）與各場比分局數。
+輸入為單一賽季單一組別的單場數據（box score 的正規列，不含黃金決勝局）與各場比分（局數與兩隊總分，不含黃金決勝局）。
 """
+import logging
 from collections.abc import Iterable, Mapping
+
+logger = logging.getLogger(__name__)
 
 METRICS = (
     ("attack_success_rate", "attack_points", "attack_total", 100),
@@ -15,7 +18,7 @@ METRICS = (
 TOTAL_FIELDS = sorted({f for _, *fields, _ in METRICS for f in fields} - {"sets"})
 
 
-def _team_totals(games: Iterable[Mapping], sets: Mapping[int, int]) -> list[dict]:
+def _team_totals(games: Iterable[Mapping], scores: Mapping[int, Mapping[str, int]]) -> list[dict]:
     totals: dict[int, dict] = {}
     for game in games:
         for side in ("home", "away"):
@@ -23,13 +26,22 @@ def _team_totals(games: Iterable[Mapping], sets: Mapping[int, int]) -> list[dict
             if not rows:
                 continue
             team = totals.setdefault(rows[0]["team_id"], {
-                "team_id": rows[0]["team_id"], "games": 0, "sets": 0, **dict.fromkeys(TOTAL_FIELDS, 0),
+                "team_id": rows[0]["team_id"], "games": 0, "sets": 0, "total": 0, "opponent_error": 0,
+                **dict.fromkeys(TOTAL_FIELDS, 0),
             })
+            score = scores[game["game_id"]]
             team["games"] += 1
-            team["sets"] += sets[game["game_id"]]
-            for row in rows:
-                for field in TOTAL_FIELDS:
-                    team[field] += row[field]
+            team["sets"] += score["sets"]
+            skill = {field: sum(row[field] for row in rows) for field in TOTAL_FIELDS}
+            for field in TOTAL_FIELDS:
+                team[field] += skill[field]
+            points = score[f"{side}_points"]
+            opponent_error = points - skill["attack_points"] - skill["block_points"] - skill["serve_points"]
+            if opponent_error < 0:
+                logger.warning("對手失誤得分推算為負值：game_id=%s team_id=%s opponent_error=%s",
+                               game["game_id"], team["team_id"], opponent_error)
+            team["total"] += points
+            team["opponent_error"] += opponent_error
     return sorted(totals.values(), key=lambda t: t["team_id"])
 
 
@@ -38,12 +50,14 @@ def _metric(totals: Mapping, numerator: str, denominator: str, scale: int) -> di
     return {"numerator": num, "denominator": den, "value": round(num / den * scale, 2) if den else None}
 
 
-def compute_team_advanced(games: Iterable[Mapping], sets: Mapping[int, int]) -> list[dict]:
+def compute_team_advanced(games: Iterable[Mapping], scores: Mapping[int, Mapping[str, int]]) -> list[dict]:
     """名次規則同排行榜：同值同名次、下一名跳號；沒有值的名次為 None。"""
     teams = [
         {"team_id": t["team_id"], "games": t["games"],
+         "points": {"attack": t["attack_points"], "block": t["block_points"], "serve": t["serve_points"],
+                    "opponent_error": t["opponent_error"], "total": t["total"]},
          "metrics": {key: _metric(t, num, den, scale) for key, num, den, scale in METRICS}}
-        for t in _team_totals(games, sets)
+        for t in _team_totals(games, scores)
     ]
     for key, *_ in METRICS:
         values = [t["metrics"][key]["value"] for t in teams if t["metrics"][key]["value"] is not None]
