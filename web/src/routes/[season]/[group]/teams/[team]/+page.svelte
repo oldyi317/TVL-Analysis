@@ -21,7 +21,11 @@
 		sourcesBarOption,
 		sourcesConclusion,
 		sourcesTable,
-		TEAM_METRIC_KEYS
+		TEAM_METRIC_KEYS,
+		teamTrendOption,
+		trendConclusion,
+		trendTable,
+		type TeamMetricKey
 	} from '#lib/teamAdvanced.js';
 	import type { PageProps } from './$types';
 
@@ -41,6 +45,8 @@
 	const metricsOption = $derived(comparison ? metricsDotOption(comparison, teamName) : null);
 	const sourcesOption = $derived(comparison ? sourcesBarOption(comparison, teamName) : null);
 	const sourcesHeight = $derived(`${(comparison?.teams.length ?? 0) * 2.25 + 6}rem`);
+	let trendMetric = $state<TeamMetricKey>('attack_success_rate');
+	const trendOption = $derived(comparison ? teamTrendOption(comparison.team, trendMetric, teamName) : null);
 
 	function matchHref(gameId: number): string {
 		return `${resolve('/[season]/[group]/matches/[game]', {
@@ -206,6 +212,51 @@
 	{/snippet}
 </ChartFrame>
 
+<ChartFrame
+	title="球隊逐場趨勢"
+	games={comparison?.team.games ?? 0}
+	conclusion={comparison ? trendConclusion(comparison.team, trendMetric) : null}
+	option={trendOption}
+	emptyTitle="本季尚無單場數據"
+	note="依日期排列本隊每場的球隊指標，不含黃金決勝局；某場該項分母為 0 時不畫點。"
+>
+	{#snippet controls()}
+		<div class="metrics" role="group" aria-label="選擇逐場趨勢指標">
+			{#each TEAM_METRIC_KEYS as key (key)}
+				<button type="button" class="chip" aria-pressed={trendMetric === key ? 'true' : 'false'} onclick={() => (trendMetric = key)}>
+					{metricLabel(key)}
+				</button>
+			{/each}
+		</div>
+	{/snippet}
+	{#snippet table()}
+		{#if comparison}
+			<table aria-label="球隊逐場趨勢">
+				<thead>
+					<tr>
+						<th scope="col">日期</th>
+						<th scope="col">對手</th>
+						{#each TEAM_METRIC_KEYS as key (key)}
+							<th scope="col" class="num">{metricLabel(key)}</th>
+						{/each}
+					</tr>
+				</thead>
+				<tbody>
+					{#each trendTable(comparison.team, teamName) as row (row.game_id)}
+						<tr>
+							<th scope="row">{row.date}</th>
+							<td>{row.opponent}</td>
+							{#each row.cells as cell (cell.key)}
+								<td class="num">{cell.value}</td>
+							{/each}
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		{/if}
+	{/snippet}
+</ChartFrame>
+
 <h2>{data.roster?.kind === 'season' ? '賽季報名名單' : '週登錄'}</h2>
 {#if data.roster}
 	<div class="card">
@@ -227,6 +278,13 @@
 {/if}
 
 <style>
+	.metrics {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1);
+		margin-block-end: var(--space-2);
+	}
+
 	.note {
 		margin-block: var(--space-3) 0;
 	}

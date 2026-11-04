@@ -1,6 +1,6 @@
 """球隊指標的純函式：全隊分子總和除以分母總和，再算組別內名次。
 
-輸入為單一賽季單一組別的單場數據（box score 的正規列，不含黃金決勝局）與各場比分（局數與兩隊總分，不含黃金決勝局）。
+輸入為單一賽季單一組別的單場數據（box score 的正規列，不含黃金決勝局）與各場比分（局數、兩隊總分與兩隊編號，不含黃金決勝局）。
 """
 import logging
 from collections.abc import Iterable, Mapping
@@ -27,7 +27,7 @@ def _team_totals(games: Iterable[Mapping], scores: Mapping[int, Mapping[str, int
                 continue
             team = totals.setdefault(rows[0]["team_id"], {
                 "team_id": rows[0]["team_id"], "games": 0, "sets": 0, "total": 0, "opponent_error": 0,
-                **dict.fromkeys(TOTAL_FIELDS, 0),
+                **dict.fromkeys(TOTAL_FIELDS, 0), "trend": [],
             })
             score = scores[game["game_id"]]
             team["games"] += 1
@@ -35,6 +35,12 @@ def _team_totals(games: Iterable[Mapping], scores: Mapping[int, Mapping[str, int
             skill = {field: sum(row[field] for row in rows) for field in TOTAL_FIELDS}
             for field in TOTAL_FIELDS:
                 team[field] += skill[field]
+            game_totals = {**skill, "sets": score["sets"]}
+            team["trend"].append({
+                "game_id": game["game_id"], "date": game["date"],
+                "opponent_id": score["away_team_id" if side == "home" else "home_team_id"],
+                "metrics": {key: _metric(game_totals, num, den, scale) for key, num, den, scale in METRICS},
+            })
             points = score[f"{side}_points"]
             opponent_error = points - skill["attack_points"] - skill["block_points"] - skill["serve_points"]
             if opponent_error < 0:
@@ -42,6 +48,8 @@ def _team_totals(games: Iterable[Mapping], scores: Mapping[int, Mapping[str, int
                                game["game_id"], team["team_id"], opponent_error)
             team["total"] += points
             team["opponent_error"] += opponent_error
+    for team in totals.values():
+        team["trend"].sort(key=lambda g: (g["date"], g["game_id"]))
     return sorted(totals.values(), key=lambda t: t["team_id"])
 
 
@@ -56,7 +64,8 @@ def compute_team_advanced(games: Iterable[Mapping], scores: Mapping[int, Mapping
         {"team_id": t["team_id"], "games": t["games"],
          "points": {"attack": t["attack_points"], "block": t["block_points"], "serve": t["serve_points"],
                     "opponent_error": t["opponent_error"], "total": t["total"]},
-         "metrics": {key: _metric(t, num, den, scale) for key, num, den, scale in METRICS}}
+         "metrics": {key: _metric(t, num, den, scale) for key, num, den, scale in METRICS},
+         "trend": t["trend"]}
         for t in _team_totals(games, scores)
     ]
     for key, *_ in METRICS:

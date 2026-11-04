@@ -175,3 +175,44 @@ def test_points_same_team_id_men_and_women_are_separate(export):
     assert team(payload, 21, "men", 4)["points"]["total"] == 75
     assert team(payload, 21, "women", 4)["points"] == {
         "attack": 4, "block": 0, "serve": 0, "opponent_error": 91, "total": 95}
+
+
+def test_trend_is_sorted_by_date_with_opponent_and_null_for_zero_denominator(export):
+    def build(conn):
+        match(conn, 2, MIZUNO, PHOENIX, FOUR_SETS, date="2025-11-08")
+        match(conn, 1, PHOENIX, TAIPOWER, THREE_SETS, date="2025-11-01")
+        player(conn, 1, 4)
+        player(conn, 2, 4)
+        seed_stat(conn, 1, stat(attack=(4, 10), block=2), match_date="2025-11-08", opponent="雲林美津濃")
+        seed_stat(conn, 2, stat(attack=(2, 10), serve=(1, 5)), match_date="2025-11-08", opponent="雲林美津濃")
+        seed_stat(conn, 1, stat(attack=(5, 10), block=3), match_date="2025-11-01", opponent="屏東台電")
+
+    trend = team(export(build), 21, "men", 4)["trend"]
+    assert [(g["game_id"], g["date"], g["opponent_id"]) for g in trend] == [
+        (1, "2025-11-01", 1), (2, "2025-11-08", 2)]
+    first, second = (g["metrics"] for g in trend)
+    assert first["attack_success_rate"] == {"numerator": 5, "denominator": 10, "value": 50.0}
+    assert first["serve_point_rate"] == {"numerator": 0, "denominator": 0, "value": None}
+    assert first["blocks_per_set"] == {"numerator": 3, "denominator": 3, "value": 1.0}
+    assert second["attack_success_rate"] == {"numerator": 6, "denominator": 20, "value": 30.0}
+    assert second["serve_point_rate"]["value"] == 20.0
+    assert second["blocks_per_set"] == {"numerator": 2, "denominator": 4, "value": 0.5}
+
+
+def test_trend_excludes_golden_set_and_keeps_men_and_women_apart(export):
+    def build(conn):
+        match(conn, 1, PHOENIX, TAIPOWER, THREE_SETS)
+        match(conn, 2, PHOENIX, TAIPOWER, (15, None, None, None, 10, None, None, None), golden=1)
+        match(conn, 1, KAOHSIUNG, JINGHUA, FOUR_SETS, gender="F")
+        player(conn, 1, 4)
+        player(conn, 2, 4, gender="F")
+        seed_stat(conn, 1, stat(attack=(5, 10)), opponent="屏東台電")
+        seed_stat(conn, 1, stat(attack=(9, 9)), opponent="屏東台電", golden=1)
+        seed_stat(conn, 2, stat(attack=(4, 20)), opponent="臺北鯨華")
+
+    payload = export(build)
+    men, women = team(payload, 21, "men", 4)["trend"], team(payload, 21, "women", 4)["trend"]
+    assert [(g["game_id"], g["opponent_id"], g["metrics"]["attack_success_rate"]["value"]) for g in men] == [
+        (1, 1, 50.0)]
+    assert [(g["game_id"], g["opponent_id"], g["metrics"]["attack_success_rate"]["value"]) for g in women] == [
+        (1, 3, 20.0)]
