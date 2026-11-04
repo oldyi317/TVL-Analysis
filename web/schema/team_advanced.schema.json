@@ -23,10 +23,24 @@
               "title": "TeamAdvanced",
               "type": "object",
               "additionalProperties": false,
-              "required": ["team_id", "games", "metrics"],
+              "required": ["team_id", "games", "points", "metrics"],
               "properties": {
                 "team_id": { "type": "integer" },
                 "games": { "type": "integer", "minimum": 1, "description": "已有單場數據且對得回賽程的場次數" },
+                "points": {
+                  "title": "TeamPoints",
+                  "description": "整季得分來源（排除黃金決勝局）；對手失誤得分是逐場推算值：該場比分總分減全隊攻擊、攔網、發球得分，再加總；推算可能為負",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["attack", "block", "serve", "opponent_error", "total"],
+                  "properties": {
+                    "attack": { "type": "integer", "minimum": 0 },
+                    "block": { "type": "integer", "minimum": 0 },
+                    "serve": { "type": "integer", "minimum": 0 },
+                    "opponent_error": { "type": "integer", "description": "推算值，可能為負" },
+                    "total": { "type": "integer", "minimum": 0, "description": "各局比分加總" }
+                  }
+                },
                 "metrics": {
                   "title": "TeamMetrics",
                   "type": "object",

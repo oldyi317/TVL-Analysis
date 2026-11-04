@@ -123,3 +123,97 @@ export function metricsTable(c: TeamComparison, teamName: (id: number) => string
 		}))
 	}));
 }
+
+export type ScoreSourceKey = 'attack' | 'block' | 'serve' | 'opponent_error';
+
+export const SCORE_SOURCES: readonly { key: ScoreSourceKey; label: string }[] = [
+	{ key: 'attack', label: STAT_LABELS.attack_points },
+	{ key: 'block', label: STAT_LABELS.block_points },
+	{ key: 'serve', label: STAT_LABELS.serve_points },
+	{ key: 'opponent_error', label: '對手失誤得分' }
+];
+
+export const OPPONENT_ERROR_NOTE = '對手失誤得分是推算值：比分總分 − 技術得分';
+
+const hasPoints = (t: TeamAdvanced) => t.points.total > 0;
+const share = (t: TeamAdvanced, key: ScoreSourceKey): number => (t.points[key] / t.points.total) * 100;
+const percent = (value: number): string => `${Math.round(value)}%`;
+
+export function sourcesConclusion(c: TeamComparison): string | null {
+	if (c.team.games < MIN_CONCLUSION_GAMES || !hasPoints(c.team)) return null;
+	const others = c.teams.filter((t) => t.team_id !== c.team.team_id && hasPoints(t));
+	if (others.length === 0) return null;
+	const candidates = SCORE_SOURCES.map(({ key, label }) => {
+		const mine = share(c.team, key);
+		const highRank = 1 + others.filter((t) => share(t, key) > mine).length;
+		const lowRank = 1 + others.filter((t) => share(t, key) < mine).length;
+		const tied = others.some((t) => share(t, key) === mine);
+		const fromHigh = highRank <= lowRank;
+		return { label, mine, tied, fromHigh, rank: fromHigh ? highRank : lowRank };
+	});
+	const best = candidates.reduce((a, b) =>
+		b.rank < a.rank || (b.rank === a.rank && b.fromHigh && !a.fromHigh) ? b : a
+	);
+	const side = best.fromHigh ? '高' : '低';
+	const where = best.rank === 1 ? `最${side}` : `第 ${best.rank} ${side}`;
+	return `${best.label}佔 ${percent(best.mine)}，組內${best.tied ? '並列' : ''}${where}`;
+}
+
+function sourceTeams(c: TeamComparison): TeamAdvanced[] {
+	return [c.team, ...c.teams.filter((t) => t.team_id !== c.team.team_id)].filter(hasPoints);
+}
+
+export function sourcesBarOption(c: TeamComparison, teamName: (id: number) => string): object {
+	const teams = sourceTeams(c);
+	const tooltipText = (t: TeamAdvanced) =>
+		[
+			teamName(t.team_id),
+			...SCORE_SOURCES.map(
+				({ key, label }) => `${label}：${t.points[key]} 分（${percent(share(t, key))}）`
+			),
+			`比分總分：${t.points.total} 分`,
+			OPPONENT_ERROR_NOTE
+		].join('<br/>');
+	return {
+		legend: { data: SCORE_SOURCES.map((s) => s.label) },
+		grid: { top: 36, bottom: 8, left: 8, right: 16, containLabel: true },
+		tooltip: {
+			trigger: 'axis',
+			axisPointer: { type: 'shadow' },
+			formatter: (params: { dataIndex: number }[]) => tooltipText(teams[params[0].dataIndex])
+		},
+		xAxis: { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}%' } },
+		yAxis: {
+			type: 'category',
+			inverse: true,
+			data: teams.map((t) => teamName(t.team_id) + (t.team_id === c.team.team_id ? '（本隊）' : ''))
+		},
+		series: SCORE_SOURCES.map(({ key, label }) => ({
+			type: 'bar',
+			name: label,
+			stack: 'score-sources',
+			data: teams.map((t) => ({
+				value: Math.round(share(t, key) * 10) / 10,
+				itemStyle: { opacity: t.team_id === c.team.team_id ? 1 : 0.35 }
+			}))
+		}))
+	};
+}
+
+export type SourcesTableRow = {
+	team_id: number;
+	name: string;
+	isTeam: boolean;
+	total: number;
+	cells: { key: ScoreSourceKey; points: number; share: string }[];
+};
+
+export function sourcesTable(c: TeamComparison, teamName: (id: number) => string): SourcesTableRow[] {
+	return sourceTeams(c).map((t) => ({
+		team_id: t.team_id,
+		name: teamName(t.team_id),
+		isTeam: t.team_id === c.team.team_id,
+		total: t.points.total,
+		cells: SCORE_SOURCES.map(({ key }) => ({ key, points: t.points[key], share: percent(share(t, key)) }))
+	}));
+}

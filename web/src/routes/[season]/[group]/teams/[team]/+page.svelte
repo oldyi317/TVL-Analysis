@@ -16,6 +16,11 @@
 		metricsConclusion,
 		metricsDotOption,
 		metricsTable,
+		OPPONENT_ERROR_NOTE,
+		SCORE_SOURCES,
+		sourcesBarOption,
+		sourcesConclusion,
+		sourcesTable,
 		TEAM_METRIC_KEYS
 	} from '#lib/teamAdvanced.js';
 	import type { PageProps } from './$types';
@@ -34,6 +39,8 @@
 	const comparison = $derived(data.comparison);
 	const teamName = (id: number) => data.teamNames[id] ?? `球隊 ${id}`;
 	const metricsOption = $derived(comparison ? metricsDotOption(comparison, teamName) : null);
+	const sourcesOption = $derived(comparison ? sourcesBarOption(comparison, teamName) : null);
+	const sourcesHeight = $derived(`${(comparison?.teams.length ?? 0) * 2.25 + 6}rem`);
 
 	function matchHref(gameId: number): string {
 		return `${resolve('/[season]/[group]/matches/[game]', {
@@ -128,6 +135,42 @@
 {/if}
 
 <h2>進階數據</h2>
+<ChartFrame
+	title="得分來源組成"
+	games={comparison?.team.games ?? 0}
+	conclusion={comparison ? sourcesConclusion(comparison) : null}
+	option={sourcesOption}
+	emptyTitle="本季尚無單場數據"
+	note="本隊在最上面，其他隊半透明；每條是該隊整季得分的四種來源佔比。{OPPONENT_ERROR_NOTE}。"
+	height={sourcesHeight}
+>
+	{#snippet table()}
+		{#if comparison}
+			<table aria-label="得分來源組成">
+				<thead>
+					<tr>
+						<th scope="col">球隊</th>
+						{#each SCORE_SOURCES as source (source.key)}
+							<th scope="col" class="num">{source.label}</th>
+						{/each}
+						<th scope="col" class="num">比分總分</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each sourcesTable(comparison, teamName) as row (row.team_id)}
+						<tr>
+							<th scope="row">{row.name}{#if row.isTeam}<span class="self">（本隊）</span>{/if}</th>
+							{#each row.cells as cell (cell.key)}
+								<td class="num">{cell.points}<span class="rank">{cell.share}</span></td>
+							{/each}
+							<td class="num">{row.total}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		{/if}
+	{/snippet}
+</ChartFrame>
 <ChartFrame
 	title="球隊指標對照組內各隊"
 	games={comparison?.team.games ?? 0}

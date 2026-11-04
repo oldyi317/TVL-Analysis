@@ -123,3 +123,55 @@ def test_games_counts_matches_with_stats_per_team(export):
     payload = export(build)
     assert [s["group"] for s in payload] == ["men"]
     assert team(payload, 21, "men", 4)["games"] == 2
+
+
+def test_points_opponent_error_is_derived_per_game_and_summed(export):
+    def build(conn):
+        # 第 1 場：鳳凰 75 分、技術得分 5+3+2=10 → 65；第 2 場：鳳凰 75 分、技術得分 4+1=5 → 70
+        match(conn, 1, PHOENIX, TAIPOWER, THREE_SETS, date="2025-11-01")
+        match(conn, 2, MIZUNO, PHOENIX, (20, 20, 20, None, 25, 25, 25, None), date="2025-11-08")
+        player(conn, 1, 4)
+        seed_stat(conn, 1, stat(attack=(5, 10), block=3, serve=(2, 4)), match_date="2025-11-01", opponent="屏東台電")
+        seed_stat(conn, 1, stat(attack=(4, 10), block=1), match_date="2025-11-08", opponent="雲林美津濃")
+
+    phoenix = team(export(build), 21, "men", 4)
+    assert phoenix["points"] == {"attack": 9, "block": 4, "serve": 2, "opponent_error": 135, "total": 150}
+
+
+def test_negative_opponent_error_warns_and_is_not_corrected(export, caplog):
+    def build(conn):
+        match(conn, 1, PHOENIX, TAIPOWER, THREE_SETS)
+        player(conn, 1, 4)
+        seed_stat(conn, 1, stat(attack=(80, 100)), opponent="屏東台電")
+
+    with caplog.at_level("WARNING"):
+        phoenix = team(export(build), 21, "men", 4)
+    assert phoenix["points"]["opponent_error"] == 75 - 80
+    assert any("game_id=1" in r.message and "team_id=4" in r.message and "-5" in r.message for r in caplog.records)
+
+
+def test_points_exclude_golden_set_match_and_stat_rows(export):
+    def build(conn):
+        match(conn, 1, PHOENIX, TAIPOWER, THREE_SETS)
+        match(conn, 2, PHOENIX, TAIPOWER, (15, None, None, None, 10, None, None, None), golden=1)
+        player(conn, 1, 4)
+        seed_stat(conn, 1, stat(attack=(5, 10), block=3), opponent="屏東台電")
+        seed_stat(conn, 1, stat(attack=(9, 9), block=9, serve=(9, 9)), opponent="屏東台電", golden=1)
+
+    assert team(export(build), 21, "men", 4)["points"] == {
+        "attack": 5, "block": 3, "serve": 0, "opponent_error": 67, "total": 75}
+
+
+def test_points_same_team_id_men_and_women_are_separate(export):
+    def build(conn):
+        match(conn, 1, PHOENIX, TAIPOWER, THREE_SETS)
+        match(conn, 1, KAOHSIUNG, JINGHUA, FOUR_SETS, gender="F")
+        player(conn, 1, 4)
+        player(conn, 2, 4, gender="F")
+        seed_stat(conn, 1, stat(attack=(5, 10)), opponent="屏東台電")
+        seed_stat(conn, 2, stat(attack=(4, 20)), opponent="臺北鯨華")
+
+    payload = export(build)
+    assert team(payload, 21, "men", 4)["points"]["total"] == 75
+    assert team(payload, 21, "women", 4)["points"] == {
+        "attack": 4, "block": 0, "serve": 0, "opponent_error": 91, "total": 95}

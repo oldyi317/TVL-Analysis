@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { TeamAdvanced, TeamAdvancedData, TeamMetric, TeamMetrics } from '#lib/data/types.js';
-import { metricsConclusion, metricsDotOption, metricsTable, teamComparison } from './teamAdvanced.js';
+import {
+	metricsConclusion,
+	metricsDotOption,
+	metricsTable,
+	SCORE_SOURCES,
+	sourcesBarOption,
+	sourcesConclusion,
+	sourcesTable,
+	teamComparison
+} from './teamAdvanced.js';
 
 const metric = (value: number | null, rank: number | null): TeamMetric => ({
 	numerator: 0,
@@ -17,6 +26,7 @@ const team = (team_id: number, ranks: Partial<Record<keyof TeamMetrics, number |
 	return {
 		team_id,
 		games,
+		points: { attack: 40, block: 10, serve: 10, opponent_error: 40, total: 100 },
 		metrics: {
 			attack_success_rate: m('attack_success_rate'),
 			serve_point_rate: m('serve_point_rate'),
@@ -157,5 +167,110 @@ describe('metricsTable', () => {
 		expect(rows[0].cells[0]).toEqual({ key: 'attack_success_rate', value: '40%', rank: '第 2 / 3' });
 		expect(rows[0].cells[4]).toEqual({ key: 'set_excellent_rate', value: '—', rank: '—' });
 		expect(rows[1].cells[0]).toEqual({ key: 'attack_success_rate', value: '50%', rank: '第 1 / 3' });
+	});
+});
+
+const withPoints = (t: TeamAdvanced, p: Partial<TeamAdvanced['points']>): TeamAdvanced => {
+	const points = { ...t.points, ...p };
+	points.total = p.total ?? points.attack + points.block + points.serve + points.opponent_error;
+	return { ...t, points };
+};
+// 以對手失誤得分佔比控制名次；其餘三項固定 25 / 10 / 15（共 50）
+const byError = (id: number, error: number, games = 3) =>
+	withPoints(team(id, {}, games), { attack: 25, block: 10, serve: 15, opponent_error: error });
+const shares = (id: number, attack: number, block: number, serve: number, opponent_error: number) =>
+	withPoints(team(id, {}), { attack, block, serve, opponent_error });
+const comparison = (teams: TeamAdvanced[]) => teamComparison(data(teams), 21, 'men', teams[0].team_id)!;
+
+describe('sourcesConclusion', () => {
+	it('四項正式名稱', () => {
+		expect(SCORE_SOURCES.map((s) => s.label)).toEqual(['攻擊得分', '攔網得分', '發球得分', '對手失誤得分']);
+	});
+
+	it('佔比最高的一端：寫組內最高並四捨五入整數', () => {
+		// 本隊：25/10/15/error=50 → 對手失誤 50%；對手失誤佔比最高
+		const c = comparison([byError(4, 50), byError(1, 10), byError(2, 20)]);
+		expect(sourcesConclusion(c)).toBe('對手失誤得分佔 50%，組內最高');
+	});
+
+	it('並列最低：其他項不在兩端時取最低端，並列寫並列', () => {
+		// 各隊佔比（攻擊／攔網／發球／對手失誤，總分 100）；本隊攻擊 10% 與另一隊並列最低
+		const c = comparison([
+			shares(4, 10, 30, 30, 30),
+			shares(1, 40, 20, 20, 20),
+			shares(2, 20, 40, 40, 0),
+			shares(3, 10, 10, 10, 70)
+		]);
+		expect(sourcesConclusion(c)).toBe('攻擊得分佔 10%，組內並列最低');
+	});
+
+	it('不在兩端時寫第 k 高，名次相同偏好由高端、再依項目順序', () => {
+		const c = comparison([
+			shares(4, 20, 20, 20, 40),
+			shares(1, 40, 10, 30, 20),
+			shares(2, 30, 30, 10, 30),
+			shares(3, 5, 35, 10, 50)
+		]);
+		expect(sourcesConclusion(c)).toBe('發球得分佔 20%，組內第 2 高');
+	});
+
+	it('四項都並列最高時取第一項', () => {
+		const c = comparison([byError(4, 50), byError(1, 50)]);
+		expect(sourcesConclusion(c)).toBe('攻擊得分佔 25%，組內並列最高');
+	});
+
+	it('已賽未滿 3 場、可比較的隊少於 2、total 為 0 都不產生', () => {
+		expect(sourcesConclusion(comparison([byError(4, 10, 2), byError(1, 20)]))).toBeNull();
+		expect(sourcesConclusion(comparison([byError(4, 10)]))).toBeNull();
+		const zero = withPoints(team(1, {}), { attack: 0, block: 0, serve: 0, opponent_error: 0 });
+		expect(sourcesConclusion(comparison([byError(4, 10), zero]))).toBeNull();
+	});
+});
+
+type BarOption = {
+	yAxis: { data: string[]; inverse: boolean };
+	xAxis: { min: number; max: number };
+	legend: { data: string[] };
+	series: { name: string; stack: string; data: { value: number; itemStyle: { opacity: number } }[] }[];
+	tooltip: { formatter: (p: { dataIndex: number }[]) => string };
+};
+
+describe('sourcesBarOption', () => {
+	const names: Record<number, string> = { 1: '屏東台電', 4: '臺北鳳凰', 2: '雲林美津濃' };
+	const zero = withPoints(team(2, {}), { attack: 0, block: 0, serve: 0, opponent_error: 0 });
+	const option = () =>
+		sourcesBarOption(comparison([byError(4, 50), byError(1, 10), zero]), (id) => names[id]) as BarOption;
+
+	it('本隊在最上面並註明本隊，total 為 0 的隊不畫', () => {
+		const o = option();
+		expect(o.yAxis.inverse).toBe(true);
+		expect(o.yAxis.data).toEqual(['臺北鳳凰（本隊）', '屏東台電']);
+	});
+
+	it('四個 series 同一堆疊、佔比到小數 1 位、其他隊淡化', () => {
+		const o = option();
+		expect(o.series.map((s) => s.name)).toEqual(['攻擊得分', '攔網得分', '發球得分', '對手失誤得分']);
+		expect(new Set(o.series.map((s) => s.stack)).size).toBe(1);
+		expect(o.series[0].data.map((d) => d.value)).toEqual([25, 41.7]);
+		expect(o.series[0].data.map((d) => d.itemStyle.opacity)).toEqual([1, 0.35]);
+		expect(o.xAxis).toMatchObject({ min: 0, max: 100 });
+		expect(o.legend.data).toHaveLength(4);
+	});
+
+	it('tooltip 顯示四項得分數與佔比，並註明推算值', () => {
+		const text = option().tooltip.formatter([{ dataIndex: 0 }]);
+		expect(text).toContain('臺北鳳凰');
+		expect(text).toContain('對手失誤得分：50 分（50%）');
+		expect(text.endsWith('對手失誤得分是推算值：比分總分 − 技術得分')).toBe(true);
+	});
+});
+
+describe('sourcesTable', () => {
+	it('本隊在第一列，各列有四項得分數與佔比及比分總分', () => {
+		const names: Record<number, string> = { 4: '臺北鳳凰', 1: '屏東台電' };
+		const rows = sourcesTable(comparison([byError(1, 10), byError(4, 50)].reverse()), (id) => names[id]);
+		expect(rows.map((r) => [r.name, r.isTeam, r.total])).toEqual([['臺北鳳凰', true, 100], ['屏東台電', false, 60]]);
+		expect(rows[0].cells[3]).toEqual({ key: 'opponent_error', points: 50, share: '50%' });
+		expect(rows[1].cells[3]).toEqual({ key: 'opponent_error', points: 10, share: '17%' });
 	});
 });
