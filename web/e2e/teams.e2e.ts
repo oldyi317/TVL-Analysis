@@ -320,7 +320,7 @@ for (const [label, cup, group] of [
 			await expect(blocks).toHaveAttribute('aria-pressed', 'true', { timeout: 1000 });
 		}).toPass({ timeout: 15000 });
 		await expect(attack).toHaveAttribute('aria-pressed', 'false');
-		if (team.games >= 3) await expect(frame.getByText(/^近 3 場每局攔網/)).toBeVisible();
+		if (team.games > 3) await expect(frame.getByText(/^近 3 場每局攔網/)).toBeVisible();
 		const toggle = frame.getByRole('button', { name: '以表格檢視' });
 		await toggle.click();
 		await expect(toggle).toHaveAttribute('aria-expanded', 'true');

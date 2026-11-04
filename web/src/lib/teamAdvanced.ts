@@ -347,9 +347,9 @@ export function teamTrendOption(team: TeamAdvanced, key: TeamMetricKey, teamName
 	);
 }
 
-// 近 3 場與整季都是分子總和除以分母總和，差距用未四捨五入的值計算
+// 近 3 場與整季都是分子總和除以分母總和，差距用未四捨五入的值計算；剛好 3 場時近 3 場就是整季，不產生
 export function trendConclusion(team: TeamAdvanced, key: TeamMetricKey): string | null {
-	if (team.games < MIN_CONCLUSION_GAMES || team.trend.length < TREND_RECENT_GAMES) return null;
+	if (team.games < MIN_CONCLUSION_GAMES || team.trend.length <= TREND_RECENT_GAMES) return null;
 	const recent = team.trend.slice(-TREND_RECENT_GAMES).map((g) => g.metrics[key]);
 	const recentDen = recent.reduce((n, m) => n + m.denominator, 0);
 	const season = team.metrics[key];

@@ -468,13 +468,15 @@ describe('球隊逐場趨勢', () => {
 	it('比本季低時說低，差距四捨五入為 0 時說持平', () => {
 		const down = withTrend([game(1, '2026-01-03', 1, [9, 10]), ...[2, 3, 4].map((i) => game(i, `2026-01-1${i}`, 1, [5, 10]))]);
 		expect(trendConclusion(down, 'attack_success_rate')).toBe('近 3 場攻擊成功率比本季整體低 10 個百分點');
-		const flat = withTrend([1, 2, 3].map((i) => game(i, `2026-01-1${i}`, 1, [5, 10])));
+		const flat = withTrend([1, 2, 3, 4].map((i) => game(i, `2026-01-1${i}`, 1, [5, 10])));
 		expect(trendConclusion(flat, 'attack_success_rate')).toBe('近 3 場攻擊成功率與本季整體持平');
 	});
 
-	it('已賽未滿 3 場、或近 3 場分母為 0 時不產生結論', () => {
+	it('已賽 3 場以下（近 3 場即整季）、或近 3 場分母為 0 時不產生結論', () => {
 		const two = withTrend([game(1, '2026-01-03', 1, [5, 10]), game(2, '2026-01-10', 2, [6, 10])]);
 		expect(trendConclusion(two, 'attack_success_rate')).toBeNull();
+		const three = withTrend([game(1, '2026-01-03', 1, [5, 10]), game(2, '2026-01-10', 2, [6, 10]), game(3, '2026-01-17', 1, [9, 10])]);
+		expect(trendConclusion(three, 'attack_success_rate')).toBeNull();
 		expect(trendConclusion(season, 'serve_point_rate')).toBeNull();
 	});
 
