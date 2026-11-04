@@ -1,4 +1,6 @@
 import { error } from '@sveltejs/kit';
+import teamAdvancedJson from '#lib/data/team_advanced.json';
+import type { TeamAdvancedData } from '#lib/data/types.js';
 import { parseId, requireSeasonGroup } from '#lib/route.js';
 import {
 	findTeam,
@@ -7,8 +9,10 @@ import {
 	seasonTeam,
 	teamEntries,
 	teamMatches,
+	teamsIn,
 	teamStanding
 } from '#lib/site.js';
+import { teamComparison } from '#lib/teamAdvanced.js';
 import type { EntryGenerator, PageLoad } from './$types';
 
 export const entries: EntryGenerator = teamEntries;
@@ -26,6 +30,8 @@ export const load: PageLoad = ({ params }) => {
 		formerNames: formerNames(team),
 		standing: teamStanding(season.cup_id, group, team.team_id),
 		matches: teamMatches(season.cup_id, group, team.team_id),
-		roster: latestRoster(season.cup_id, group, team.team_id)
+		roster: latestRoster(season.cup_id, group, team.team_id),
+		comparison: teamComparison(teamAdvancedJson as TeamAdvancedData, season.cup_id, group, team.team_id),
+		teamNames: Object.fromEntries(teamsIn(season.cup_id, group).map((t) => [t.team_id, t.short_name]))
 	};
 };

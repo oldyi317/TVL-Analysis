@@ -11,6 +11,7 @@ from src.export.leaders import compute_leaders
 from src.export.player_advanced import compute_advanced, distributions
 from src.export.player_seasons import STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
 from src.export.standings import compute_standings
+from src.export.team_advanced import compute_team_advanced
 from src.utils.db_config import DB_PATH, PROJECT_ROOT, get_connection
 from src.utils.match_status import HAS_RESULT_WHERE
 from src.utils.teams import UnknownTeamError, resolve_team
@@ -530,6 +531,23 @@ def _leaders_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict
     return {"leaders": leaders}
 
 
+def _team_advanced_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict[int, dict]]) -> dict:
+    set_columns = ", ".join(f"{side}_set{n}" for side in ("home", "away") for n in range(1, 6))
+    sets: dict[str, dict[int, int]] = {gender: {} for gender in GROUP_BY_GENDER}
+    for gender, game_id, *scores in conn.execute(
+        f"SELECT gender, game_id, {set_columns} FROM matches WHERE is_golden_set = 0"
+    ):
+        sets[gender][game_id] = len(_set_pairs(scores))
+    team_advanced = []
+    for cup_id, gender in sorted(games, key=lambda k: (k[0], GROUP_ORDER.index(GROUP_BY_GENDER[k[1]]))):
+        team_advanced.append({
+            "cup_id": cup_id,
+            "group": GROUP_BY_GENDER[gender],
+            "teams": compute_team_advanced(games[(cup_id, gender)].values(), sets[gender]),
+        })
+    return {"team_advanced": team_advanced}
+
+
 def _site_payload() -> dict:
     return {"generated_at": datetime.now(TAIPEI).replace(microsecond=0).isoformat()}
 
@@ -552,6 +570,7 @@ def export_site_data(db_path: Path, out_dir: Path) -> None:
         games = _box_score_games(conn)
         _write_json(out_dir / "box_scores.json", _box_scores_payload(conn, games))
         _write_json(out_dir / "leaders.json", _leaders_payload(conn, games))
+        _write_json(out_dir / "team_advanced.json", _team_advanced_payload(conn, games))
         _write_json(out_dir / "site.json", _site_payload())
     finally:
         conn.close()

@@ -26,6 +26,13 @@ const rosterSeason = findSeason('rosters');
 
 const standings = readJson('standings').standings;
 
+type TeamAdvanced = { team_id: number; games: number };
+type GroupTeamAdvanced = { cup_id: number; group: string; teams: TeamAdvanced[] };
+const teamAdvanced: GroupTeamAdvanced[] = readJson('team_advanced').team_advanced;
+const seasonName = (cup: number): string =>
+	seasonsData.seasons.find((s: { cup_id: number }) => s.cup_id === cup).name;
+const METRICS_CHART = '球隊指標對照組內各隊';
+
 type Week = { week_label: string; week_start_date: string | null; players: RosterPlayer[] };
 type RosterPlayer = { player_id: number; jersey_number: number | null; position: string | null };
 type Standing = { team_id: number; rank: number; wins: number; losses: number; points: number };
@@ -238,4 +245,44 @@ test('隊徽載入失敗時落回縮寫文字，隊頁隊徽仍帶名稱', async
 	const badges = page.locator('.badge');
 	expect(await badges.count()).toBeGreaterThan(0);
 	for (const b of await badges.all()) expect(await abbreviation(b)).not.toBe('');
+});
+
+for (const [label, cup, group] of [
+	['男子組最近有單場數據的賽季', findSeason('teamadvanced')?.cupId, 'men'],
+	['女子組最近有單場數據的賽季', findSeason('teamadvanced', 'women')?.cupId, 'women'],
+	[`男子組 ${OLD_SEASON}`, OLD_CUP, 'men']
+] as const) {
+	test(`球隊頁進階數據（${label}）：球隊指標點圖與以表格檢視`, async ({ page }) => {
+		const scope = teamAdvanced.find((s) => s.cup_id === cup && s.group === group);
+		test.skip(!scope || scope.teams.length === 0, '該季該組沒有單場數據');
+		const team = scope!.teams[0];
+		await page.goto(`${BASE}/${seasonName(cup!)}/${group}/teams/${team.team_id}/`);
+		const frame = page.getByRole('region', { name: METRICS_CHART });
+		await expect(frame.locator('[role="img"]')).toBeVisible();
+		await expect(frame.getByText(`已賽 ${team.games} 場`)).toBeVisible();
+		const toggle = frame.getByRole('button', { name: '以表格檢視' });
+		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		await expect(async () => {
+			if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+			await expect(toggle).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 });
+		}).toPass({ timeout: 15000 });
+		const table = frame.getByRole('table', { name: METRICS_CHART });
+		await expect(table.getByRole('columnheader', { name: '攻擊成功率' })).toBeVisible();
+		await expect(table.getByRole('row')).toHaveCount(scope!.teams.length + 1);
+		await expect(table.getByRole('rowheader').first()).toContainText('（本隊）');
+		expect(await noOverflow(page)).toBeLessThanOrEqual(0);
+	});
+}
+
+test('該季沒有單場數據的球隊，進階數據顯示空狀態', async ({ page }) => {
+	const has = new Set(teamAdvanced.flatMap((s) => s.teams.map((t) => `${s.cup_id}-${s.group}-${t.team_id}`)));
+	const missing = teams
+		.flatMap((t) => t.cup_ids.map((cup) => ({ t, cup })))
+		.find(({ t, cup }) => !has.has(`${cup}-${t.group}-${t.team_id}`));
+	test.skip(!missing, '目前每個賽季的每支球隊都有單場數據');
+	const { t, cup } = missing!;
+	await page.goto(`${BASE}/${seasonName(cup)}/${t.group}/teams/${t.team_id}/`);
+	const frame = page.getByRole('region', { name: METRICS_CHART });
+	await expect(frame.getByText('本季尚無單場數據')).toBeVisible();
+	await expect(frame.locator('[role="img"]')).toHaveCount(0);
 });
