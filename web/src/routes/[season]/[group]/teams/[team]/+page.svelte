@@ -3,6 +3,7 @@
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import BigStat from '#lib/components/BigStat.svelte';
+	import ChartFrame from '#lib/components/ChartFrame.svelte';
 	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import Icon from '#lib/components/Icon.svelte';
@@ -10,6 +11,13 @@
 	import PlayerLink from '#lib/components/PlayerLink.svelte';
 	import { isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
+	import {
+		metricLabel,
+		metricsConclusion,
+		metricsDotOption,
+		metricsTable,
+		TEAM_METRIC_KEYS
+	} from '#lib/teamAdvanced.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -22,6 +30,10 @@
 	);
 
 	const hasUnplayed = $derived(data.matches.some((m) => !isPlayed(m)));
+
+	const comparison = $derived(data.comparison);
+	const teamName = (id: number) => data.teamNames[id] ?? `球隊 ${id}`;
+	const metricsOption = $derived(comparison ? metricsDotOption(comparison, teamName) : null);
 
 	function matchHref(gameId: number): string {
 		return `${resolve('/[season]/[group]/matches/[game]', {
@@ -114,6 +126,42 @@
 		<div class="note"><DataNote text={WIN_PROB_NOTE} /></div>
 	{/if}
 {/if}
+
+<h2>進階數據</h2>
+<ChartFrame
+	title="球隊指標對照組內各隊"
+	games={comparison?.team.games ?? 0}
+	conclusion={comparison ? metricsConclusion(comparison) : null}
+	option={metricsOption}
+	emptyTitle="本季尚無單場數據"
+	note="每列一項球隊指標，由左到右是組內最低到最高；大而實心的點是本隊，小而半透明的點是組內其他隊。"
+	height="20rem"
+>
+	{#snippet table()}
+		{#if comparison}
+			<table aria-label="球隊指標對照組內各隊">
+				<thead>
+					<tr>
+						<th scope="col">球隊</th>
+						{#each TEAM_METRIC_KEYS as key (key)}
+							<th scope="col" class="num">{metricLabel(key)}</th>
+						{/each}
+					</tr>
+				</thead>
+				<tbody>
+					{#each metricsTable(comparison, teamName) as row (row.team_id)}
+						<tr>
+							<th scope="row">{row.name}{#if row.isTeam}<span class="self">（本隊）</span>{/if}</th>
+							{#each row.cells as cell (cell.key)}
+								<td class="num">{cell.value}<span class="rank">{cell.rank}</span></td>
+							{/each}
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		{/if}
+	{/snippet}
+</ChartFrame>
 
 <h2>{data.roster?.kind === 'season' ? '賽季報名名單' : '週登錄'}</h2>
 {#if data.roster}

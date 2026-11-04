@@ -1,6 +1,6 @@
 import { isPlayed } from '../src/lib/match.js';
 
-export type Kind = 'played' | 'players' | 'teams' | 'rosters' | 'boxscores' | 'advanced';
+export type Kind = 'played' | 'players' | 'teams' | 'rosters' | 'boxscores' | 'advanced' | 'teamadvanced';
 export type Source = {
 	rows: any[];
 	seasons: { cup_id: number; name: string }[];
@@ -17,7 +17,8 @@ export const KINDS: Record<Kind, { file: string; key?: string; cups: (r: any) =>
 	teams: { file: 'teams', cups: (r) => r.cup_ids },
 	rosters: { file: 'rosters', cups: (r) => (r.weeks.length > 0 ? [r.cup_id] : []) },
 	boxscores: { file: 'box_scores', cups: (r) => (r.games.length > 0 ? [r.cup_id] : []) },
-	advanced: { file: 'player_advanced', key: 'players', cups: (r) => [r.cup_id] }
+	advanced: { file: 'player_advanced', key: 'players', cups: (r) => [r.cup_id] },
+	teamadvanced: { file: 'team_advanced', cups: (r) => (r.teams.length > 0 ? [r.cup_id] : []) }
 };
 
 // 回傳最近一個有該資料的賽季：當季有就當季，否則取有資料的最大 cup_id，都沒有回 undefined

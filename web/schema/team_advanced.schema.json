@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "team_advanced.schema.json",
+  "title": "TeamAdvancedData",
+  "description": "各賽季各組別的球隊指標（全隊分子總和除以分母總和，排除黃金決勝局）；由 src.export.site_data 產出，沒有單場數據的季組不輸出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["team_advanced"],
+  "properties": {
+    "team_advanced": {
+      "type": "array",
+      "items": {
+        "title": "GroupTeamAdvanced",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cup_id", "group", "teams"],
+        "properties": {
+          "cup_id": { "type": "integer" },
+          "group": { "type": "string", "enum": ["men", "women"] },
+          "teams": {
+            "type": "array",
+            "items": {
+              "title": "TeamAdvanced",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["team_id", "games", "metrics"],
+              "properties": {
+                "team_id": { "type": "integer" },
+                "games": { "type": "integer", "minimum": 1, "description": "已有單場數據且對得回賽程的場次數" },
+                "metrics": {
+                  "title": "TeamMetrics",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "attack_success_rate", "serve_point_rate", "receive_excellent_rate",
+                    "dig_excellent_rate", "set_excellent_rate", "blocks_per_set"
+                  ],
+                  "properties": {
+                    "attack_success_rate": { "$ref": "#/$defs/metric" },
+                    "serve_point_rate": { "$ref": "#/$defs/metric" },
+                    "receive_excellent_rate": { "$ref": "#/$defs/metric" },
+                    "dig_excellent_rate": { "$ref": "#/$defs/metric" },
+                    "set_excellent_rate": { "$ref": "#/$defs/metric" },
+                    "blocks_per_set": { "$ref": "#/$defs/metric", "description": "分母為該隊在比分中實際打的局數" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "metric": {
+      "title": "TeamMetric",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator", "value", "rank"],
+      "properties": {
+        "numerator": { "type": "integer", "minimum": 0 },
+        "denominator": { "type": "integer", "minimum": 0 },
+        "value": { "type": ["number", "null"], "description": "率類為百分比、每局攔網為每局次數，四捨五入到小數 2 位；分母為 0 時為 null" },
+        "rank": { "type": ["integer", "null"], "minimum": 1, "description": "組別內名次，同值並列同名次、下一名跳號；value 為 null 時為 null" }
+      }
+    }
+  }
+}
