@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { liveLabel, rowDetail, type RecordRowView } from '#lib/records.js';
+	import { isMatch, liveLabel, matchLabel, rowDetail, rowKey, type RecordRowView } from '#lib/records.js';
 	import type { Group } from '#lib/site.js';
 	import EmptyState from './EmptyState.svelte';
 	import RankDot from './RankDot.svelte';
@@ -17,6 +17,8 @@
 
 	const playerHref = (season: string, playerId: number) =>
 		`${resolve('/[season]/[group]/players/[player]', { season, group, player: String(playerId) })}/`;
+	const matchHref = (season: string, gameId: number) =>
+		`${resolve('/[season]/[group]/matches/[game]', { season, group, game: String(gameId) })}/`;
 </script>
 
 <section id="r-{board.key}" aria-labelledby="{uid}-h">
@@ -34,7 +36,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each rows as row (`${row.player_id}-${row.cup_id}`)}
+					{#each rows as row (rowKey(row))}
 						<tr>
 							<td class="rank"><RankDot rank={row.rank} /></td>
 							<td>
@@ -42,7 +44,14 @@
 									<TeamBadge team={row.team} size="sm" label={row.team_short} />
 									<div class="identity">
 										<a class="name" href={playerHref(row.season, row.player_id)}>{row.name}</a>
-										<span class="detail">{rowDetail(row)}{#if row.in_progress}<span class="live"> · {liveLabel(row)}</span>{/if}</span>
+										<span class="detail">{rowDetail(row)}{#if isMatch(row)}
+												·
+												{#if row.game_id !== null}<a class="match" href={matchHref(row.season, row.game_id)}
+														>{matchLabel(row)}</a
+													>{:else}{matchLabel(row)}{/if}{/if}{#if row.in_progress}<span class="live">
+													· {liveLabel(row)}</span
+												>{/if}</span
+										>
 									</div>
 								</div>
 							</td>
@@ -142,6 +151,16 @@
 		color: var(--text-muted);
 		line-height: 1.4;
 		overflow-wrap: anywhere;
+	}
+
+	.match {
+		color: inherit;
+		text-decoration: underline;
+		text-underline-offset: 0.2em;
+	}
+
+	.match:hover {
+		color: var(--accent);
 	}
 
 	.live {

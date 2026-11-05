@@ -226,3 +226,107 @@ def test_cumulative_team_is_last_team_with_stats_when_transferring_mid_latest_se
     payload, _ = export_json(build, "records")
     row = men_cumulative(payload)["total_points"][0]
     assert (row["value"], row["season_count"], row["games"], row["cup_id"], row["team_id"]) == (41, 2, 3, 21, 2)
+
+
+MATCH_SQL = """
+    INSERT INTO matches (game_id, gender, cup_id, match_date, home_team, away_team, home_team_id, away_team_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+"""
+
+
+def men_match(payload):
+    return {b["key"]: b["match_records"] for b in payload["records"][0]["boards"]}
+
+
+def test_match_records_list_each_match_with_date_season_opponent_and_game(export_json):
+    def build(conn):
+        build_two_seasons(conn)
+        conn.execute(MATCH_SQL, (5, "M", 20, "2024-11-23", "屏東台電", "雲林美津濃", 1, 2))
+        conn.execute(MATCH_SQL, (9, "M", 21, "2025-11-01", "雲林美津濃", "屏東台電", 2, 1))
+
+    payload, _ = export_json(build, "records")
+    rows = men_match(payload)["total_points"]
+    assert [(r["rank"], r["name"], r["value"], r["season"], r["match_date"], r["team_short"], r["opponent"],
+             r["game_id"]) for r in rows] == [
+        (1, "王小明", 30, "2024-25", "2024-11-23", "屏東台電", "雲林美津濃", 5),
+        (2, "李大華", 15, "2025-26", "2025-11-01", "雲林美津濃", "屏東台電", 9),
+        (3, "王小明", 12, "2025-26", "2025-11-01", "屏東台電", "雲林美津濃", 9),
+    ]
+    assert (rows[0]["player_id"], rows[0]["cup_id"], rows[0]["team_id"]) == (1, 20, 1)
+    assert [r["value"] for r in men_match(payload)["block_points"]] == [6, 2]
+
+
+def test_match_records_list_same_player_in_several_matches_of_one_season(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_player(conn, 2, "李大華")
+        seed_registration(conn, 1, 1, 1)
+        seed_registration(conn, 2, 2, 2)
+        seed_stat(conn, 1, stat(20), "2025-11-01")
+        seed_stat(conn, 1, stat(25), "2025-11-08")
+        seed_stat(conn, 2, stat(20), "2025-11-08", "屏東台電")
+
+    payload, _ = export_json(build, "records")
+    assert [(r["rank"], r["name"], r["match_date"]) for r in men_match(payload)["total_points"]] == [
+        (1, "王小明", "2025-11-08"), (2, "李大華", "2025-11-08"), (2, "王小明", "2025-11-01")]
+    assert men_match(payload)["serve_points"] == []
+
+
+def test_match_records_exclude_golden_set(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1)
+        seed_stat(conn, 1, stat(5), "2025-11-01")
+        seed_stat(conn, 1, stat(9), "2025-11-01", golden=1)
+
+    payload, _ = export_json(build, "records")
+    assert [r["value"] for r in men_match(payload)["total_points"]] == [5]
+
+
+def test_match_record_without_match_page_has_null_game_and_raw_opponent(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1)
+        seed_stat(conn, 1, stat(5), "2025-11-01")
+        seed_stat(conn, 1, stat(7), "2025-11-08", "已解散隊")
+
+    payload, _ = export_json(build, "records")
+    assert [(r["value"], r["opponent"], r["game_id"]) for r in men_match(payload)["total_points"]] == [
+        (7, "已解散隊", None), (5, "雲林美津濃", None)]
+
+
+def test_match_record_opponent_uses_season_name(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1)
+        seed_stat(conn, 1, stat(5), "2025-11-01")
+        conn.execute("INSERT INTO team_season_names VALUES (2, 'M', 21, '舊隊全名', '舊隊')")
+
+    payload, _ = export_json(build, "records")
+    assert men_match(payload)["total_points"][0]["opponent"] == "舊隊"
+
+
+def test_match_records_flag_current_season(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1, cup_id=21)
+        seed_registration(conn, 2, 1, 1, cup_id=22)
+        seed_stat(conn, 1, stat(5), "2025-11-01")
+        seed_stat(conn, 2, stat(4), "2026-11-01")
+
+    payload, _ = export_json(build, "records")
+    assert [(r["cup_id"], r["in_progress"]) for r in men_match(payload)["total_points"]] == [(21, False), (22, True)]
+
+
+def test_match_records_same_player_same_value_lists_latest_match_first(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1, cup_id=20, week_start="2024-11-23")
+        seed_registration(conn, 2, 1, 1, cup_id=21)
+        seed_stat(conn, 1, stat(20), "2024-11-23")
+        seed_stat(conn, 2, stat(20), "2025-11-01")
+        seed_stat(conn, 2, stat(20), "2025-11-08")
+
+    payload, _ = export_json(build, "records")
+    assert [(r["rank"], r["match_date"]) for r in men_match(payload)["total_points"]] == [
+        (1, "2025-11-08"), (1, "2025-11-01"), (1, "2024-11-23")]
