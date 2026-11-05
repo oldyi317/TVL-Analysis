@@ -1,0 +1,19 @@
+{
+  "requested_at_utc": "2026-11-05T03:15:12.923928+00:00",
+  "url": "https://tvl.ctvba.org.tw/wgame/180",
+  "request_headers": {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  },
+  "status_code": 200,
+  "response_headers": {
+    "Content-Type": "text/html; charset=utf-8",
+    "Server": "cloudflare"
+  },
+  "challenge_detected": false,
+  "stopped": false,
+  "raw_response_bytes": 753723,
+  "raw_response_sha256": "e3f9216bd3e42ff4c87eae019dcf100fa3ea45b40b01caa941d3e4e16a157795",
+  "fixture_transform": "BeautifulSoup html.parser 僅保留含 .game_header 或 table 的 section，補 UTF-8 HTML 外殼；LF",
+  "fixture_bytes": 115174,
+  "fixture_sha256": "5bd1fd600498ecb53d9fb1971f51fc76953a70cd462a459e4bfdcf159818cfed"
+}

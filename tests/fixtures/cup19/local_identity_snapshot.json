@@ -1,0 +1,151 @@
+{
+  "db_sha256": "8181507510b10f03d13d6c876f2b447e98fdaa98c478955ec9b92e459d2c8c1f",
+  "players": [
+    {
+      "fixture": "match_1_response.html",
+      "external_player_url": "Player.aspx?CupID=19&PlayerID=47",
+      "raw_name": "郭柏毅",
+      "local_exact_matches": [
+        [
+          35,
+          "郭柏毅",
+          "M"
+        ]
+      ]
+    },
+    {
+      "fixture": "match_1_response.html",
+      "external_player_url": "Player.aspx?CupID=19&PlayerID=56",
+      "raw_name": "周冠宇",
+      "local_exact_matches": []
+    },
+    {
+      "fixture": "match_1_response.html",
+      "external_player_url": "Player.aspx?CupID=19&PlayerID=58",
+      "raw_name": "雷諾",
+      "local_exact_matches": [
+        [
+          47,
+          "雷諾",
+          "M"
+        ]
+      ]
+    },
+    {
+      "fixture": "match_2_response.html",
+      "external_player_url": "Player.aspx?CupID=19&PlayerID=76",
+      "raw_name": "B.BAGUNAS",
+      "local_exact_matches": []
+    },
+    {
+      "fixture": "match_101_response.html",
+      "external_player_url": "Player.aspx?CupID=19&PlayerID=107",
+      "raw_name": "林良黛",
+      "local_exact_matches": [
+        [
+          81,
+          "林良黛",
+          "F"
+        ]
+      ]
+    },
+    {
+      "fixture": "match_101_response.html",
+      "external_player_url": "Player.aspx?CupID=19&PlayerID=109",
+      "raw_name": "林書荷",
+      "local_exact_matches": [
+        [
+          84,
+          "林書荷",
+          "F"
+        ]
+      ]
+    }
+  ],
+  "teams": [
+    [
+      3,
+      "臺北鯨華",
+      "F",
+      1
+    ],
+    [
+      4,
+      "高雄台電",
+      "F",
+      1
+    ],
+    [
+      5,
+      "新北中纖",
+      "F",
+      1
+    ],
+    [
+      7,
+      "義力營造",
+      "F",
+      1
+    ],
+    [
+      1,
+      "屏東台電",
+      "M",
+      1
+    ],
+    [
+      2,
+      "雲林美津濃",
+      "M",
+      1
+    ],
+    [
+      4,
+      "臺北鳳凰",
+      "M",
+      1
+    ],
+    [
+      5,
+      "龍邁建設",
+      "M",
+      1
+    ],
+    [
+      7,
+      "獅子王",
+      "M",
+      0
+    ],
+    [
+      8,
+      "彰化三大有線",
+      "M",
+      0
+    ],
+    [
+      9,
+      "臺北Conti",
+      "M",
+      0
+    ],
+    [
+      10,
+      "連莊",
+      "M",
+      0
+    ],
+    [
+      11,
+      "三福產業",
+      "M",
+      1
+    ],
+    [
+      12,
+      "新竹可利工程師",
+      "M",
+      1
+    ]
+  ]
+}

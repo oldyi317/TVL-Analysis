@@ -1,0 +1,19 @@
+{
+  "requested_at_utc": "2026-11-05T03:15:04.100687+00:00",
+  "url": "https://statistics.ctvba.org.tw/_handler/Match.ashx?CupID=19&MatchID=2&SetNum=0",
+  "request_headers": {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  },
+  "status_code": 200,
+  "response_headers": {
+    "Content-Type": "text/plain; charset=utf-8",
+    "Server": "cloudflare"
+  },
+  "challenge_detected": false,
+  "stopped": false,
+  "raw_response_bytes": 15977,
+  "raw_response_sha256": "3942557c12a6b91bd40d9a9880d874dde025e5fdb511bb80a45de665c1adf644",
+  "fixture_transform": "UTF-8 解碼並將 CRLF/CR 正規化為 LF；未變更其他內容",
+  "fixture_bytes": 15919,
+  "fixture_sha256": "e86dd9a6bbce04a1198bb08581f11eab31fd03b13500b88973d77f24119d9e8a"
+}

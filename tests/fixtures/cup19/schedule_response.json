@@ -1,0 +1,19 @@
+{
+  "requested_at_utc": "2026-11-05T03:14:14.586050+00:00",
+  "url": "https://tvl.ctvba.org.tw/schedule/112",
+  "request_headers": {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  },
+  "status_code": 200,
+  "response_headers": {
+    "Content-Type": "text/html; charset=utf-8",
+    "Server": "cloudflare"
+  },
+  "challenge_detected": false,
+  "stopped": false,
+  "raw_response_bytes": 926180,
+  "raw_response_sha256": "14f9038d37a581ff62471d0fb48f718ea0e16b6081a70226a7010bd7c312dd99",
+  "fixture_transform": "BeautifulSoup html.parser 擷取 .matches 的父層 container（含賽季標題與全部賽事），補 UTF-8 HTML 外殼；LF",
+  "fixture_bytes": 215553,
+  "fixture_sha256": "2d56fc53319318132c534a4ae9b8f0cc1054fff8e2d8eb29b16205254981f4ba"
+}

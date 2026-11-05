@@ -1,0 +1,20 @@
+{
+  "requested_at_utc": "2026-11-05T03:13:35.149660+00:00",
+  "url": "https://statistics.ctvba.org.tw/Match.aspx?CupID=19",
+  "request_headers": {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  },
+  "status_code": 404,
+  "response_headers": {
+    "Content-Type": "text/html; charset=utf-8",
+    "Server": "cloudflare"
+  },
+  "challenge_detected": false,
+  "stopped": false,
+  "raw_response_bytes": 4788,
+  "raw_response_sha256": "06b6ff9807faac6b678dbc2bc8963b7482456dd98202ac10afc11b38ce751b33",
+  "fixture_transform": "UTF-8 解碼並將 CRLF/CR 正規化為 LF；未變更其他內容；移除行尾空白；移除 Cloudflare 注入腳本（原回應含 challenge-platform，非阻擋式驗證頁）",
+  "fixture_bytes": 3495,
+  "fixture_sha256": "efad4f9c15318c6fb6b45a401ef217a09c12cc49b5214b3703ab568151074fde",
+  "cloudflare_script_observed": true
+}

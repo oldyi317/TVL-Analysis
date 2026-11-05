@@ -1,0 +1,19 @@
+{
+  "requested_at_utc": "2026-11-05T03:16:37.744618+00:00",
+  "url": "https://tvl.ctvba.org.tw/news-detail/423",
+  "request_headers": {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  },
+  "status_code": 200,
+  "response_headers": {
+    "Content-Type": "text/html; charset=utf-8",
+    "Server": "cloudflare"
+  },
+  "challenge_detected": false,
+  "stopped": false,
+  "raw_response_bytes": 661847,
+  "raw_response_sha256": "678b9133ea3b5b07cce5a81596198e11bfcea044d4393301670dcfa6146af2f2",
+  "fixture_transform": "僅擷取含布萊恩的男子段落、女子組參賽隊數與義力營造段落，補原頁標題及 UTF-8 HTML 外殼；LF",
+  "fixture_bytes": 978,
+  "fixture_sha256": "0c84dfacb0aaac7d280725b81c5c44891423e5bf039ac85582d8e70949326849"
+}
