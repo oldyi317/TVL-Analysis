@@ -216,8 +216,8 @@ def parse_match_page(html: str, cup_id: int, season: Season) -> MatchPage | None
     week = int(week_m.group(1)) if week_m else None
     stage_m = re.search(STAGE_PATTERN, title)
     stage = ROUND_STAGE_ALIAS.get(stage_m.group(1), stage_m.group(1)) if stage_m else "例行賽"
-    venue_m = re.search(r"第\d+週\(([^)]*)\)", title)
-    no_m = re.search(r"編號：(\d+)", title)
+    venue_m = re.search(r"(?:第\d+週|" + STAGE_PATTERN[1:-1] + r")\(([^)]*)\)", title)  # 季後賽標題沒有週次，場館接在階段後
+    no_m = re.search(r"編號：[男女]?(\d+)", title)  # cup 18 起的舊季寫「編號：男1」
     official_no = int(no_m.group(1)) if no_m else None
 
     result = soup.select_one("div.MatchResult")

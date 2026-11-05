@@ -8,7 +8,7 @@ from src.etl.season_backfill import (
     BackfillBlocked, build_review_list, ensure_backfill_season, fetch_match_page, main, parse_match_page,
     run_backfill,
 )
-from src.utils.constants import EXT_BASE, EXT_TEAM_MAPS
+from src.utils.constants import BACKFILL_SEASONS, EXT_BASE, EXT_TEAM_MAPS, EXT_TEAM_SEASON_NAMES
 from tests.conftest import connect_seeded, seed_player, seed_registration
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cup19"
@@ -57,6 +57,19 @@ def test_parse_match_1(season):
     p = next(x for x in home.players if x["name"] == "陳朝璽")
     assert (p["jersey_number"], p["position"]) == (1, "S")
     assert [p[f] for f in STAT_FIELDS] == [4, 4, 1, 1, 10, 0, 0, 0, 1, 1, 37, 6]
+
+
+def test_official_no_with_gender_prefix(season):
+    """cup 18 的外部標題寫「編號：男1」「編號：女12」，組別字要略過，game_label 仍為官網的「Game N」。"""
+    page = parse_match_page(_html(1).replace("編號：1 ", "編號：男1 "), 19, season)
+    assert page.official_no == 1 and page.game_label == "Game 1"
+
+
+def test_playoff_title_keeps_venue(season):
+    """季後賽標題「季後賽(場館)」沒有週次，場館仍要取到。"""
+    page = parse_match_page(_html(1).replace("第1週(成功大學體育館)", "季後賽(台北市立大學體育館)"), 19, season)
+    assert page.week is None and page.round_name is None and page.stage == "季後賽"
+    assert page.venue == "台北市立大學體育館"
 
 
 # 2
@@ -274,7 +287,7 @@ def test_match_ids_spec():
 
 
 # 8
-@pytest.mark.parametrize("cup_id", [22, 18])
+@pytest.mark.parametrize("cup_id", [22, 17])
 def test_cli_guard(tmp_path, cup_id):
     with pytest.raises(SystemExit):
         main(["--cup-id", str(cup_id), "--db", str(tmp_path / "x.db"), "--review-out", str(tmp_path / "r.json")])
@@ -300,6 +313,25 @@ def test_ext_team_map_19_targets_exist(tmp_db_path):
     teams = set(conn.execute("SELECT team_id, gender FROM teams").fetchall())
     assert len(EXT_TEAM_MAPS[19]) == 11
     assert set(EXT_TEAM_MAPS[19].values()) <= teams
+    conn.close()
+
+
+def test_ext_team_map_18_targets_exist(tmp_db_path):
+    """cup 18（2022-23）：男 6 隊（臺中太陽神為新非現役隊）、女 5 隊（愛山林為義力營造曾用名，沿用 team_id）。"""
+    conn = connect_seeded(tmp_db_path)
+    teams = {(t, g): active for t, g, active in conn.execute("SELECT team_id, gender, is_active FROM teams")}
+    assert len(EXT_TEAM_MAPS[18]) == 11
+    assert set(EXT_TEAM_MAPS[18].values()) <= set(teams)
+    assert EXT_TEAM_MAPS[18][3] == (14, "M") and teams[(14, "M")] == 0
+    assert EXT_TEAM_MAPS[18][11] == (7, "F")
+    assert BACKFILL_SEASONS[18] == ("2022-23", "2022-07-01", "2023-06-30")
+    assert EXT_TEAM_SEASON_NAMES[18][(5, "M")] == ("桃園臺灣產險", "桃園臺產")
+    assert EXT_TEAM_SEASON_NAMES[18][(7, "F")] == ("愛山林", "愛山林")
+    aliases = {a: (t, g) for a, t, g in conn.execute("SELECT alias, team_id, gender FROM team_aliases")}
+    assert aliases["臺中太陽神"] == (14, "M")
+    assert aliases["愛山林"] == (7, "F")
+    assert aliases["Conti"] == (9, "M") and aliases["conti"] == (9, "M")
+    assert aliases["雲林Mizuno"] == (2, "M")
     conn.close()
 
 
