@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { Group } from '#lib/site.js';
-	import GroupSwitch from './GroupSwitch.svelte';
+	import { GROUPS, GROUP_LABEL, type Group } from '#lib/site.js';
+	import SegmentNav from './SegmentNav.svelte';
 	import SeasonSwitch from './SeasonSwitch.svelte';
 	import SiteNav from './SiteNav.svelte';
 
@@ -25,7 +25,10 @@
 	</div>
 	{#if season && group}
 		<div class="switches">
-			<GroupSwitch current={group} hrefFor={(g) => hrefFor('group', g)} />
+			<SegmentNav
+				label="組別"
+				items={GROUPS.map((g) => ({ key: g, label: GROUP_LABEL[g], href: hrefFor('group', g), current: g === group }))}
+			/>
 			{#if !records}
 				<SeasonSwitch current={season} hrefFor={(s) => hrefFor('season', s)} />
 			{/if}

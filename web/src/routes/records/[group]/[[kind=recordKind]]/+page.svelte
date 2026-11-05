@@ -1,16 +1,21 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import RecordBoard from '#lib/components/RecordBoard.svelte';
+	import SegmentNav from '#lib/components/SegmentNav.svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import { formatThroughDate } from '#lib/leaders.js';
-	import { coverageText } from '#lib/records.js';
+	import { coverageText, RECORD_KINDS, type RecordKindInfo } from '#lib/records.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	const kindHref = (path: RecordKindInfo['path']) =>
+		`${resolve('/records/[group]/[[kind=recordKind]]', { group: data.group, kind: path || undefined })}/`;
 </script>
 
-<SiteHead title="{GROUP_LABEL[data.group]} 歷史紀錄｜TVL 數據" />
+<SiteHead title="{GROUP_LABEL[data.group]} {data.kind.label}｜歷史紀錄｜TVL 數據" />
 
 <h1>{GROUP_LABEL[data.group]} 歷史紀錄</h1>
 
@@ -20,19 +25,31 @@
 	<p class="scope">
 		{coverageText(data.coverage)} · 統計至 {formatThroughDate(data.coverage.through_date)}
 	</p>
-	<section aria-labelledby="season-records">
-		<h2 id="season-records">單季紀錄</h2>
-		<p class="intro">一名球員在一個賽季內的總和，同一人在不同賽季可各自上榜。</p>
+	<div class="kinds">
+		<SegmentNav
+			label="紀錄類型"
+			items={RECORD_KINDS.map((k) => ({ key: k.key, label: k.label, href: kindHref(k.path), current: k.key === data.kind.key }))}
+			stay
+		/>
+	</div>
+	<section aria-labelledby="records-kind">
+		<h2 id="records-kind">{data.kind.label}</h2>
+		<p class="intro">{data.kind.intro}</p>
 		<div class="boards">
 			{#each data.boards as board (board.key)}
-				<RecordBoard {board} group={data.group} />
+				<RecordBoard
+					{board}
+					rows={data.kind.key === 'season' ? board.seasonRecords : board.cumulativeRecords}
+					kindLabel={data.kind.label}
+					group={data.group}
+				/>
 			{/each}
 		</div>
 	</section>
 	<ul class="notes" aria-label="附註">
 		<li>出賽場數以有技術統計的場次計：一場中任一項技術統計不為 0 才算一場。</li>
 		<li>不含黃金決勝局。</li>
-		<li>標示「進行中」的紀錄來自本季，隨賽事進行可能被刷新。</li>
+		<li>標示「進行中」的單季紀錄來自本季，標示「含進行中賽季」的累計紀錄計入本季，隨賽事進行可能被刷新。</li>
 	</ul>
 {/if}
 
@@ -42,9 +59,13 @@
 	}
 
 	.scope {
-		margin: 0 0 var(--space-5);
+		margin: 0 0 var(--space-4);
 		font-size: var(--text-sm);
 		color: var(--text-muted);
+	}
+
+	.kinds {
+		margin-block-end: var(--space-5);
 	}
 
 	h2 {
