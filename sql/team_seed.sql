@@ -16,7 +16,8 @@ INSERT INTO teams (team_id, team_name, gender, short_name, official_name, color,
     (9, '臺北Conti', 'M', '臺北Conti', NULL, '#666666', 0),
     (10, '連莊', 'M', '連莊', NULL, '#999999', 0),
     (11, '三福產業', 'M', '三福產業', '三福產業', '#E72410', 1),
-    (12, '新竹可利工程師', 'M', '新竹可利', '新竹可利工程師', '#A2619C', 1)
+    (12, '新竹可利工程師', 'M', '新竹可利', '新竹可利工程師', '#A2619C', 1),
+    (13, '極速超跑', 'F', '極速超跑', NULL, '#999999', 0)
 ON CONFLICT(team_id, gender) DO UPDATE SET
     team_name=excluded.team_name, short_name=excluded.short_name, official_name=excluded.official_name,
     color=excluded.color, is_active=excluded.is_active;
@@ -53,6 +54,9 @@ INSERT INTO team_aliases (alias, team_id, gender, source) VALUES
     ('彰化三大有線', 8, 'M', 'legacy'),
     ('臺北Conti', 9, 'M', 'legacy'),
     ('連莊', 10, 'M', 'legacy'),
+    ('連莊排球隊', 10, 'M', 'legacy'),
+    ('極速超跑', 13, 'F', 'legacy'),
+    ('凱撒飯店連鎖', 7, 'F', 'former'),
     ('1', 1, 'M', 'ext_stats'),
     ('2', 2, 'M', 'ext_stats'),
     ('3', 7, 'M', 'ext_stats'),
