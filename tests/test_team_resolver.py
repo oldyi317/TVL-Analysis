@@ -89,7 +89,7 @@ def test_seed_is_idempotent(conn):
         conn.execute("SELECT COUNT(*) FROM teams").fetchone()[0],
         conn.execute("SELECT COUNT(*) FROM team_aliases").fetchone()[0],
     )
-    assert before == after == (15, 43)
+    assert before == after == (16, 48)
 
 
 def test_ext_team_map_20_targets_exist_in_teams(conn):
@@ -142,7 +142,7 @@ def test_active_teams_official_name_resolves_to_self(conn):
 
 def test_colors_valid_and_unique_per_gender(conn):
     rows = conn.execute("SELECT gender, color FROM teams").fetchall()
-    assert len(rows) == 15
+    assert len(rows) == 16
     assert all(c and re.fullmatch(r"#[0-9A-Fa-f]{6}", c) for _, c in rows)
     for gender in ("M", "F"):
         colors = [c for g, c in rows if g == gender]

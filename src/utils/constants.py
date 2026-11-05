@@ -30,6 +30,19 @@ EXT_HEADERS = {
 # ── 外部系統 TeamID → 本地 DB (team_id, gender) 對照表（以 cup_id 為鍵）──
 # TeamID 每季重編；查無該賽季時爬蟲會拋錯而不是落回其他賽季。cup 22 起不補（ADR 0009）。
 EXT_TEAM_MAPS: dict[int, dict[int, tuple[int, str]]] = {
+    18: {
+        1: (1, "M"),    # 屏東台電(男)
+        2: (2, "M"),    # 雲林美津濃（外部寫「雲林Mizuno」）(男)
+        3: (14, "M"),   # 臺中太陽神(男)，僅此一季
+        4: (9, "M"),    # 臺北Conti（當季官網寫「Conti」）(男)
+        5: (5, "M"),    # 桃園臺灣產險(男)
+        6: (10, "M"),   # 連莊(男)
+        7: (4, "F"),    # 高雄台電(女)
+        8: (3, "F"),    # 臺北鯨華(女)
+        9: (5, "F"),    # 新北中纖(女)
+        10: (13, "F"),  # 極速超跑(女)
+        11: (7, "F"),   # 愛山林（義力營造曾用名，後為凱撒飯店連鎖）(女)
+    },
     19: {
         1: (1, "M"),    # 屏東台電(男)
         2: (2, "M"),    # 雲林美津濃(男)
@@ -72,12 +85,17 @@ EXT_TEAM_MAPS: dict[int, dict[int, tuple[int, str]]] = {
 # 由 season_backfill 寫進目標 DB 的 seasons；不放 schema.sql 種子，因為正式 seasons 多一列就會上站，
 # 要等人工確認（#146）後才進正式 DB。
 BACKFILL_SEASONS: dict[int, tuple[str, str, str]] = {
+    18: ("2022-23", "2022-07-01", "2023-06-30"),
     19: ("2023-24", "2023-07-01", "2024-06-30"),
 }
 
 # 回填賽季的當季隊名：{cup_id: {(team_id, gender): (隊名, 簡稱)}}，由 season_backfill 寫進 team_season_names。
 # 不放 team_seed.sql，因為該表 FK seasons，正式 DB 沒有 cup 19 列會違反 FK。
 EXT_TEAM_SEASON_NAMES: dict[int, dict[tuple[int, str], tuple[str, str]]] = {
+    18: {
+        (5, "M"): ("桃園臺灣產險", "桃園臺產"),
+        (7, "F"): ("愛山林", "愛山林"),
+    },
     19: {
         (5, "M"): ("桃園臺灣產險", "桃園臺產"),
         (7, "F"): ("凱撒飯店連鎖", "凱撒飯店連鎖"),
