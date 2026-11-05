@@ -60,6 +60,7 @@ TVL-Analysis/
 │   │   ├── official_box_score.py  # 官網賽事頁單場數據 HTML 解析與驗證
 │   │   ├── match_stats_writer.py  # 本季（cup ≥22）有比分且無統計的場次 → roster_registrations + player_match_stats
 │   │   ├── stats_crawler.py       # 歷史工具：外部統計系統週登錄與單場數據回填（僅 cup ≤21，ADR 0009）
+│   │   ├── season_backfill.py     # 歷史賽季一次性回填（各局得分＋週登錄＋單場數據＋待確認清單，ADR 0010）
 │   │   └── cleaner.py             # 資料清洗與異常檢查（只標記異常，不插補）
 │   ├── export/
 │   │   ├── site_data.py           # 靜態站 JSON 匯出器（僅用 Python 標準庫）
@@ -135,6 +136,7 @@ python -m src.etl.match_crawler                  # 官網各局比分 → matche
 python -m src.etl.match_stats_writer             # 本季（cup≥22）有比分且無統計的場次 → player_match_stats（官網單場數據，spec #75；先跑 match_crawler）
 python -m src.etl.stats_crawler --rosters --cup-id 20   # 歷史工具：外部統計系統週登錄回填，僅 cup ≤21（ADR 0009；cup 22 起拒絕執行）
 python -m src.etl.stats_crawler --incremental --cup-id 20   # 歷史工具：外部統計系統單場數據回填，僅 cup ≤21（先跑 match_crawler）
+python -m src.etl.season_backfill --cup-id 19 --db <隔離DB> --review-out <清單.json>   # 歷史賽季一次性回填（ADR 0010；只在隔離 DB 跑）
 python -m src.etl.db_loader                      # roster CSV → players 身分層 + season_rosters 賽季報名名單
 python -m src.etl.db_loader --csv assets/tvl_20_player_list/tvl20_rosters.csv --cup-id 20   # 歷史名單回填（圖檔轉錄 CSV，指定賽季）
 bash scripts/daily_update.sh                     # 每日增量更新（GitHub Actions 排程同款；DRY_RUN=1 可演練）

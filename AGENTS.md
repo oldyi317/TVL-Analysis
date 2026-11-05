@@ -19,6 +19,7 @@ python -m src.etl.match_crawler                  # 官網各局比分 → matche
 python -m src.etl.match_stats_writer             # 本季（cup≥22）有比分且無統計的場次 → player_match_stats（官網單場數據，spec #75；先跑 match_crawler）
 python -m src.etl.stats_crawler --rosters --cup-id 20   # 歷史工具：外部統計系統週登錄回填，僅 cup ≤21（ADR 0009；cup 22 起拒絕執行）
 python -m src.etl.stats_crawler --incremental --cup-id 20   # 歷史工具：外部統計系統單場數據回填，僅 cup ≤21（先跑 match_crawler）
+python -m src.etl.season_backfill --cup-id 19 --db <隔離DB> --review-out <清單.json>   # 歷史賽季一次性回填（ADR 0010；只在隔離 DB 跑，不進每日更新）
 python -m src.etl.db_loader                      # roster CSV → players 身分層 + season_rosters 賽季報名名單
 python -m src.etl.db_loader --csv assets/tvl_20_player_list/tvl20_rosters.csv --cup-id 20   # 歷史名單回填（圖檔轉錄 CSV，指定賽季）
 bash scripts/daily_update.sh                     # 每日增量更新（GitHub Actions 排程同款；DRY_RUN=1 可演練）
@@ -41,8 +42,9 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
 - **行尾一律 LF**：repo 在 WSL 的 `/mnt/d` 上，Windows 工具容易把檔案轉成 CRLF，
   會製造上萬行假 diff。commit 前用 `git diff --stat -w` 確認沒有純行尾雜訊。
 - **資料來源**：現行只有官網 `tvl.ctvba.org.tw`（名單、比分、cup 22 起的單場數據與週登錄）。
-  外部統計系統 `http://114.35.229.141`（明文 HTTP、hardcoded IP，見 `src/utils/constants.py`）
-  只供 cup 21 以前的歷史補抓，已自每日更新停用（ADR 0009）；其格式不可從程式碼推斷，
+  外部統計系統 `https://statistics.ctvba.org.tw`（新網域，見 `src/utils/constants.py`、ADR 0010）
+  只供 cup 21 以前的歷史補抓，已自每日更新停用（ADR 0009）；cup 13–19 的回填只走
+  `season_backfill`（隔離 DB、`--db` 必填，見 `docs/ops/season-backfill.md`）；其格式不可從程式碼推斷，
   改爬蟲前先實際抓一頁看回應。
 - **每週登錄名單會變動**：企業排球每週登錄球員可能不同。`match_stats_writer` 與歷史工具 `stats_crawler` 遇到
   週登錄外的球員分兩路：該賽季有賽季報名名單時，依「同隊姓名 → 同隊背號」比對，

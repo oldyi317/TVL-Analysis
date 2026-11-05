@@ -71,7 +71,7 @@ def _team(payload: dict, group: str, team_id: int) -> dict:
 def test_teams_json_carries_identity_and_season_participation(exported):
     payload = json.loads((exported / "teams.json").read_text(encoding="utf-8"))
     _validate(payload, "teams.schema.json")
-    assert len(payload["teams"]) == 14
+    assert len(payload["teams"]) == 15
     assert _team(payload, "men", 1) == {
         "team_id": 1,
         "group": "men",
@@ -119,7 +119,7 @@ def test_teams_json_sorted_men_first_then_team_id(exported):
     payload = json.loads((exported / "teams.json").read_text(encoding="utf-8"))
     keys = [(t["group"], t["team_id"]) for t in payload["teams"]]
     assert keys[:5] == [("men", 1), ("men", 2), ("men", 4), ("men", 5), ("men", 7)]
-    assert keys[-4:] == [("women", 3), ("women", 4), ("women", 5), ("women", 7)]
+    assert keys[-5:] == [("women", 3), ("women", 4), ("women", 5), ("women", 7), ("women", 13)]
 
 
 def test_site_json_records_generation_time_in_taipei(seeded_db, tmp_path):
