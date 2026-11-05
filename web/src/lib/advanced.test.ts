@@ -9,12 +9,15 @@ import {
 	TREND_METRICS,
 	defaultTrendMetric,
 	distributionOption,
+	distributionSummary,
 	headlineStats,
 	inPrPool,
 	noPrReason,
 	playerGameLog,
 	toGameStats,
 	trendOption,
+	trendPoints,
+	trendSummary,
 	type GameLogEntry,
 	type TrendMetric
 } from './advanced.js';
@@ -479,4 +482,40 @@ it('分佈與 PR 指標的標籤與晶片順序維持原樣', () => {
 		'防守負荷',
 		'防守效率'
 	]);
+});
+
+
+describe('分佈圖數字摘要', () => {
+	it('說明本人值、由低到高的同值位置範圍與中位數', () => {
+		expect(distributionSummary({ values: [20, 40, 40, 80], median: 40 }, 40, 'attack_success_rate')).toBe(
+			'攻擊成功率：本人 40%；同位置 4 人，由低到高第 2–3 位（同值 2 人）；中位數 40%。'
+		);
+	});
+});
+
+
+it('分佈摘要區分缺值、零值與空分佈', () => {
+	expect(distributionSummary({ values: [0, 10], median: 5 }, 0, 'points_per_game')).toBe(
+		'場均得分：本人 0；同位置 2 人，由低到高第 1 位；中位數 5。'
+	);
+	expect(distributionSummary({ values: [], median: null }, null, 'attack_success_rate')).toBe(
+		'攻擊成功率：本人 無數據；同位置 0 人，本人無組內位置；中位數 無數據。'
+	);
+});
+
+
+it('趨勢摘要包含場數與最新一場，不以舊有效值代替最新缺值', () => {
+	const log: GameLogEntry[] = [
+		{ date: '2026-01-01', golden: false, stats: toGameStats(stat(1)) },
+		{ date: '2026-01-02', golden: true, stats: toGameStats(stat(1, { attack_total: 0, attack_points: 0 })) }
+	];
+	const points = trendPoints(log, 'attack_success_rate');
+	expect(points.map((p) => p.value)).toEqual([50, null]);
+	expect(trendSummary(points, 'attack_success_rate')).toBe(
+		'攻擊成功率逐場趨勢折線圖：共 2 場，最新一場 2026-01-02：無數據。'
+	);
+	expect(trendSummary(trendPoints(log, 'points'), 'points')).toBe(
+		'得分逐場趨勢折線圖：共 2 場，最新一場 2026-01-02：13。'
+	);
+	expect(trendSummary([], 'points')).toBe('得分逐場趨勢折線圖：共 0 場，本季尚無單場數據。');
 });

@@ -165,6 +165,17 @@ export function findDistribution(
 	);
 }
 
+export function distributionSummary(dist: MetricDistribution, playerValue: number | null, metric: MetricKey): string {
+	const first = playerValue === null ? -1 : dist.values.indexOf(playerValue);
+	const last = playerValue === null ? -1 : dist.values.lastIndexOf(playerValue);
+	const place = first < 0
+		? '本人無組內位置'
+		: first === last
+			? `由低到高第 ${first + 1} 位`
+			: `由低到高第 ${first + 1}–${last + 1} 位（同值 ${last - first + 1} 人）`;
+	return `${METRIC_LABELS[metric]}：本人 ${playerValue === null ? '無數據' : formatMetricValue(metric, playerValue)}；同位置 ${dist.values.length} 人，${place}；中位數 ${dist.median === null ? '無數據' : formatMetricValue(metric, dist.median)}。`;
+}
+
 export function distributionOption(
 	dist: MetricDistribution,
 	playerValue: number | null,
@@ -327,12 +338,21 @@ const goldenPoint = (value: number) => ({ value, symbol: 'diamond', symbolSize: 
 
 export type TrendPoint = TrendValue & { date: string; heading: string; golden: boolean };
 
-export function trendOption(log: GameLogEntry[], metric: TrendMetric): object {
+export function trendPoints(log: GameLogEntry[], metric: TrendMetric): TrendPoint[] {
 	const compute = TREND_DEFS[metric].compute as TrendDef['compute'];
-	return trendLineOption(
-		log.map((e) => ({ ...compute(e.stats), date: e.date, heading: e.date, golden: e.golden })),
-		metric
-	);
+	return log.map((e) => ({ ...compute(e.stats), date: e.date, heading: e.date, golden: e.golden }));
+}
+
+export function trendSummary(points: TrendPoint[], metric: TrendMetric): string {
+	const title = `${trendLabel(metric)}逐場趨勢折線圖：共 ${points.length} 場`;
+	const latest = points.at(-1);
+	return latest
+		? `${title}，最新一場 ${latest.date}：${latest.value === null ? '無數據' : formatMetricValue(metric, latest.value)}。`
+		: `${title}，本季尚無單場數據。`;
+}
+
+export function trendOption(log: GameLogEntry[], metric: TrendMetric): object {
+	return trendLineOption(trendPoints(log, metric), metric);
 }
 
 // 球員與球隊逐場趨勢共用的折線圖

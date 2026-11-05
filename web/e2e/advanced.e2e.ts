@@ -103,11 +103,11 @@ test('逐場趨勢預設依主要位置選指標，可切換其他指標', async
 	const chart = page.locator('[role="img"]').last();
 	const initial = defaults[a!.position!] ?? '得分';
 	await expect(group.getByRole('button', { name: initial, exact: true })).toHaveAttribute('aria-pressed', 'true');
-	await expect(chart).toHaveAttribute('aria-label', `${initial}逐場趨勢折線圖`);
+	await expect(chart).toHaveAttribute('aria-label', new RegExp(`${initial}逐場趨勢折線圖：共 `));
 	const next = initial === '得分' ? '攻擊成功率' : '得分';
 	await group.getByRole('button', { name: next, exact: true }).click();
 	await expect(group.getByRole('button', { name: next, exact: true })).toHaveAttribute('aria-pressed', 'true');
-	await expect(chart).toHaveAttribute('aria-label', `${next}逐場趨勢折線圖`);
+	await expect(chart).toHaveAttribute('aria-label', new RegExp(`${next}逐場趨勢折線圖：共 `));
 });
 
 const BLOCK_LABELS = ['每局攔網', '場均攔網', '攔網得分'];
@@ -153,4 +153,53 @@ test('沒有 PR 值的球員（局數不足或無位置）展開後看到說明'
 	await expect(page.getByRole('note').filter({ hasText: expectedReason(a!) })).toBeVisible();
 	await expect(page.getByRole('table', { name: 'PR 值' })).toHaveCount(0);
 	await expect(page.getByRole('heading', { name: '同位置分佈' })).toHaveCount(0);
+});
+
+test('分佈圖提供數字摘要，鍵盤展開表格後切換指標同步更新', async ({ page }) => {
+	const a = pick(false);
+	test.skip(!a, '用於比對的賽季沒有可比較球員');
+	await open(page, a!);
+	const section = page.getByRole('region', { name: '同位置分佈', exact: true });
+	const chart = section.getByRole('img');
+	await expect(chart).toHaveAttribute('aria-label', /攻擊成功率：本人 .+；同位置 \d+ 人，.+；中位數/);
+	const toggle = section.getByRole('button', { name: '以表格檢視' });
+	await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+	await toggle.focus();
+	await page.keyboard.press('Enter');
+	await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+	const table = section.getByRole('table');
+	await expect(table).toHaveAccessibleName('同位置分佈：攻擊成功率');
+	await expect(table.getByRole('columnheader', { name: '攻擊成功率' })).toBeVisible();
+	await section.getByRole('button', { name: '防守負荷', exact: true }).click();
+	await expect(chart).toHaveAttribute('aria-label', /防守負荷：本人/);
+	await expect(table).toHaveAccessibleName('同位置分佈：防守負荷');
+	await expect(table.getByRole('columnheader', { name: '防守負荷' })).toBeVisible();
+	await expect(table.getByRole('columnheader', { name: '攻擊成功率' })).toHaveCount(0);
+	await toggle.click();
+	await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+	await expect(table).toHaveCount(0);
+});
+
+test('趨勢表格包含最新一場數值，切換指標後摘要與表格同步', async ({ page }) => {
+	const a = pick(false);
+	test.skip(!a, '用於比對的賽季沒有可比較球員');
+	await open(page, a!);
+	const section = page.getByRole('region', { name: '逐場趨勢', exact: true });
+	await section.getByRole('button', { name: '得分', exact: true }).click();
+	const toggle = section.getByRole('button', { name: '以表格檢視' });
+	await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+	await toggle.click();
+	await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+	const table = section.getByRole('table');
+	await expect(table).toHaveAccessibleName('逐場趨勢：得分');
+	const rows = table.locator('tbody tr');
+	const count = await rows.count();
+	const date = await rows.last().getByRole('rowheader').innerText();
+	const value = await rows.last().getByRole('cell').first().innerText();
+	await expect(section.getByRole('img')).toHaveAttribute('aria-label', `得分逐場趨勢折線圖：共 ${count} 場，最新一場 ${date}：${value}。`);
+	await section.getByRole('button', { name: '攻擊成功率', exact: true }).click();
+	await expect(table).toHaveAccessibleName('逐場趨勢：攻擊成功率');
+	await expect(table.getByRole('columnheader', { name: '攻擊成功率' })).toBeVisible();
+	await expect(section.getByRole('img')).toHaveAttribute('aria-label', /攻擊成功率逐場趨勢折線圖：共 \d+ 場，最新一場/);
+	expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 });
