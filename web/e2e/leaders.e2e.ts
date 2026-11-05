@@ -119,7 +119,11 @@ test('比率榜錨點進站與歷史返回會選對分段並捲到卡片', async
 });
 
 test('無局數的賽季缺每局攔網，空榜仍保留 chip', async ({ page }) => {
-	const noSets = entries.find((e: typeof entry) => e.boards.some((b: { kind: string }) => b.kind === 'rate') && !e.boards.some((b: { key: string }) => b.key === 'blocks_per_set'));
+	const noSets = entries.find(
+		(e: typeof entry) =>
+			!e.boards.some((b: { key: string }) => b.key === 'blocks_per_set') &&
+			e.boards.some((b: { key: string; rows: unknown[] }) => b.key === 'points_per_game' && b.rows.length === 0)
+	);
 	expect(noSets).toBeTruthy();
 	await page.goto(`${BASE}/${seasonName(noSets.cup_id)}/${noSets.group}/leaders/#b-points_per_game`);
 	await expect(page.getByRole('navigation', { name: '比率榜項目' }).getByRole('link')).toHaveCount(6);
