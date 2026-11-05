@@ -150,3 +150,79 @@ def test_stats_from_seasons_not_yet_published_are_excluded(export_json):
     payload, _ = export_json(build, "records")
     assert all(r["cup_id"] != 19 for b in payload["records"][0]["boards"] for r in b["season_records"])
     assert payload["records"][0]["coverage"]["first_season"] == "2024-25"
+
+
+def men_cumulative(payload):
+    return {b["key"]: b["cumulative_records"] for b in payload["records"][0]["boards"]}
+
+
+def test_cumulative_sums_every_season_per_player(export_json):
+    payload, _ = export_json(build_two_seasons, "records")
+    rows = men_cumulative(payload)["total_points"]
+    assert [(r["rank"], r["name"], r["value"], r["season_count"], r["games"]) for r in rows] == [
+        (1, "王小明", 42, 2, 2),
+        (2, "李大華", 15, 1, 1),
+    ]
+    assert [r["value"] for r in men_cumulative(payload)["attack_points"]] == [28, 15]
+    assert [r["value"] for r in men_cumulative(payload)["block_points"]] == [8]
+    assert [r["value"] for r in men_cumulative(payload)["serve_points"]] == [6]
+
+
+def test_cumulative_takes_team_and_season_from_latest_season_after_transfer(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1, cup_id=20, week_start="2024-11-23")
+        seed_registration(conn, 2, 1, 2, cup_id=21, week_start="2025-11-01")
+        seed_stat(conn, 1, stat(30), "2024-11-23")
+        seed_stat(conn, 2, stat(5), "2025-11-01")
+        conn.execute("INSERT INTO team_season_names VALUES (2, 'M', 21, '舊隊全名', '舊隊')")
+
+    payload, _ = export_json(build, "records")
+    row = men_cumulative(payload)["total_points"][0]
+    assert (row["value"], row["cup_id"], row["season"], row["team_id"], row["team_short"]) == (
+        35, 21, "2025-26", 2, "舊隊")
+
+
+def test_cumulative_is_in_progress_only_when_it_includes_current_season(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_player(conn, 2, "李大華")
+        seed_registration(conn, 1, 1, 1, cup_id=21)
+        seed_registration(conn, 2, 1, 1, cup_id=22)
+        seed_registration(conn, 3, 2, 2, cup_id=21)
+        seed_stat(conn, 1, stat(5), "2025-11-01")
+        seed_stat(conn, 2, stat(4), "2026-11-01")
+        seed_stat(conn, 3, stat(6), "2025-11-01")
+
+    payload, _ = export_json(build, "records")
+    assert [(r["name"], r["in_progress"]) for r in men_cumulative(payload)["total_points"]] == [
+        ("王小明", True), ("李大華", False)]
+
+
+def test_cumulative_skips_seasons_without_any_game(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1, cup_id=21)
+        seed_registration(conn, 2, 1, 2, cup_id=22)
+        seed_stat(conn, 1, stat(5), "2025-11-01")
+        seed_stat(conn, 2, ZERO, "2026-11-01")
+
+    payload, _ = export_json(build, "records")
+    row = men_cumulative(payload)["total_points"][0]
+    assert (row["season_count"], row["games"], row["season"], row["team_id"], row["in_progress"]) == (
+        1, 1, "2025-26", 1, False)
+
+
+def test_cumulative_team_is_last_team_with_stats_when_transferring_mid_latest_season(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1, cup_id=20, week_start="2024-11-23")
+        seed_registration(conn, 2, 1, 1, cup_id=21, week_start="2025-11-01")
+        seed_registration(conn, 3, 1, 2, cup_id=21, week_start="2025-11-08")
+        seed_stat(conn, 1, stat(30), "2024-11-23")
+        seed_stat(conn, 2, stat(5), "2025-11-01")
+        seed_stat(conn, 3, stat(6), "2025-11-08")
+
+    payload, _ = export_json(build, "records")
+    row = men_cumulative(payload)["total_points"][0]
+    assert (row["value"], row["season_count"], row["games"], row["cup_id"], row["team_id"]) == (41, 2, 3, 21, 2)

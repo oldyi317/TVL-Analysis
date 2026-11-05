@@ -29,6 +29,52 @@ test('男子組歷史紀錄頁：標題、涵蓋範圍、四個得分項與附�
 	await expect(page.getByRole('list', { name: '附註' })).toContainText('不含黃金決勝局');
 });
 
+test('男子組累計紀錄頁：四個得分項、列說明、連到最近一季球員頁', async ({ page }) => {
+	await page.goto(`${BASE}/records/men/cumulative/`);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('男子組 歷史紀錄');
+	await expect(page.getByRole('heading', { level: 2, name: '累計紀錄' })).toBeVisible();
+	const kinds = page.getByRole('navigation', { name: '紀錄類型' });
+	await expect(kinds.getByRole('link', { name: '累計紀錄' })).toHaveAttribute('aria-current', 'page');
+	await expect(kinds.getByRole('link', { name: '單季紀錄' })).not.toHaveAttribute('aria-current', 'page');
+	for (const board of men.boards) {
+		const table = page.locator(`#r-${board.key}`).getByRole('table', { name: `${board.label}累計紀錄` });
+		await expect(table.locator('tbody tr')).toHaveCount(board.cumulative_records.length);
+		if (board.cumulative_records.length) {
+			const first = board.cumulative_records[0];
+			await expect(table.getByRole('link', { name: first.name }).first()).toHaveAttribute(
+				'href', new RegExp(`/${first.season}/men/players/${first.player_id}/$`)
+			);
+			await expect(
+				table.getByText(`${first.season_count} 季 · 出賽 ${first.games} 場 · 最近一季 ${first.team_short}`).first()
+			).toBeVisible();
+		}
+	}
+});
+
+test('單季與累計紀錄互相切換，切組別停在同一種紀錄', async ({ page }) => {
+	await page.goto(`${BASE}/records/men/`);
+	const kinds = page.getByRole('navigation', { name: '紀錄類型' });
+	await kinds.getByRole('link', { name: '累計紀錄' }).click();
+	await expect(page).toHaveURL(`${BASE}/records/men/cumulative/`);
+	await expect(page.getByRole('heading', { level: 2, name: '累計紀錄' })).toBeVisible();
+	await page.getByRole('navigation', { name: '組別' }).getByRole('link', { name: '女子組' }).click();
+	await expect(page).toHaveURL(`${BASE}/records/women/cumulative/`);
+	await expect(kinds.getByRole('link', { name: '累計紀錄' })).toHaveAttribute('aria-current', 'page');
+	await expect(page.getByRole('navigation', { name: '頁面' }).getByRole('link', { name: '歷史紀錄', exact: true }))
+		.toHaveAttribute('aria-current', 'page');
+	await kinds.getByRole('link', { name: '單季紀錄' }).click();
+	await expect(page).toHaveURL(`${BASE}/records/women/`);
+	await expect(page.getByRole('heading', { level: 2, name: '單季紀錄' })).toBeVisible();
+});
+
+test('累計含進行中賽季的紀錄標示「含進行中賽季」', async ({ page }) => {
+	const live = men.boards.flatMap((b: { cumulative_records: { in_progress: boolean }[] }) => b.cumulative_records)
+		.filter((r: { in_progress: boolean }) => r.in_progress);
+	test.skip(!live.length, '目前沒有含進行中賽季的累計紀錄');
+	await page.goto(`${BASE}/records/men/cumulative/`);
+	await expect(page.getByText('含進行中賽季').first()).toBeVisible();
+});
+
 test('進行中賽季的紀錄標示「進行中」', async ({ page }) => {
 	const live = men.boards.flatMap((b: { season_records: { in_progress: boolean }[] }) => b.season_records)
 		.filter((r: { in_progress: boolean }) => r.in_progress);
@@ -55,8 +101,8 @@ test('從導覽列進入，組別切換停在歷史紀錄', async ({ page }) => 
 
 test('手機寬度沒有橫向溢位', async ({ page }) => {
 	await page.setViewportSize({ width: 360, height: 800 });
-	for (const group of ['men', 'women']) {
-		await page.goto(`${BASE}/records/${group}/`);
+	for (const path of ['men/', 'women/', 'men/cumulative/', 'women/cumulative/']) {
+		await page.goto(`${BASE}/records/${path}`);
 		expect(
 			await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
 		).toBeLessThanOrEqual(0);

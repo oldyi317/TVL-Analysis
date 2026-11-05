@@ -20,7 +20,7 @@
 	});
 
 	const base = $derived(`${resolve('/[season]/[group]', { season, group })}/`);
-	const recordsBase = $derived(`${resolve('/records/[group]', { group })}/`);
+	const recordsBase = $derived(`${resolve('/records/[group]/[[kind=recordKind]]', { group })}/`);
 	const onRecords = $derived(page.url.pathname.startsWith(recordsBase));
 	const items = $derived<{ label: string; icon: IconName; href: string; section: string }[]>([
 		{ label: '首頁', icon: 'home', href: base, section: '' },

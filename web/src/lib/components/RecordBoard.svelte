@@ -1,12 +1,17 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { rowDetail, type RecordBoardView } from '#lib/records.js';
+	import { liveLabel, rowDetail, type RecordRowView } from '#lib/records.js';
 	import type { Group } from '#lib/site.js';
 	import EmptyState from './EmptyState.svelte';
 	import RankDot from './RankDot.svelte';
 	import TeamBadge from './TeamBadge.svelte';
 
-	let { board, group }: { board: RecordBoardView; group: Group } = $props();
+	let {
+		board,
+		rows,
+		kindLabel,
+		group
+	}: { board: { key: string; label: string }; rows: RecordRowView[]; kindLabel: string; group: Group } = $props();
 
 	const uid = $props.id();
 
@@ -17,10 +22,10 @@
 <section id="r-{board.key}" aria-labelledby="{uid}-h">
 	<h3 id="{uid}-h">{board.label}</h3>
 	<div class="card">
-		{#if board.seasonRecords.length === 0}
+		{#if rows.length === 0}
 			<EmptyState title="尚無紀錄" />
 		{:else}
-			<table aria-label="{board.label}單季紀錄">
+			<table aria-label="{board.label}{kindLabel}">
 				<thead>
 					<tr>
 						<th scope="col" class="rank">名次</th>
@@ -29,7 +34,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each board.seasonRecords as row (`${row.player_id}-${row.cup_id}`)}
+					{#each rows as row (`${row.player_id}-${row.cup_id}`)}
 						<tr>
 							<td class="rank"><RankDot rank={row.rank} /></td>
 							<td>
@@ -37,7 +42,7 @@
 									<TeamBadge team={row.team} size="sm" label={row.team_short} />
 									<div class="identity">
 										<a class="name" href={playerHref(row.season, row.player_id)}>{row.name}</a>
-										<span class="detail">{rowDetail(row)}{#if row.in_progress}<span class="live"> · 進行中</span>{/if}</span>
+										<span class="detail">{rowDetail(row)}{#if row.in_progress}<span class="live"> · {liveLabel(row)}</span>{/if}</span>
 									</div>
 								</div>
 							</td>

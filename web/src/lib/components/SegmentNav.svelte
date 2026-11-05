@@ -1,16 +1,19 @@
 <script lang="ts">
-	import { GROUPS, GROUP_LABEL, type Group } from '#lib/site.js';
+	type SegmentItem = { key: string; label: string; href: string | undefined; current: boolean };
 
-	let {
-		current,
-		hrefFor
-	}: { current: Group; hrefFor: (group: Group) => string | undefined } = $props();
+	// stay：同一頁內切換檢視（如紀錄類型），換頁後保留捲動位置與焦點
+	let { label, items, stay = false }: { label: string; items: SegmentItem[]; stay?: boolean } = $props();
 </script>
 
-<nav aria-label="組別">
-	{#each GROUPS as group (group)}
-		<a href={hrefFor(group)} aria-current={current === group ? 'page' : undefined}>
-			{GROUP_LABEL[group]}
+<nav aria-label={label}>
+	{#each items as item (item.key)}
+		<a
+			href={item.href}
+			aria-current={item.current ? 'page' : undefined}
+			data-sveltekit-noscroll={stay || undefined}
+			data-sveltekit-keepfocus={stay || undefined}
+		>
+			{item.label}
 		</a>
 	{/each}
 </nav>

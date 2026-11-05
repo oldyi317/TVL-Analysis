@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "records.schema.json",
   "title": "RecordsData",
-  "description": "歷史紀錄：每組別一筆，含資料涵蓋範圍與四個得分項的單季紀錄（排除黃金決勝局）；由 src.export.site_data 產出，男女組都有一筆，沒有任何單場數據的組別 coverage 為 null、boards 為空",
+  "description": "歷史紀錄：每組別一筆，含資料涵蓋範圍與四個得分項的單季紀錄、累計紀錄（排除黃金決勝局）；由 src.export.site_data 產出，男女組都有一筆，沒有任何單場數據的組別 coverage 為 null、boards 為空",
   "type": "object",
   "additionalProperties": false,
   "required": ["records"],
@@ -34,7 +34,7 @@
               "title": "RecordBoard",
               "type": "object",
               "additionalProperties": false,
-              "required": ["key", "label", "season_records"],
+              "required": ["key", "label", "season_records", "cumulative_records"],
               "properties": {
                 "key": { "type": "string" },
                 "label": { "type": "string" },
@@ -57,6 +57,29 @@
                       "team_id": { "type": "integer", "description": "該季最後一場有統計的登錄隊伍" },
                       "team_short": { "type": "string", "description": "當季隊名簡稱" },
                       "in_progress": { "type": "boolean", "description": "紀錄來自進行中的賽季" }
+                    }
+                  }
+                },
+                "cumulative_records": {
+                  "type": "array",
+                  "description": "累計紀錄：每位球員在涵蓋賽季內的總和，名次規則同單季紀錄",
+                  "items": {
+                    "title": "CumulativeRecordRow",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["rank", "player_id", "name", "value", "cup_id", "season", "season_count", "games", "team_id", "team_short", "in_progress"],
+                    "properties": {
+                      "rank": { "type": "integer", "minimum": 1 },
+                      "player_id": { "type": "integer" },
+                      "name": { "type": "string" },
+                      "value": { "type": "integer", "minimum": 1 },
+                      "cup_id": { "type": "integer", "description": "最近一季的 cup_id" },
+                      "season": { "type": "string", "description": "最近一季的賽季名稱，用來組球員頁連結" },
+                      "season_count": { "type": "integer", "minimum": 1, "description": "涵蓋季數：有出賽場數的賽季數" },
+                      "games": { "type": "integer", "minimum": 1, "description": "各季出賽場數的總和" },
+                      "team_id": { "type": "integer", "description": "最近一季最後一場有統計的登錄隊伍" },
+                      "team_short": { "type": "string", "description": "最近一季的當季隊名簡稱" },
+                      "in_progress": { "type": "boolean", "description": "累計含進行中的賽季" }
                     }
                   }
                 }
