@@ -1,6 +1,6 @@
 import leadersJson from '#lib/data/leaders.json';
 import type { GroupLeaders, LeaderBoard, LeaderRow, LeadersData, VolumeRate, VolumeRatePoint } from '#lib/data/types.js';
-import { seasonTeam, teams, type Group, type SeasonTeam } from '#lib/site.js';
+import { teamOf, type Group, type SeasonTeam } from '#lib/site.js';
 import { STAT_LABELS } from '#lib/statLabels.js';
 
 export const TOP_N = 10;
@@ -12,15 +12,8 @@ export function leadersFor(cupId: number, group: Group): GroupLeaders | undefine
 	return (leadersJson as LeadersData).leaders.find((s) => s.cup_id === cupId && s.group === group);
 }
 
-// 對不到球隊代表資料檔壞了：直接丟錯讓 build 失敗，不默默少一列
-function teamOf(teamId: number, group: Group, cupId: number): SeasonTeam {
-	const team = teams.find((t) => t.group === group && t.team_id === teamId);
-	if (!team) throw new Error(`排行榜的 team_id ${teamId}（${group}）不在 teams.json`);
-	return seasonTeam(team, cupId);
-}
-
 export function toBoardView(board: LeaderBoard, group: Group, cupId: number): LeaderBoardView {
-	return { ...board, rows: board.rows.map((row) => ({ ...row, team: teamOf(row.team_id, group, cupId) })) };
+	return { ...board, rows: board.rows.map((row) => ({ ...row, team: teamOf(row.team_id, group, cupId, '排行榜') })) };
 }
 
 // 前 10 名截斷；第 10 名並列時全部顯示
@@ -59,7 +52,7 @@ export function toVolumeRateView(v: VolumeRate, group: Group, cupId: number): Vo
 		technique,
 		countLabel: `${technique}次數`,
 		rateLabel: STAT_LABELS[v.key],
-		points: v.points.map((p) => ({ ...p, team: teamOf(p.team_id, group, cupId).short_name }))
+		points: v.points.map((p) => ({ ...p, team: teamOf(p.team_id, group, cupId, '排行榜').short_name }))
 	};
 }
 

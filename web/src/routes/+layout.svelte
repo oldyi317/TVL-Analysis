@@ -6,7 +6,7 @@
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
-	import { findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
+	import { currentSeason, findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -61,6 +61,10 @@
 
 	const group = $derived(page.params.group && isGroup(page.params.group) ? page.params.group : undefined);
 
+	// 歷史紀錄頁不屬於任何賽季：導覽與組別切換沿用現行賽季當連結基準，不顯示賽季切換
+	const onRecords = $derived(page.route.id?.startsWith('/records/') ?? false);
+	const season = $derived(page.params.season ?? (onRecords ? currentSeason.name : undefined));
+
 	$effect(() => {
 		if (group) writeGroup(browserStorage(), group);
 	});
@@ -70,7 +74,7 @@
 	<link rel="icon" href={asset('favicon.svg')} />
 </svelte:head>
 
-<SiteHeader season={page.params.season} {group} hrefFor={switchHref} />
+<SiteHeader {season} {group} records={onRecords} hrefFor={switchHref} />
 
 <div class="wrap">
 	<main>
