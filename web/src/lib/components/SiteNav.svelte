@@ -20,16 +20,21 @@
 	});
 
 	const base = $derived(`${resolve('/[season]/[group]', { season, group })}/`);
+	const recordsBase = $derived(`${resolve('/records/[group]', { group })}/`);
+	const onRecords = $derived(page.url.pathname.startsWith(recordsBase));
 	const items = $derived<{ label: string; icon: IconName; href: string; section: string }[]>([
 		{ label: '首頁', icon: 'home', href: base, section: '' },
 		{ label: '賽事', icon: 'calendar', href: `${base}matches/`, section: 'matches' },
 		{ label: '戰績', icon: 'trophy', href: `${base}standings/`, section: 'standings' },
 		{ label: '球隊', icon: 'shield', href: `${base}teams/`, section: 'teams' },
 		{ label: '球員', icon: 'user', href: `${base}players/`, section: 'players' },
-		{ label: '排行榜', icon: 'podium', href: `${base}leaders/`, section: 'leaders' }
+		{ label: '排行榜', icon: 'podium', href: `${base}leaders/`, section: 'leaders' },
+		{ label: '歷史紀錄', icon: 'trophy', href: recordsBase, section: 'records' }
 	]);
 
 	function isCurrent(section: string): boolean {
+		if (section === 'records') return onRecords;
+		if (onRecords) return false;
 		const rest = page.url.pathname.slice(base.length);
 		return section === '' ? rest === '' : rest === `${section}/` || rest.startsWith(`${section}/`);
 	}

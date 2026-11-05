@@ -8,10 +8,12 @@
 	let {
 		season,
 		group,
+		records = false,
 		hrefFor
 	}: {
 		season?: string;
 		group?: Group;
+		records?: boolean;
 		hrefFor: (param: 'season' | 'group', value: string) => string | undefined;
 	} = $props();
 </script>
@@ -24,7 +26,9 @@
 	{#if season && group}
 		<div class="switches">
 			<GroupSwitch current={group} hrefFor={(g) => hrefFor('group', g)} />
-			<SeasonSwitch current={season} hrefFor={(s) => hrefFor('season', s)} />
+			{#if !records}
+				<SeasonSwitch current={season} hrefFor={(s) => hrefFor('season', s)} />
+			{/if}
 			<SiteNav {season} {group} />
 		</div>
 	{/if}

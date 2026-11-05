@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "records.schema.json",
+  "title": "RecordsData",
+  "description": "歷史紀錄：每組別一筆，含資料涵蓋範圍與四個得分項的單季紀錄（排除黃金決勝局）；由 src.export.site_data 產出，男女組都有一筆，沒有任何單場數據的組別 coverage 為 null、boards 為空",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["records"],
+  "properties": {
+    "records": {
+      "type": "array",
+      "items": {
+        "title": "GroupRecords",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["group", "coverage", "boards"],
+        "properties": {
+          "group": { "type": "string", "enum": ["men", "women"] },
+          "coverage": {
+            "title": "RecordsCoverage",
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "required": ["first_season", "season_count", "through_date"],
+            "properties": {
+              "first_season": { "type": "string", "description": "該組別最早有單場數據的賽季名稱" },
+              "season_count": { "type": "integer", "minimum": 1, "description": "該組別有單場數據的賽季數" },
+              "through_date": { "type": "string", "format": "date", "description": "該組別最晚一場有單場數據的日期" }
+            }
+          },
+          "boards": {
+            "type": "array",
+            "description": "依序為總得分、攻擊得分、攔網得分、發球得分",
+            "items": {
+              "title": "RecordBoard",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["key", "label", "season_records"],
+              "properties": {
+                "key": { "type": "string" },
+                "label": { "type": "string" },
+                "season_records": {
+                  "type": "array",
+                  "description": "單季紀錄：前 10 名，同值同名次、下一名跳號，第 10 名同分者全列，值為 0 不列",
+                  "items": {
+                    "title": "SeasonRecordRow",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["rank", "player_id", "name", "value", "cup_id", "season", "games", "team_id", "team_short", "in_progress"],
+                    "properties": {
+                      "rank": { "type": "integer", "minimum": 1 },
+                      "player_id": { "type": "integer" },
+                      "name": { "type": "string" },
+                      "value": { "type": "integer", "minimum": 1 },
+                      "cup_id": { "type": "integer" },
+                      "season": { "type": "string", "description": "紀錄所在賽季名稱，用來組球員頁連結" },
+                      "games": { "type": "integer", "minimum": 0, "description": "出賽場數：任一技術統計不為 0 才算一場" },
+                      "team_id": { "type": "integer", "description": "該季最後一場有統計的登錄隊伍" },
+                      "team_short": { "type": "string", "description": "當季隊名簡稱" },
+                      "in_progress": { "type": "boolean", "description": "紀錄來自進行中的賽季" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

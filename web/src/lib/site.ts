@@ -133,7 +133,7 @@ export type MatchView = StyleMatch & {
 	week: number | null;
 };
 
-function teamOf(teamId: number, group: Group, cupId: number, what: string): SeasonTeam {
+export function teamOf(teamId: number, group: Group, cupId: number, what: string): SeasonTeam {
 	const team = teams.find((t) => t.group === group && t.team_id === teamId);
 	if (!team) throw new Error(`${what}的 team_id ${teamId}（${group}）不在 teams.json`);
 	return seasonTeam(team, cupId);

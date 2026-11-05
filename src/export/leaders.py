@@ -40,6 +40,14 @@ RATE_BOARDS = (
 )
 
 
+def rank_ordered(values: Sequence) -> list[int]:
+    """已排序的值轉名次：同值同名次，下一名跳號。"""
+    ranks: list[int] = []
+    for index, value in enumerate(values):
+        ranks.append(ranks[-1] if index and value == values[index - 1] else index + 1)
+    return ranks
+
+
 def _board(spec: BoardSpec, rows: list[dict]) -> dict:
     threshold = None
     if spec.kind == "rate":
@@ -61,8 +69,7 @@ def _board(spec: BoardSpec, rows: list[dict]) -> dict:
         -r[spec.key], -(r[spec.denominator]) if spec.kind == "rate" else 0, r["name"]
     ))
     leaders = []
-    for index, r in enumerate(ordered):
-        rank = leaders[-1]["rank"] if index and r[spec.key] == ordered[index - 1][spec.key] else index + 1
+    for r, rank in zip(ordered, rank_ordered([r[spec.key] for r in ordered])):
         leaders.append({
             "rank": rank,
             "player_id": r["player_id"],

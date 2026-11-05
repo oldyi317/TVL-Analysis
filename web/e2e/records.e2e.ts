@@ -1,0 +1,64 @@
+import { expect, test } from '@playwright/test';
+import { BASE, currentSeason, readJson } from './helpers.js';
+
+const entries = readJson('records').records;
+const entry = (group: string) => entries.find((e: { group: string }) => e.group === group);
+const men = entry('men');
+const coverageText = (c: { first_season: string; season_count: number }) =>
+	`資料自 ${c.first_season} 起，共 ${c.season_count} 季`;
+
+test('男子組歷史紀錄頁：標題、涵蓋範圍、四個得分項與附註', async ({ page }) => {
+	await page.goto(`${BASE}/records/men/`);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('男子組 歷史紀錄');
+	await expect(page.getByText(coverageText(men.coverage))).toBeVisible();
+	await expect(page.getByRole('heading', { level: 2, name: '單季紀錄' })).toBeVisible();
+	for (const board of men.boards) {
+		const card = page.locator(`#r-${board.key}`);
+		await expect(card.getByRole('heading', { name: board.label, exact: true })).toBeVisible();
+		const table = card.getByRole('table', { name: `${board.label}單季紀錄` });
+		await expect(table.locator('tbody tr')).toHaveCount(board.season_records.length);
+		if (board.season_records.length) {
+			const first = board.season_records[0];
+			await expect(table.getByRole('link', { name: first.name }).first()).toHaveAttribute(
+				'href', /\/players\/\d+\/$/
+			);
+			await expect(table.getByText(`${first.season} · ${first.team_short} · 出賽 ${first.games} 場`).first()).toBeVisible();
+		}
+	}
+	await expect(page.getByRole('list', { name: '附註' })).toContainText('出賽場數以有技術統計的場次計');
+	await expect(page.getByRole('list', { name: '附註' })).toContainText('不含黃金決勝局');
+});
+
+test('進行中賽季的紀錄標示「進行中」', async ({ page }) => {
+	const live = men.boards.flatMap((b: { season_records: { in_progress: boolean }[] }) => b.season_records)
+		.filter((r: { in_progress: boolean }) => r.in_progress);
+	test.skip(!live.length, '目前沒有進行中賽季的紀錄');
+	await page.goto(`${BASE}/records/men/`);
+	await expect(page.getByText('進行中').first()).toBeVisible();
+});
+
+test('從導覽列進入，組別切換停在歷史紀錄', async ({ page }) => {
+	await page.goto(`${BASE}/${currentSeason}/men/`);
+	const nav = page.getByRole('navigation', { name: '頁面' });
+	await nav.getByRole('link', { name: '歷史紀錄', exact: true }).click();
+	await expect(page).toHaveURL(`${BASE}/records/men/`);
+	await expect(nav.getByRole('link', { name: '歷史紀錄', exact: true })).toHaveAttribute('aria-current', 'page');
+	await expect(nav.getByRole('link', { name: '首頁', exact: true })).not.toHaveAttribute('aria-current', 'page');
+	await expect(page.getByRole('navigation', { name: '賽季' })).toHaveCount(0);
+	const groups = page.getByRole('navigation', { name: '組別' });
+	await groups.getByRole('link', { name: '女子組' }).click();
+	await expect(page).toHaveURL(`${BASE}/records/women/`);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('女子組 歷史紀錄');
+	await expect(groups.getByRole('link', { name: '女子組' })).toHaveAttribute('aria-current', 'page');
+	await expect(page.getByText(coverageText(entry('women').coverage))).toBeVisible();
+});
+
+test('手機寬度沒有橫向溢位', async ({ page }) => {
+	await page.setViewportSize({ width: 360, height: 800 });
+	for (const group of ['men', 'women']) {
+		await page.goto(`${BASE}/records/${group}/`);
+		expect(
+			await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+		).toBeLessThanOrEqual(0);
+	}
+});
