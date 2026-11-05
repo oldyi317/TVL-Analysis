@@ -1,0 +1,19 @@
+{
+  "requested_at_utc": "2026-11-05T03:15:09.855740+00:00",
+  "url": "https://tvl.ctvba.org.tw/game/129",
+  "request_headers": {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  },
+  "status_code": 200,
+  "response_headers": {
+    "Content-Type": "text/html; charset=utf-8",
+    "Server": "cloudflare"
+  },
+  "challenge_detected": false,
+  "stopped": false,
+  "raw_response_bytes": 756163,
+  "raw_response_sha256": "e57f04f1a466595ab3b3d3ec175082e1d880cab9b7747505d6979dc09fb2c7e0",
+  "fixture_transform": "BeautifulSoup html.parser 僅保留含 .game_header 或 table 的 section，補 UTF-8 HTML 外殼；LF",
+  "fixture_bytes": 117002,
+  "fixture_sha256": "dd653fec46a2b58ff25cb03596a4eca16529dd257421b6cd94112bee2dcc79b7"
+}

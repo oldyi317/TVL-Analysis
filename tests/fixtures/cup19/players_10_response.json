@@ -1,0 +1,19 @@
+{
+  "requested_at_utc": "2026-11-05T03:16:31.771312+00:00",
+  "url": "https://statistics.ctvba.org.tw/_handler/PlayerList.ashx?CupID=19&TeamID=10",
+  "request_headers": {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  },
+  "status_code": 200,
+  "response_headers": {
+    "Content-Type": "text/plain; charset=utf-8",
+    "Server": "cloudflare"
+  },
+  "challenge_detected": false,
+  "stopped": false,
+  "raw_response_bytes": 769,
+  "raw_response_sha256": "5757d4bcdb90d155e8a40b946b4c611040c3d9327db87d37fc743c85d554a6c6",
+  "fixture_transform": "UTF-8 解碼並將 CRLF/CR 正規化為 LF；未變更其他內容",
+  "fixture_bytes": 755,
+  "fixture_sha256": "e7de19e03bf551d91c2b193b1f5de99230990bcd3ed453e8145d454daf1832e3"
+}
