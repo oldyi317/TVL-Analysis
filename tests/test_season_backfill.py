@@ -301,3 +301,45 @@ def test_ext_team_map_19_targets_exist(tmp_db_path):
     assert len(EXT_TEAM_MAPS[19]) == 11
     assert set(EXT_TEAM_MAPS[19].values()) <= teams
     conn.close()
+
+
+def test_ensure_backfill_season_applies_team_seed(tmp_db_path):
+    conn = connect_seeded(tmp_db_path)
+    conn.execute("DELETE FROM team_aliases WHERE team_id = 13 AND gender = 'F'")
+    conn.execute("DELETE FROM teams WHERE team_id = 13 AND gender = 'F'")
+    ensure_backfill_season(conn, 19)
+    assert conn.execute("SELECT team_name FROM teams WHERE team_id = 13 AND gender = 'F'").fetchone() == ("極速超跑",)
+    conn.close()
+
+
+def test_app_error_page_with_injected_script_is_not_block(monkeypatch, no_sleep):
+    body = "<title>並未將物件參考設定為物件的執行個體。</title><script src='/cdn-cgi/challenge-platform/x'></script>"
+    _fake_get(monkeypatch, [FakeResponse(500, body)])
+    assert fetch_match_page(19, 1) is None
+
+
+def test_week_from_db_round_name_when_title_has_no_week(tmp_db_path, season, monkeypatch, no_sleep):
+    html = _html(1).replace("第1週(成功大學體育館) ", "(成功大學體育館) ")
+    monkeypatch.setattr(season_backfill, "fetch_match_page", lambda c, m: html if m == 1 else None)
+    conn = connect_seeded(tmp_db_path)
+    run_backfill(conn, 19, match_ids=[1])
+    conn.execute("UPDATE matches SET round_name = '季後賽 Week 19' WHERE game_id = 19001")
+    conn.commit()
+    result = run_backfill(conn, 19, match_ids=[1])
+    assert result.unresolved == []
+    assert _counts(conn)[1] > 0
+    assert conn.execute("SELECT DISTINCT week_label FROM roster_registrations").fetchall() == [("季後賽 Week 19",)]
+    conn.close()
+
+
+def test_unplayed_match_is_skipped(tmp_db_path, season, monkeypatch, no_sleep):
+    page = parse_match_page(_html(1), 19, season)
+    for side in (page.home, page.away):
+        side.sets, side.total, side.sets_won = [None] * 5, 0, 0
+    monkeypatch.setattr(season_backfill, "fetch_match_page", lambda c, m: "x" if m == 1 else None)
+    monkeypatch.setattr(season_backfill, "parse_match_page", lambda html, cup_id, s: page)
+    conn = connect_seeded(tmp_db_path)
+    result = run_backfill(conn, 19, match_ids=[1])
+    assert _counts(conn)[0] == 0
+    assert (result.pages, result.skipped, result.new_matches) == (1, 1, 0)
+    conn.close()

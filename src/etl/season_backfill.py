@@ -30,6 +30,7 @@ from src.utils.constants import (
 from src.utils.db_config import get_connection
 from src.utils.logger import get_logger
 from src.utils.seasons import Season, get_season, resolve_date_in_season
+from src.utils.teams import apply_team_seed
 
 logger = get_logger(__name__)
 
@@ -88,6 +89,7 @@ class BackfillResult:
 
 
 def ensure_backfill_season(conn: sqlite3.Connection, cup_id: int) -> Season:
+    apply_team_seed(conn)
     name, start, end = BACKFILL_SEASONS[cup_id]
     conn.execute(
         "INSERT OR IGNORE INTO seasons (cup_id, name, start_date, end_date) VALUES (?, ?, ?, ?)",
@@ -113,14 +115,11 @@ def fetch_match_page(cup_id: int, match_id: int) -> str | None:
     if r.status_code == 403:
         raise BackfillBlocked(f"HTTP 403（MatchID={match_id}）")
     body = r.text or ""
-    if (
-        r.headers.get("cf-mitigated", "").lower() == "challenge"
-        or r.status_code == 503
-        or any(marker in body for marker in BLOCK_MARKERS)
-    ):
+    challenged = r.headers.get("cf-mitigated", "").lower() == "challenge" or r.status_code == 503
+    if not challenged and r.status_code in (404, 500):
+        return None  # 查無該場或外部系統應用錯誤頁；頁面雖帶 Cloudflare 注入腳本，不是阻擋式驗證
+    if challenged or any(marker in body for marker in BLOCK_MARKERS):
         raise BackfillBlocked(f"驗證挑戰（MatchID={match_id}，HTTP {r.status_code}）")
-    if r.status_code in (404, 500):
-        return None
     r.raise_for_status()
     r.encoding = "utf-8"
     text = r.text
@@ -310,17 +309,17 @@ def import_match(
     """寫入一場（matches、週登錄、單場數據），回傳 (是否新增 matches 列, 統計 dict)。
 
     game_id = cup_id * 1000 + 外部 MatchID：加賽季前綴，避免與官網 game_id 及其他回填賽季衝突。
-    週次不明（無 round_name 或查無）只寫 matches，並把該場列入 stats['unresolved']。
+    週次以 matches.round_name（同日期、同賽季）為準：標題有週次時由本場寫入，季後賽標題無週次時
+    可事先從官網單場頁補 round_name 再重跑。查無就只寫 matches，並把該場列入 stats['unresolved']。
     """
     game_id = season.cup_id * 1000 + match_id
     inserted = _insert_match(conn, season, page, game_id)
     stats = {"registrations": 0, "stats": 0, "unresolved": None}
     week = None
-    if page.round_name is not None:
-        try:
-            week = resolve_week_label(conn, page.match_date, page.title, season.cup_id)
-        except WeekLabelUnresolved as e:
-            logger.warning("%s", e)
+    try:
+        week = resolve_week_label(conn, page.match_date, page.title, season.cup_id)
+    except WeekLabelUnresolved as e:
+        logger.warning("%s", e)
     if week is None:
         stats["unresolved"] = {
             "kind": "week_unresolved", "cup_id": season.cup_id, "match_id": match_id,
@@ -332,6 +331,14 @@ def import_match(
         )
     conn.commit()
     return inserted, stats
+
+
+def _is_unplayed(page: MatchPage) -> bool:
+    """兩隊各局皆無得分（系列賽提前結束的未比賽場次）：不寫入，與官網「未比賽」一致。"""
+    if any(s is not None for side in (page.home, page.away) for s in side.sets):
+        return False
+    logger.info("未比賽，略過：%s", page.title)
+    return True
 
 
 def run_backfill(
@@ -350,7 +357,7 @@ def run_backfill(
             return False
         result.pages += 1
         page = parse_match_page(html, cup_id, season)
-        if page is None:
+        if page is None or _is_unplayed(page):
             result.skipped += 1
         else:
             inserted, stats = import_match(conn, season, resolver, page, match_id)
@@ -440,7 +447,7 @@ def write_review(path: Path, items: list[dict]) -> dict[str, int]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="歷史賽季一次性回填（ADR 0010；只在隔離 DB 跑）")
     parser.add_argument("--cup-id", type=int, required=True)
-    parser.add_argument("--db", required=True, help="隔離 DB 路徑（需已套用 schema 與 team_seed）；不提供預設正式 DB")
+    parser.add_argument("--db", required=True, help="隔離 DB 路徑（需已套用 schema；team_seed 由本工具套用）；不提供預設正式 DB")
     parser.add_argument("--review-out", required=True, help="待人工確認清單 JSON 輸出路徑")
     parser.add_argument("--match-ids", help="外部 MatchID，如 1-150 或 1,2,101；省略則從 1 起逐號掃")
     parser.add_argument("--gap-limit", type=int, default=20, help="連續幾個空號就停（掃描模式）")
@@ -455,7 +462,7 @@ def main(argv: list[str] | None = None) -> int:
     conn = get_connection(db_path=db_path)
     try:
         if not conn.execute("SELECT 1 FROM sqlite_master WHERE name = 'matches'").fetchone():
-            raise SystemExit(f"{db_path} 尚未套用 schema.sql 與 team_seed，請先初始化隔離 DB。")
+            raise SystemExit(f"{db_path} 尚未套用 schema.sql，請先初始化隔離 DB。")
         explicit = parse_match_ids(args.match_ids) if args.match_ids else None
         result = run_backfill(conn, args.cup_id, explicit, args.gap_limit)
         counts = write_review(Path(args.review_out), build_review_list(conn, args.cup_id) + result.unresolved)
@@ -473,7 +480,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"新增賽事：{result.new_matches}")
     print(f"週登錄 upsert：{result.registrations}")
     print(f"新增統計列：{result.stats_inserted}")
-    print(f"略過（明星賽／週次不明）：{result.skipped}")
+    print(f"略過（明星賽／未比賽／週次不明）：{result.skipped}")
     print(f"待人工確認：{counts}")
     return 0
 
