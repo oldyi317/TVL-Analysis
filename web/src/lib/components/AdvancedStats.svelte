@@ -3,6 +3,7 @@
 		availableMetrics,
 		defaultTrendMetric,
 		distributionOption,
+		distributionSummary,
 		formatMetricValue,
 		METRIC_KEYS,
 		METRIC_LABELS,
@@ -10,15 +11,16 @@
 		PR_METRICS,
 		TREND_METRICS,
 		trendLabel,
-		trendOption,
+		trendLineOption,
+		trendPoints,
+		trendSummary,
 		type GameLogEntry,
 		type TrendMetric,
 		type MetricKey
 	} from '#lib/advanced.js';
 	import { onMount } from 'svelte';
-	import Chart from '#lib/chart/Chart.svelte';
+	import ChartFrame from '#lib/components/ChartFrame.svelte';
 	import DataNote from '#lib/components/DataNote.svelte';
-	import EmptyState from '#lib/components/EmptyState.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import { positionLabel } from '#lib/site.js';
 	import type { PlayerAdvancedEntry, PositionDistribution } from '#lib/data/types.js';
@@ -63,7 +65,11 @@
 	const trendMetric = $derived(
 		selectedTrend && trendKeys.includes(selectedTrend) ? selectedTrend : defaultTrendMetric(position, setsPlayed)
 	);
-	const trend = $derived(trendOption(gameLog, trendMetric));
+	const points = $derived(trendPoints(gameLog, trendMetric));
+	const trend = $derived(points.length ? trendLineOption(points, trendMetric) : null);
+	const distSummary = $derived(distribution
+		? distributionSummary(distribution.metrics[metric], advanced?.ratios[metric] ?? null, metric)
+		: null);
 </script>
 
 <h2 class="card">
@@ -109,39 +115,78 @@
 			{/if}
 		</section>
 
-		{#if distOption}
-			<section class="card">
-				<h3>同位置分佈</h3>
-				<div class="metrics" role="group" aria-label="選擇分佈指標">
-					{#each metricKeys as key (key)}
-						<button type="button" class="chip" aria-pressed={metric === key ? 'true' : 'false'} onclick={() => (selectedMetric = key)}>
-							{METRIC_LABELS[key]}
-						</button>
-					{/each}
-				</div>
-				<Chart option={distOption} ariaLabel="{METRIC_LABELS[metric]}在同位置球員中的分佈長條圖" />
-				<p class="sub">每根長條是一位球員，由低到高排列；深色是這位球員，虛線是中位數。</p>
-			</section>
+		{#if distOption && distribution}
+			<ChartFrame
+				title="同位置分佈"
+				games={gameLog.length}
+				conclusion={distSummary}
+				label={distSummary ?? undefined}
+				option={distOption}
+				emptyTitle="本季沒有同位置分佈數據"
+				note="每根長條是一位球員，由低到高排列；深色是這位球員或同值球員，虛線是中位數。"
+			>
+				{#snippet controls()}
+					<div class="metrics" role="group" aria-label="選擇分佈指標">
+						{#each metricKeys as key (key)}
+							<button type="button" class="chip" aria-pressed={metric === key ? 'true' : 'false'} onclick={() => (selectedMetric = key)}>
+								{METRIC_LABELS[key]}
+							</button>
+						{/each}
+					</div>
+				{/snippet}
+				{#snippet table()}
+					<table style:font-size="var(--text-md)" aria-label="同位置分佈：{METRIC_LABELS[metric]}">
+						<caption>{distSummary}</caption>
+						<thead><tr><th scope="col">由低到高位置</th><th scope="col" class="num">{METRIC_LABELS[metric]}</th><th scope="col">標記</th></tr></thead>
+						<tbody>
+							{#each distribution.metrics[metric].values as value, i (i)}
+								<tr>
+									<th scope="row">{i + 1}</th>
+									<td class="num">{fmt(metric, value)}</td>
+									<td>{value === advanced?.ratios[metric] ? '本人或同值球員' : '—'}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				{/snippet}
+			</ChartFrame>
 		{/if}
 
-		<section class="card">
-			<h3>逐場趨勢</h3>
-			{#if gameLog.length === 0}
-				<EmptyState title="本季尚無單場數據" />
-			{:else}
-				<div class="metrics" role="group" aria-label="選擇逐場趨勢指標">
-					{#each trendKeys as key (key)}
-						<button type="button" class="chip" aria-pressed={trendMetric === key ? 'true' : 'false'} onclick={() => (selectedTrend = key)}>
-							{trendLabel(key)}
-						</button>
-					{/each}
-				</div>
-				<Chart option={trend} ariaLabel="{trendLabel(trendMetric)}逐場趨勢折線圖" />
-				{#if gameLog.some((e) => e.golden)}
-					<p class="sub">菱形標記的場次另有黃金決勝局，其數據未計入。</p>
+		<ChartFrame
+			title="逐場趨勢"
+			games={gameLog.length}
+			conclusion={null}
+			label={trendSummary(points, trendMetric)}
+			option={trend}
+			emptyTitle="本季尚無單場數據"
+			note={gameLog.some((e) => e.golden) ? '菱形標記的場次另有黃金決勝局，其數據未計入。' : undefined}
+		>
+			{#snippet controls()}
+				{#if gameLog.length}
+					<div class="metrics" role="group" aria-label="選擇逐場趨勢指標">
+						{#each trendKeys as key (key)}
+							<button type="button" class="chip" aria-pressed={trendMetric === key ? 'true' : 'false'} onclick={() => (selectedTrend = key)}>
+								{trendLabel(key)}
+							</button>
+						{/each}
+					</div>
 				{/if}
-			{/if}
-		</section>
+			{/snippet}
+			{#snippet table()}
+				<table style:font-size="var(--text-md)" aria-label="逐場趨勢：{trendLabel(trendMetric)}">
+					<thead><tr><th scope="col">日期</th><th scope="col" class="num">{trendLabel(trendMetric)}</th><th scope="col">說明</th></tr></thead>
+					<tbody>
+						{#each points as point, i (i)}
+							<tr>
+								<th scope="row">{point.date}</th>
+								<td class="num">{fmt(trendMetric, point.value)}</td>
+								<td>{point.value === null ? '無數據' : point.detail ?? '—'}{point.golden ? '；此場另有黃金決勝局，未計入' : ''}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/snippet}
+		</ChartFrame>
 	{/if}
 </div>
 
