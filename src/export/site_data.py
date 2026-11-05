@@ -547,17 +547,34 @@ def _season_short(season_names_by_team: dict, shorts: dict, team_id: int, gender
     return season_name[1] if season_name else shorts[(team_id, gender)]
 
 
+def _opponent_short(opponents: dict, season_names_by_team: dict, shorts: dict, opponent: str, gender: str,
+                    cup_id: int) -> str:
+    resolved = opponents.get(opponent)
+    if resolved is None or resolved[1] != gender:
+        return opponent
+    return _season_short(season_names_by_team, shorts, resolved[0], gender, cup_id)
+
+
+def _game_id(matches: dict, opponents: dict, match_date: str, team_id: int, gender: str, opponent: str,
+             cup_id: int) -> int | None:
+    found, _ = _match_for_stat(matches, opponents, match_date, team_id, gender, opponent)
+    return found[1] if found and found[0] == cup_id else None
+
+
 def _records_payload(conn: sqlite3.Connection) -> dict:
     seasons = _seasons_payload(conn)
     season_names = {s["cup_id"]: s["name"] for s in seasons["seasons"]}
     players = _player_names(conn)
     shorts = _team_shorts(conn)
     season_names_by_team = _season_names_by_team(conn)
+    matches = _parent_matches(conn)
+    opponents = _resolve_opponents(conn)
     fields = [f for f in STAT_FIELDS if f != "sets_played"]
     match_rows: dict[str, list[dict]] = {gender: [] for gender in GROUP_BY_GENDER}
-    for gender, cup_id, player_id, team_id, match_date, *values in conn.execute(
+    for gender, cup_id, player_id, team_id, match_date, opponent, *values in conn.execute(
         f"""
-        SELECT r.gender, r.cup_id, r.player_id, r.team_id, s.match_date, {", ".join(f"s.{f}" for f in fields)}
+        SELECT r.gender, r.cup_id, r.player_id, r.team_id, s.match_date, s.opponent,
+               {", ".join(f"s.{f}" for f in fields)}
         FROM player_match_stats s
         JOIN roster_registrations r ON r.registration_id = s.registration_id
         WHERE s.is_golden_set = 0 AND r.cup_id IN (SELECT cup_id FROM seasons)
@@ -569,6 +586,8 @@ def _records_payload(conn: sqlite3.Connection) -> dict:
             "season": season_names[cup_id], "in_progress": cup_id == seasons["current_cup_id"],
             "team_id": team_id, "match_date": match_date, "stats": dict(zip(fields, values)),
             "team_short": _season_short(season_names_by_team, shorts, team_id, gender, cup_id),
+            "opponent": _opponent_short(opponents, season_names_by_team, shorts, opponent, gender, cup_id),
+            "game_id": _game_id(matches, opponents, match_date, team_id, gender, opponent, cup_id),
         })
     records = []
     for gender, group in GROUP_BY_GENDER.items():

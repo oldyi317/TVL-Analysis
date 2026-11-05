@@ -5,6 +5,7 @@ from src.export.records import RECORD_LIMIT, compute_records
 def row(player_id, name, total_points, cup_id=21):
     return {"player_id": player_id, "name": name, "cup_id": cup_id, "season": "2025-26",
             "team_id": 1, "team_short": "甲隊", "in_progress": False, "match_date": "2025-11-01",
+            "opponent": "乙隊", "game_id": None,
             "stats": {"total_points": total_points, "attack_points": total_points,
                       "block_points": total_points, "serve_points": total_points}}
 

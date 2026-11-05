@@ -51,7 +51,41 @@ test('男子組累計紀錄頁：四個得分項、列說明、連到最近一�
 	}
 });
 
-test('單季與累計紀錄互相切換，切組別停在同一種紀錄', async ({ page }) => {
+test('男子組單場紀錄頁：列說明、連到紀錄所在賽季的球員頁與賽事頁', async ({ page }) => {
+	await page.goto(`${BASE}/records/men/match/`);
+	await expect(page.getByRole('heading', { level: 2, name: '單場紀錄' })).toBeVisible();
+	await expect(
+		page.getByRole('navigation', { name: '紀錄類型' }).getByRole('link', { name: '單場紀錄' })
+	).toHaveAttribute('aria-current', 'page');
+	for (const board of men.boards) {
+		const table = page.locator(`#r-${board.key}`).getByRole('table', { name: `${board.label}單場紀錄` });
+		await expect(table.locator('tbody tr')).toHaveCount(board.match_records.length);
+		if (!board.match_records.length) continue;
+		const first = board.match_records[0];
+		const row = table.locator('tbody tr').first();
+		await expect(row.getByRole('link', { name: first.name })).toHaveAttribute(
+			'href', new RegExp(`/${first.season}/men/players/${first.player_id}/$`)
+		);
+		await expect(row).toContainText(`${first.season} · ${first.team_short}`);
+		await expect(row).toContainText(`對 ${first.opponent}`);
+		if (first.game_id !== null) {
+			await expect(row.getByRole('link', { name: new RegExp(`對 ${first.opponent}$`) })).toHaveAttribute(
+				'href', new RegExp(`/${first.season}/men/matches/${first.game_id}/$`)
+			);
+		}
+	}
+});
+
+test('點單場紀錄進到該場賽事頁', async ({ page }) => {
+	const first = men.boards[0].match_records.find((r: { game_id: number | null }) => r.game_id !== null);
+	test.skip(!first, '目前沒有可連到賽事頁的單場紀錄');
+	await page.goto(`${BASE}/records/men/match/`);
+	const table = page.locator(`#r-${men.boards[0].key}`).getByRole('table');
+	await table.getByRole('link', { name: new RegExp(`對 ${first.opponent}$`) }).first().click();
+	await expect(page).toHaveURL(`${BASE}/${first.season}/men/matches/${first.game_id}/`);
+});
+
+test('三種紀錄互相切換，切組別停在同一種紀錄', async ({ page }) => {
 	await page.goto(`${BASE}/records/men/`);
 	const kinds = page.getByRole('navigation', { name: '紀錄類型' });
 	await kinds.getByRole('link', { name: '累計紀錄' }).click();
@@ -62,6 +96,11 @@ test('單季與累計紀錄互相切換，切組別停在同一種紀錄', async
 	await expect(kinds.getByRole('link', { name: '累計紀錄' })).toHaveAttribute('aria-current', 'page');
 	await expect(page.getByRole('navigation', { name: '頁面' }).getByRole('link', { name: '歷史紀錄', exact: true }))
 		.toHaveAttribute('aria-current', 'page');
+	await kinds.getByRole('link', { name: '單場紀錄' }).click();
+	await expect(page).toHaveURL(`${BASE}/records/women/match/`);
+	await page.getByRole('navigation', { name: '組別' }).getByRole('link', { name: '男子組' }).click();
+	await expect(page).toHaveURL(`${BASE}/records/men/match/`);
+	await page.goto(`${BASE}/records/women/cumulative/`);
 	await kinds.getByRole('link', { name: '單季紀錄' }).click();
 	await expect(page).toHaveURL(`${BASE}/records/women/`);
 	await expect(page.getByRole('heading', { level: 2, name: '單季紀錄' })).toBeVisible();
@@ -83,6 +122,14 @@ test('進行中賽季的紀錄標示「進行中」', async ({ page }) => {
 	await expect(page.getByText('進行中').first()).toBeVisible();
 });
 
+test('進行中賽季的單場紀錄標示「進行中」', async ({ page }) => {
+	const live = men.boards.flatMap((b: { match_records: { in_progress: boolean }[] }) => b.match_records)
+		.filter((r: { in_progress: boolean }) => r.in_progress);
+	test.skip(!live.length, '目前沒有進行中賽季的單場紀錄');
+	await page.goto(`${BASE}/records/men/match/`);
+	await expect(page.getByText('進行中').first()).toBeVisible();
+});
+
 test('從導覽列進入，組別切換停在歷史紀錄', async ({ page }) => {
 	await page.goto(`${BASE}/${currentSeason}/men/`);
 	const nav = page.getByRole('navigation', { name: '頁面' });
@@ -101,7 +148,7 @@ test('從導覽列進入，組別切換停在歷史紀錄', async ({ page }) => 
 
 test('手機寬度沒有橫向溢位', async ({ page }) => {
 	await page.setViewportSize({ width: 360, height: 800 });
-	for (const path of ['men/', 'women/', 'men/cumulative/', 'women/cumulative/']) {
+	for (const path of ['men/', 'women/', 'men/cumulative/', 'women/cumulative/', 'men/match/', 'women/match/']) {
 		await page.goto(`${BASE}/records/${path}`);
 		expect(
 			await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)

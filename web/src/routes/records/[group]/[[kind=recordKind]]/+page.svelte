@@ -5,7 +5,7 @@
 	import SegmentNav from '#lib/components/SegmentNav.svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import { formatThroughDate } from '#lib/leaders.js';
-	import { coverageText, RECORD_KINDS, type RecordKindInfo } from '#lib/records.js';
+	import { coverageText, RECORD_KINDS, rowsOf, type RecordKindInfo } from '#lib/records.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -39,7 +39,7 @@
 			{#each data.boards as board (board.key)}
 				<RecordBoard
 					{board}
-					rows={data.kind.key === 'season' ? board.seasonRecords : board.cumulativeRecords}
+					rows={rowsOf(board, data.kind.key)}
 					kindLabel={data.kind.label}
 					group={data.group}
 				/>
@@ -49,7 +49,7 @@
 	<ul class="notes" aria-label="附註">
 		<li>出賽場數以有技術統計的場次計：一場中任一項技術統計不為 0 才算一場。</li>
 		<li>不含黃金決勝局。</li>
-		<li>標示「進行中」的單季紀錄來自本季，標示「含進行中賽季」的累計紀錄計入本季，隨賽事進行可能被刷新。</li>
+		<li>標示「進行中」的單季紀錄與單場紀錄來自本季，標示「含進行中賽季」的累計紀錄計入本季，隨賽事進行可能被刷新。</li>
 	</ul>
 {/if}
 
