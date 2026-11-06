@@ -3,8 +3,11 @@ from dataclasses import dataclass
 from statistics import median
 from typing import Literal
 
-from src.export.player_advanced import MIN_GAMES, MIN_SETS, compute_ratios
+from src.export.player_advanced import compute_ratios
 from src.export.player_seasons import STAT_FIELDS
+
+
+THRESHOLD_FLOOR = 10
 
 
 @dataclass(frozen=True)
@@ -15,7 +18,9 @@ class BoardSpec:
     title: str | None
     numerator: str | None = None
     denominator: str | None = None
-    attempts: str | None = None
+    attempts_key: str | None = None
+    attempts_label: str | None = None
+    coefficient: float | None = None
     position: str | None = None
 
 
@@ -31,14 +36,40 @@ COUNT_BOARDS = (
 
 
 RATE_BOARDS = (
-    BoardSpec("attack_success_rate", "攻擊成功率", "rate", None, "attack_points", "attack_total", "攻擊 10 次"),
-    BoardSpec("serve_point_rate", "發球得分率", "rate", None, "serve_points", "serve_total", "發球 10 次"),
-    BoardSpec("receive_excellent_rate", "接發球到位率", "rate", None, "receive_excellent", "receive_total", "接發球 10 次"),
-    BoardSpec("dig_excellent_rate", "防守到位率", "rate", None, "dig_excellent", "dig_total", "防守 10 次"),
-    BoardSpec("set_excellent_rate", "舉球到位率", "rate", None, "set_excellent", "set_total", "舉球 10 次", position="S"),
-    BoardSpec("points_per_game", "場均得分", "rate", None, "total_points", "games", "出賽 10 場"),
-    BoardSpec("blocks_per_set", "每局攔網", "rate", None, "block_points", "sets_played", "出賽 10 局"),
+    BoardSpec("attack_success_rate", "攻擊成功率", "rate", None, "attack_points", "attack_total",
+              "attack_total", "攻擊次數", 2.0),
+    BoardSpec("serve_point_rate", "發球得分率", "rate", None, "serve_points", "serve_total",
+              "serve_total", "發球次數", 1.3),
+    BoardSpec("receive_excellent_rate", "接發球到位率", "rate", None, "receive_excellent", "receive_total",
+              "receive_total", "接發球次數", 1.3),
+    BoardSpec("dig_excellent_rate", "防守到位率", "rate", None, "dig_excellent", "dig_total",
+              "dig_total", "防守次數", 1.0),
+    BoardSpec("set_excellent_rate", "舉球到位率", "rate", None, "set_excellent", "set_total",
+              "set_total", "舉球次數", 5.0, position="S"),
+    BoardSpec("points_per_game", "場均得分", "rate", None, "total_points", "games",
+              "attack_serve_total", "攻擊＋發球次數", 2.0),
+    BoardSpec("blocks_per_set", "每局攔網", "rate", None, "block_points", None,
+              "attack_serve_total", "攻擊＋發球次數", 2.0),
 )
+
+
+def attempts(row: Mapping, spec: BoardSpec) -> int:
+    if spec.attempts_key == "attack_serve_total":
+        return row["attack_total"] + row["serve_total"]
+    return row[spec.attempts_key]
+
+
+def threshold_for(spec: BoardSpec, sets: int) -> int:
+    return max(THRESHOLD_FLOOR, int(spec.coefficient * sets))
+
+
+def threshold_text(spec: BoardSpec, team_sets: Mapping[int, int]) -> str:
+    thresholds = [threshold_for(spec, sets) for sets in team_sets.values()] or [THRESHOLD_FLOOR]
+    raw_below_floor = not team_sets or any(int(spec.coefficient * sets) < THRESHOLD_FLOOR for sets in team_sets.values())
+    low, high = min(thresholds), max(thresholds)
+    current = f"{low} 次" if low == high else f"{low} 到 {high} 次"
+    floor = f"，季初至少 {THRESHOLD_FLOOR} 次" if raw_below_floor else ""
+    return f"門檻：{spec.attempts_label}達所屬球隊已打局數 × {spec.coefficient:g}{floor}（目前 {current}）"
 
 
 def rank_ordered(values: Sequence) -> list[int]:
@@ -49,26 +80,28 @@ def rank_ordered(values: Sequence) -> list[int]:
     return ranks
 
 
-def _board(spec: BoardSpec, rows: list[dict]) -> dict:
-    threshold = None
-    if spec.kind == "rate":
-        has_sets = any(r["sets_played"] is not None for r in rows)
-        participation = f"出賽 {MIN_SETS} 局" if has_sets else f"出賽 {MIN_GAMES} 場"
-        if has_sets and spec.denominator != "sets_played" and any(r["sets_played"] is None for r in rows):
-            participation += f"（無局數時 {MIN_GAMES} 場）"
-        threshold = f"門檻：{participation}、{spec.attempts}"
+def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int]) -> dict:
+    threshold = threshold_text(spec, team_sets) if spec.kind == "rate" else None
     if spec.position is not None:
         rows = [r for r in rows if r["position"] == spec.position]
+    tiebreak = {}
     if spec.kind == "rate":
-        rows = [
-            {**r, spec.key: round(compute_ratios(r)[spec.key], 2)}
-            for r in rows
-            if (r["games"] >= MIN_GAMES if r["sets_played"] is None else r["sets_played"] >= MIN_SETS)
-            and r[spec.denominator] is not None and r[spec.denominator] >= 10
-        ]
-    ordered = sorted(rows, key=lambda r: (
-        -r[spec.key], -(r[spec.denominator]) if spec.kind == "rate" else 0, r["name"]
-    ))
+        qualified = []
+        for r in rows:
+            sets = team_sets.get(r["team_id"], 0)
+            if attempts(r, spec) < threshold_for(spec, sets):
+                continue
+            if spec.key == "blocks_per_set":
+                if not sets:
+                    continue
+                qualified.append({**r, spec.key: round(r["block_points"] / sets * 1.0, 2), "_denominator": sets})
+                tiebreak[r["player_id"]] = r["block_points"]
+            elif r[spec.denominator]:
+                qualified.append({**r, spec.key: round(compute_ratios(r)[spec.key], 2),
+                                  "_denominator": r[spec.denominator]})
+                tiebreak[r["player_id"]] = r[spec.denominator]
+        rows = qualified
+    ordered = sorted(rows, key=lambda r: (-r[spec.key], -tiebreak.get(r["player_id"], 0), r["name"]))
     leaders = []
     for r, rank in zip(ordered, rank_ordered([r[spec.key] for r in ordered])):
         leaders.append({
@@ -80,15 +113,15 @@ def _board(spec: BoardSpec, rows: list[dict]) -> dict:
             "position": r["position"],
             "value": r[spec.key],
             "numerator": r[spec.numerator] if spec.numerator else None,
-            "denominator": r[spec.denominator] if spec.denominator else None,
+            "denominator": r["_denominator"] if spec.kind == "rate" else None,
             "title": spec.title if rank == 1 else None,
         })
     return {"key": spec.key, "label": spec.label, "kind": spec.kind, "threshold": threshold, "rows": leaders}
 
 
-def compute_leaders(rows: list[dict], boards: Sequence[BoardSpec] = COUNT_BOARDS + RATE_BOARDS) -> list[dict]:
-    return [_board(spec, rows) for spec in boards
-            if spec.key != "blocks_per_set" or any(r["sets_played"] is not None for r in rows)]
+def compute_leaders(rows: list[dict], team_sets: Mapping[int, int],
+                    boards: Sequence[BoardSpec] = COUNT_BOARDS + RATE_BOARDS) -> list[dict]:
+    return [_board(spec, rows, team_sets) for spec in boards]
 
 
 VOLUME_RATE_KEYS = ("attack_success_rate", "receive_excellent_rate", "dig_excellent_rate", "set_excellent_rate")
@@ -98,7 +131,7 @@ def _median(values: list[float]) -> float | None:
     return round(median(values), 2) if values else None
 
 
-def compute_volume_rates(rows: list[dict]) -> list[dict]:
+def compute_volume_rates(rows: list[dict], team_sets: Mapping[int, int]) -> list[dict]:
     """量率散點：直接取同技術比率榜的上榜球員，門檻與舉球限 S 都與比率榜同一份邏輯。"""
     specs = {spec.key: spec for spec in RATE_BOARDS}
     result = []
@@ -106,7 +139,7 @@ def compute_volume_rates(rows: list[dict]) -> list[dict]:
         points = [
             {"player_id": r["player_id"], "name": r["name"], "team_id": r["team_id"],
              "team_short": r["team_short"], "count": r["denominator"], "rate": r["value"]}
-            for r in _board(specs[key], rows)["rows"]
+            for r in _board(specs[key], rows, team_sets)["rows"]
         ]
         result.append({
             "key": key,

@@ -104,12 +104,12 @@ it('預設計數榜並提供兩個可操作的分段', () => {
 
 it('比率卡顯示標題、門檻、比率與分子分母，無人達門檻時顯示空狀態', () => {
 	const board: LeaderBoardView = {
-		key: 'attack_success_rate', label: '攻擊成功率', kind: 'rate', threshold: '門檻：出賽 5 局、攻擊 10 次',
+		key: 'attack_success_rate', label: '攻擊成功率', kind: 'rate', threshold: '門檻：攻擊次數達所屬球隊已打局數 × 2（目前 20 次）',
 		rows: [{ ...row(1, 1), value: 37.5, numerator: 45, denominator: 120, title: null }]
 	};
 	const html = render(LeaderBoard, { props: { board, season: season.name, group: 'men' }, context }).body;
 	expect(html).toMatch(/<h2[^>]*>攻擊成功率<\/h2>/);
-	expect(html).toContain('門檻：出賽 5 局、攻擊 10 次');
+	expect(html).toContain('門檻：攻擊次數達所屬球隊已打局數 × 2（目前 20 次）');
 	expect(html).toContain('37.5%');
 	expect(html).toContain('45／120');
 	const empty = render(LeaderBoard, { props: { board: { ...board, rows: [] }, season: season.name, group: 'men' }, context }).body;
@@ -120,7 +120,7 @@ it('只傳入計數榜與六個比率榜時，不產生每局攔網卡與 chip',
 	const boards: LeaderBoardView[] = [
 		{ key: 'total_points', label: '總得分', kind: 'count', threshold: null, rows: [row(1, 1)] },
 		...RATE_STAT_KEYS.filter((key) => key !== 'blocks_per_set').map((key): LeaderBoardView => ({
-			key, label: STAT_LABELS[key], kind: 'rate', threshold: '門檻：出賽 2 場', rows: []
+			key, label: STAT_LABELS[key], kind: 'rate', threshold: '門檻：防守次數達所屬球隊已打局數 × 1（目前 10 次）', rows: []
 		}))
 	];
 	const props: PageProps = { params: { season: season.name, group: 'men' }, data: { season, group: 'men', summary: null, boards, volumeRates: [] } };

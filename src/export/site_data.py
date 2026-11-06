@@ -7,7 +7,7 @@ from pathlib import Path
 from statistics import median
 from zoneinfo import ZoneInfo
 
-from src.export.leaders import compute_leaders, compute_volume_rates, regular_totals
+from src.export.leaders import compute_leaders, compute_volume_rates, count_team_sets, regular_totals
 from src.export.records import compute_records
 from src.export.player_advanced import compute_advanced, distributions
 from src.export.player_seasons import STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
@@ -535,6 +535,7 @@ def _leaders_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict
         regular = [g for g in games.get((cup_id, gender), {}).values() if (g["round_name"] or "").startswith("例行賽")]
         dates = [g["date"] for g in regular]
         totals = regular_totals(regular)
+        team_sets = count_team_sets(regular)
         named = [
             {**{k: r[k] for k in ("player_id", "team_id", "position")}, **totals[r["player_id"]],
              "name": names[r["player_id"]], "team_short": shorts[(r["team_id"], gender)]}
@@ -546,8 +547,8 @@ def _leaders_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict
             "scope": "regular",
             "through_date": max(dates, default=None),
             "games": len(dates),
-            "boards": compute_leaders(named),
-            "volume_rates": compute_volume_rates(named),
+            "boards": compute_leaders(named, team_sets),
+            "volume_rates": compute_volume_rates(named, team_sets),
         })
     return {"leaders": leaders}
 
