@@ -355,6 +355,26 @@ def test_ext_team_map_17_targets_exist(tmp_db_path):
     conn.close()
 
 
+def test_ext_team_map_16_targets_exist(tmp_db_path):
+    """cup 16（2020-21）：男女各 5 隊；外部 MatchID 男 1–60、女 61–120、標題「編號：1」無男女字；臺中長力為臺中太陽神曾用名（名單 11/13 重疊），沿用 (14, M)。"""
+    conn = connect_seeded(tmp_db_path)
+    teams = {(t, g): active for t, g, active in conn.execute("SELECT team_id, gender, is_active FROM teams")}
+    assert len(EXT_TEAM_MAPS[16]) == 10
+    assert set(EXT_TEAM_MAPS[16].values()) <= set(teams)
+    assert EXT_TEAM_MAPS[16][3] == (14, "M") and teams[(14, "M")] == 0
+    assert EXT_TEAM_MAPS[16][4] == (9, "M")
+    assert EXT_TEAM_MAPS[16][8] == (5, "F") and EXT_TEAM_MAPS[16][10] == (7, "F")
+    assert BACKFILL_SEASONS[16] == ("2020-21", "2020-07-01", "2021-06-30")
+    assert EXT_TEAM_SEASON_NAMES[16][(5, "M")] == ("桃園臺灣產險", "桃園臺產")
+    assert EXT_TEAM_SEASON_NAMES[16][(14, "M")] == ("臺中長力", "臺中長力")
+    assert EXT_TEAM_SEASON_NAMES[16][(5, "F")] == ("中國人纖", "中國人纖")
+    assert EXT_TEAM_SEASON_NAMES[16][(7, "F")] == ("愛山林", "愛山林")
+    aliases = {a: (t, g, src) for a, t, g, src in conn.execute("SELECT alias, team_id, gender, source FROM team_aliases")}
+    assert aliases["臺中長力"] == (14, "M", "former")
+    assert aliases["台電男排"] == (1, "M", "match") and aliases["台電女排"] == (4, "F", "match")  # 單場數據對手欄寫外部隊名
+    conn.close()
+
+
 def test_ensure_backfill_season_applies_team_seed(tmp_db_path):
     conn = connect_seeded(tmp_db_path)
     conn.execute("DELETE FROM team_aliases WHERE team_id = 13 AND gender = 'F'")
