@@ -62,7 +62,7 @@ def rate_board(rows, key, team_sets=None):
 
 def test_rate_boards_apply_threshold_and_order_ties_by_sample_size():
     attack = rate_board([
-        rate_row(1, attack_total=19),
+        rate_row(1, attack_points=5, attack_total=19),
         rate_row(2, attack_points=10, attack_total=20),
         rate_row(3, attack_points=20, attack_total=40),
         rate_row(4, attack_points=10, attack_total=40),
@@ -81,7 +81,7 @@ def test_threshold_floats_with_team_sets():
 
 
 def test_threshold_uses_floor_below_ten():
-    rows = [rate_row(1, attack_total=10, attack_points=5), rate_row(2, attack_total=9, attack_points=9)]
+    rows = [rate_row(1, attack_total=10, attack_points=5), rate_row(2, attack_total=9, attack_points=4)]
     assert [r["player_id"] for r in rate_board(rows, "attack_success_rate", {1: 3})["rows"]] == [1]
 
 
@@ -190,8 +190,8 @@ def test_setting_boards_only_include_setters_while_other_boards_include_all_posi
 def test_volume_rates_use_the_same_threshold_as_rate_boards():
     players = [
         loaded(1, attack_points=30),
-        rate_row(2, attack_total=19),
-        rate_row(3, attack_total=9, receive_total=9),
+        rate_row(2, attack_total=19, attack_points=5),
+        rate_row(3, attack_total=9, receive_total=9, attack_points=5, receive_excellent=5),
         rate_row(4, dig_total=10),
     ]
     team_sets = {1: 10}
@@ -264,3 +264,71 @@ def test_regular_totals_sum_sets_played_when_all_present():
 
 def test_team_sets_sum_both_sides():
     assert count_team_sets([game(1, [], [], 1, 2, sets=4), game(2, [], [], 2, 3, sets=5)]) == {1: 4, 2: 9, 3: 5}
+
+
+def attack_board(rows, team_sets=None):
+    return rate_board(rows, "attack_success_rate", {1: 20} if team_sets is None else team_sets)
+
+
+def test_makeup_lists_short_player_first_with_actual_rate():
+    rows = [rate_row(1, attack_total=40, attack_points=20), rate_row(2, attack_total=30, attack_points=25)]
+    board = attack_board(rows)
+    assert [(r["player_id"], r["rank"], r["makeup"]) for r in board["rows"]] == [(2, 1, True), (1, 2, False)]
+    assert board["rows"][0]["value"] == 83.33 and board["rows"][0]["denominator"] == 30
+    assert board["rows"][0]["numerator"] == 25
+
+
+def test_makeup_requires_strictly_higher():
+    rows = [rate_row(1, attack_total=40, attack_points=20), rate_row(2, attack_total=30, attack_points=20)]
+    assert [(r["player_id"], r["makeup"]) for r in attack_board(rows)["rows"]] == [(1, False)]
+
+
+def test_makeup_ignores_zero_attempts():
+    rows = [rate_row(1, attack_total=40, attack_points=20), rate_row(2, attack_total=0, attack_points=0)]
+    assert [r["player_id"] for r in attack_board(rows)["rows"]] == [1]
+
+
+def test_makeup_skips_when_nobody_qualifies():
+    rows = [rate_row(1, attack_total=30, attack_points=29)]
+    assert attack_board(rows)["rows"] == []
+
+
+def test_makeup_takes_only_the_best_candidate_and_demotes_tied_leaders():
+    rows = [
+        rate_row(1, attack_total=40, attack_points=16), rate_row(2, attack_total=40, attack_points=16),
+        rate_row(3, attack_total=30, attack_points=28), rate_row(4, attack_total=20, attack_points=19),
+    ]
+    got = [(r["player_id"], r["rank"], r["makeup"]) for r in attack_board(rows)["rows"]]
+    assert got == [(3, 1, True), (1, 2, False), (2, 2, False)]
+
+
+def test_makeup_tie_prefers_more_attempts_then_name():
+    rows = [
+        rate_row(1, attack_total=40, attack_points=12),
+        rate_row(2, attack_total=20, attack_points=16), rate_row(3, attack_total=30, attack_points=16),
+    ]
+    got = [(r["player_id"], r["makeup"]) for r in attack_board(rows)["rows"]]
+    assert got == [(3, True), (1, False)]
+
+
+def test_makeup_uses_each_players_team_threshold():
+    rows = [rate_row(1, attack_total=40, attack_points=20), {**rate_row(2, attack_total=30, attack_points=25), "team_id": 2}]
+    assert [(r["player_id"], r["makeup"]) for r in attack_board(rows, {1: 20, 2: 15})["rows"]] == [(2, False), (1, False)]
+    assert [(r["player_id"], r["makeup"]) for r in attack_board(rows, {1: 20, 2: 20})["rows"]] == [(2, True), (1, False)]
+
+
+def test_makeup_not_applied_to_points_per_game_and_blocks_per_set():
+    rows = [rate_row(1, attack_total=40, block_points=20), rate_row(2, attack_total=30, block_points=29, total_points=29)]
+    for key in ("points_per_game", "blocks_per_set"):
+        assert [r["player_id"] for r in rate_board(rows, key, {1: 20})["rows"]] == [1]
+
+
+def test_count_boards_have_makeup_false():
+    board = compute_leaders([row(1, "甲", 10)], {1: 10})[0]
+    assert board["rows"][0]["makeup"] is False
+
+
+def test_volume_rates_exclude_makeup_rows():
+    rows = [rate_row(1, attack_total=40, attack_points=20), rate_row(2, attack_total=30, attack_points=25)]
+    attack = next(v for v in compute_volume_rates(rows, {1: 20}) if v["key"] == "attack_success_rate")
+    assert [p["player_id"] for p in attack["points"]] == [1]

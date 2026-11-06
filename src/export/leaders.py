@@ -22,6 +22,7 @@ class BoardSpec:
     attempts_label: str | None = None
     coefficient: float | None = None
     position: str | None = None
+    makeup: bool = False
 
 
 COUNT_BOARDS = (
@@ -37,15 +38,15 @@ COUNT_BOARDS = (
 
 RATE_BOARDS = (
     BoardSpec("attack_success_rate", "攻擊成功率", "rate", None, "attack_points", "attack_total",
-              "attack_total", "攻擊次數", 2.0),
+              "attack_total", "攻擊次數", 2.0, makeup=True),
     BoardSpec("serve_point_rate", "發球得分率", "rate", None, "serve_points", "serve_total",
-              "serve_total", "發球次數", 1.3),
+              "serve_total", "發球次數", 1.3, makeup=True),
     BoardSpec("receive_excellent_rate", "接發球到位率", "rate", None, "receive_excellent", "receive_total",
-              "receive_total", "接發球次數", 1.3),
+              "receive_total", "接發球次數", 1.3, makeup=True),
     BoardSpec("dig_excellent_rate", "防守到位率", "rate", None, "dig_excellent", "dig_total",
-              "dig_total", "防守次數", 1.0),
+              "dig_total", "防守次數", 1.0, makeup=True),
     BoardSpec("set_excellent_rate", "舉球到位率", "rate", None, "set_excellent", "set_total",
-              "set_total", "舉球次數", 5.0, position="S"),
+              "set_total", "舉球次數", 5.0, position="S", makeup=True),
     BoardSpec("points_per_game", "場均得分", "rate", None, "total_points", "games",
               "attack_serve_total", "攻擊＋發球次數", 2.0),
     BoardSpec("blocks_per_set", "每局攔網", "rate", None, "block_points", None,
@@ -80,11 +81,29 @@ def rank_ordered(values: Sequence) -> list[int]:
     return ranks
 
 
+def makeup_candidate(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int],
+                     leader_rate: float | None) -> dict | None:
+    """補算達標：次數未達門檻者，把差額全算失敗後仍嚴格高於第一名，才能上榜。"""
+    if leader_rate is None:
+        return None
+    candidates = []
+    for r in rows:
+        count = attempts(r, spec)
+        threshold = threshold_for(spec, team_sets.get(r["team_id"], 0))
+        if not 0 < count < threshold:
+            continue
+        makeup_rate = r[spec.numerator] / threshold * 100
+        if makeup_rate > leader_rate:
+            candidates.append(((-makeup_rate, -count, r["name"]), r))
+    return min(candidates, key=lambda c: c[0])[1] if candidates else None
+
+
 def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int]) -> dict:
     threshold = threshold_text(spec, team_sets) if spec.kind == "rate" else None
     if spec.position is not None:
         rows = [r for r in rows if r["position"] == spec.position]
     tiebreak = {}
+    makeup_ids: set[int] = set()
     if spec.kind == "rate":
         qualified = []
         for r in rows:
@@ -100,6 +119,16 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int]) -> d
                 qualified.append({**r, spec.key: round(compute_ratios(r)[spec.key], 2),
                                   "_denominator": r[spec.denominator]})
                 tiebreak[r["player_id"]] = r[spec.denominator]
+        if spec.makeup and qualified:
+            leader_rate = max(r[spec.numerator] / r[spec.denominator] * 100 for r in qualified)
+        else:
+            leader_rate = None
+        candidate = makeup_candidate(spec, rows, team_sets, leader_rate) if spec.makeup else None
+        if candidate:
+            makeup_ids.add(candidate["player_id"])
+            qualified.append({**candidate, spec.key: round(compute_ratios(candidate)[spec.key], 2),
+                              "_denominator": candidate[spec.denominator]})
+            tiebreak[candidate["player_id"]] = candidate[spec.denominator]
         rows = qualified
     ordered = sorted(rows, key=lambda r: (-r[spec.key], -tiebreak.get(r["player_id"], 0), r["name"]))
     leaders = []
@@ -115,6 +144,7 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int]) -> d
             "numerator": r[spec.numerator] if spec.numerator else None,
             "denominator": r["_denominator"] if spec.kind == "rate" else None,
             "title": spec.title if rank == 1 else None,
+            "makeup": r["player_id"] in makeup_ids,
         })
     return {"key": spec.key, "label": spec.label, "kind": spec.kind, "threshold": threshold, "rows": leaders}
 
@@ -139,7 +169,7 @@ def compute_volume_rates(rows: list[dict], team_sets: Mapping[int, int]) -> list
         points = [
             {"player_id": r["player_id"], "name": r["name"], "team_id": r["team_id"],
              "team_short": r["team_short"], "count": r["denominator"], "rate": r["value"]}
-            for r in _board(specs[key], rows, team_sets)["rows"]
+            for r in _board(specs[key], rows, team_sets)["rows"] if not r["makeup"]
         ]
         result.append({
             "key": key,

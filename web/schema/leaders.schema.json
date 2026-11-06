@@ -40,7 +40,7 @@
                     "additionalProperties": false,
                     "required": [
                       "rank", "player_id", "name", "team_id", "team_short", "position",
-                      "value", "numerator", "denominator", "title"
+                      "value", "numerator", "denominator", "title", "makeup"
                     ],
                     "properties": {
                       "rank": { "type": "integer", "minimum": 1, "description": "同值並列同名次，下一名跳號" },
@@ -52,7 +52,8 @@
                       "value": { "type": "number" },
                       "numerator": { "type": ["integer", "null"], "description": "比率榜的分子；計數榜為 null" },
                       "denominator": { "type": ["integer", "null"], "description": "比率榜的分母；計數榜為 null" },
-                      "title": { "type": ["string", "null"], "description": "第一名稱號（如得分王）；其餘為 null" }
+                      "title": { "type": ["string", "null"], "description": "第一名稱號（如得分王）；其餘為 null" },
+                      "makeup": { "type": "boolean", "description": "補算達標：次數未達門檻但補算後仍居首，只會出現在第一名" }
                     }
                   }
                 }
