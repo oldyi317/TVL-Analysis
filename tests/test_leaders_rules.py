@@ -338,7 +338,9 @@ def test_makeup_uses_each_players_team_threshold():
 def test_makeup_not_applied_to_points_per_game_and_blocks_per_set():
     rows = [rate_row(1, attack_total=40, block_points=20), rate_row(2, attack_total=30, block_points=29, total_points=29)]
     for key in ("points_per_game", "blocks_per_set"):
-        assert [r["player_id"] for r in rate_board(rows, key, {1: 20})["rows"]] == [1]
+        board = rate_board(rows, key, {1: 20}, apply_makeup=True)
+        assert [r["player_id"] for r in board["rows"]] == [1]
+        assert not any(r["makeup"] for r in board["rows"])
 
 
 def test_count_boards_have_makeup_false():
@@ -348,5 +350,7 @@ def test_count_boards_have_makeup_false():
 
 def test_volume_rates_exclude_makeup_rows():
     rows = [rate_row(1, attack_total=40, attack_points=20), rate_row(2, attack_total=30, attack_points=25)]
+    board = rate_board(rows, "attack_success_rate", {1: 20}, apply_makeup=True)
+    assert [r["player_id"] for r in board["rows"] if r["makeup"]] == [2]
     attack = next(v for v in compute_volume_rates(rows, {1: 20}) if v["key"] == "attack_success_rate")
     assert [p["player_id"] for p in attack["points"]] == [1]

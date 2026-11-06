@@ -173,7 +173,7 @@ def compute_volume_rates(rows: list[dict], team_sets: Mapping[int, int]) -> list
         points = [
             {"player_id": r["player_id"], "name": r["name"], "team_id": r["team_id"],
              "team_short": r["team_short"], "count": r["denominator"], "rate": r["value"]}
-            for r in _board(specs[key], rows, team_sets)["rows"] if not r["makeup"]
+            for r in _board(specs[key], rows, team_sets)["rows"]
         ]
         result.append({
             "key": key,
