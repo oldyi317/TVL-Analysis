@@ -336,12 +336,13 @@ def test_ext_team_map_18_targets_exist(tmp_db_path):
 
 
 def test_ext_team_map_17_targets_exist(tmp_db_path):
-    """cup 17（2021-22）：男女各 5 隊；外部 MatchID 男 1–50、女 51–100；官網隊名「桃園臺產隼鷹」要能解析、「中國人纖」為新北中纖前身。"""
+    """cup 17（2021-22）：男女各 5 隊；外部 MatchID 男 1–50、女 51–100；官網隊名「桃園臺產隼鷹」要能解析、「中國人纖」為新北中纖曾用名。"""
     conn = connect_seeded(tmp_db_path)
     teams = {(t, g): active for t, g, active in conn.execute("SELECT team_id, gender, is_active FROM teams")}
     assert len(EXT_TEAM_MAPS[17]) == 10
     assert set(EXT_TEAM_MAPS[17].values()) <= set(teams)
-    assert EXT_TEAM_MAPS[17][3] == (14, "M") and EXT_TEAM_MAPS[17][4] == (9, "M")
+    assert EXT_TEAM_MAPS[17][3] == (14, "M") and teams[(14, "M")] == 0
+    assert EXT_TEAM_MAPS[17][4] == (9, "M")
     assert EXT_TEAM_MAPS[17][9] == (13, "F") and EXT_TEAM_MAPS[17][10] == (7, "F")
     assert BACKFILL_SEASONS[17] == ("2021-22", "2021-07-01", "2022-06-30")
     assert EXT_TEAM_SEASON_NAMES[17][(5, "M")] == ("桃園臺灣產險", "桃園臺產")
