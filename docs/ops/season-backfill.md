@@ -1,6 +1,6 @@
 # 歷史賽季回填（season_backfill）
 
-依 ADR 0010，從 `https://statistics.ctvba.org.tw` 一次性補回舊賽季（目前 cup 18–19，2022-23、2023-24）的賽事各局得分、週登錄與單場數據。
+依 ADR 0010，從 `https://statistics.ctvba.org.tw` 一次性補回舊賽季（目前 cup 17–19，2021-22、2022-23、2023-24）的賽事各局得分、週登錄與單場數據。
 
 ## 怎麼跑
 
@@ -14,7 +14,7 @@ python -m src.etl.season_backfill --cup-id 19 --db /tmp/backfill.db --review-out
 - 每場一頁（只抓 `Match.ashx`），請求間隔 1–2 秒；遇 403 或驗證挑戰立即停止（exit code 2），已 commit 的場次保留，不重試、不換標頭。
 - 可重跑：賽事以 `(game_id, gender)`、統計以 `(match_date, is_golden_set)` 去重，補缺不清表。`game_id = cup_id * 1000 + 外部 MatchID`。
 - cup 22 起拒絕執行（ADR 0009）；新增賽季要先在 `constants.py` 補 `BACKFILL_SEASONS`、`EXT_TEAM_MAPS`（與必要的 `EXT_TEAM_SEASON_NAMES`）及 `sql/team_seed.sql`。
-- 季後賽（季後賽／挑戰賽／總決賽，外部標題寫「總冠軍賽」）的外部標題沒有週次，首輪只寫 matches 並列入 `week_unresolved`；季後賽在外部 MatchID 201 起（cup 18、19 皆同），掃描模式會先在例行賽結束後連續空號停下（cup 18 於 111、cup 19 於 111），要用 `--match-ids 201-240` 明確指定。補法：用 `match_crawler.scrape_match_page` 抓官網對應單場頁（cup 19 為 `game/188-196`、`wgame/173-180`；cup 18 為 `game/120-128`、`wgame/112-119`，官網賽程列表 `schedule/111`）取得 `round_name`（如「總決賽 Week 21」），以日期＋組別＋兩隊對到隔離 DB 的列後 UPDATE `matches.round_name`，再以同一組 `--match-ids` 重跑，工具會依 `matches.round_name` 補週登錄與單場數據。官網只供週次標籤與比分核對（ADR 0010 列明的例外），球員資料仍只取外部系統。
+- 季後賽（季後賽／挑戰賽／總決賽，外部標題寫「總冠軍賽」）的外部標題沒有週次，首輪只寫 matches 並列入 `week_unresolved`；季後賽在外部 MatchID 201 起（cup 17、18、19 皆同），掃描模式會先在例行賽結束後連續空號停下（cup 17 於 101、cup 18 與 19 於 111），要用 `--match-ids 201-240` 明確指定。補法：用 `match_crawler.scrape_match_page` 抓官網對應單場頁（cup 19 為 `game/188-196`、`wgame/173-180`；cup 18 為 `game/120-128`、`wgame/112-119`，官網賽程列表 `schedule/111`；cup 17 為 `game/52-58`、`wgame/52-58`，賽程列表 `schedule/110`，單場頁沒有週次字樣，季後賽依日期接著例行賽編 Week 16–18）取得 `round_name`（如「總決賽 Week 21」），以日期＋組別＋兩隊對到隔離 DB 的列後 UPDATE `matches.round_name`，再以同一組 `--match-ids` 重跑，工具會依 `matches.round_name` 補週登錄與單場數據。官網只供週次標籤與比分核對（ADR 0010 列明的例外），球員資料仍只取外部系統。
 - 不進 `scripts/daily_update.sh`。
 
 ## 待人工確認清單（`--review-out` JSON）

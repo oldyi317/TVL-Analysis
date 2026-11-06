@@ -89,7 +89,7 @@ def test_seed_is_idempotent(conn):
         conn.execute("SELECT COUNT(*) FROM teams").fetchone()[0],
         conn.execute("SELECT COUNT(*) FROM team_aliases").fetchone()[0],
     )
-    assert before == after == (16, 48)
+    assert before == after == (16, 51)
 
 
 def test_ext_team_map_20_targets_exist_in_teams(conn):
