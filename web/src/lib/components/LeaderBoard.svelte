@@ -21,6 +21,7 @@
 
 	const top = $derived(visibleRows(board.rows));
 	const rows = $derived(open ? board.rows : top);
+	const hasMakeup = $derived(board.rows.some((r) => r.makeup));
 	const expandable = $derived(board.rows.length > top.length);
 
 	const playerHref = (playerId: number) =>
@@ -48,11 +49,12 @@
 							<td class="rank"><RankDot rank={row.rank} /></td>
 							<td>
 								<a class="player" href={playerHref(row.player_id)} aria-label={row.name} aria-describedby="{uid}-{row.player_id}-info" title={row.name}>
-									<span id="{uid}-{row.player_id}-info" hidden>{row.team.short_name}{row.position ? ` · ${positionLabel(row.position)}` : ''}{row.title ? ` · ${row.title}` : ''}</span>
+									<span id="{uid}-{row.player_id}-info" hidden>{row.team.short_name}{row.position ? ` · ${positionLabel(row.position)}` : ''}{row.title ? ` · ${row.title}` : ''}{row.makeup ? ' · 補算達標' : ''}</span>
 									<TeamBadge team={row.team} size="sm" label={row.team.short_name} />
 									<span class="identity">
 										<span class="name">{row.name}</span>
 										{#if row.title}<span class="tag tag-glory">{row.title}</span>{/if}
+										{#if row.makeup}<span class="tag">補算達標</span>{/if}
 										{#if row.position}
 											<span class="position">{positionLabel(row.position)}</span>
 										{/if}
@@ -67,6 +69,9 @@
 					{/each}
 				</tbody>
 			</table>
+			{#if hasMakeup}
+				<p class="note">補算達標：次數未達門檻，但把差額全算失敗後仍居首（MLB 規則 9.22(a) 同款）</p>
+			{/if}
 			{#if expandable}
 				<button type="button" aria-expanded={open} aria-controls="{uid}-t" onclick={toggle}>
 					{open ? '收合' : `展開全部（${board.rows.length} 人）`}
@@ -86,7 +91,8 @@
 	}
 
 	.threshold { margin-block: calc(-1 * var(--space-2)) var(--space-3); }
-	.threshold, .sample { font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); }
+	.note { margin-block: var(--space-2) 0; }
+	.threshold, .sample, .note { font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); }
 	.sample { display: block; white-space: nowrap; }
 
 	.card {

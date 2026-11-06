@@ -17,7 +17,7 @@ const context = new Map([
 function row(rank: number, id: number, position: string | null = 'OH'): LeaderRowView {
 	return {
 		rank, player_id: id, name: `球員${id}號`, team_id: team.team_id, team_short: team.short_name,
-		position, value: 100 - id, numerator: null, denominator: null, title: rank === 1 ? '得分王' : null,
+		position, value: 100 - id, numerator: null, denominator: null, title: rank === 1 ? '得分王' : null, makeup: false,
 		team
 	};
 }
@@ -38,7 +38,7 @@ describe('排行榜頁有單場數據', () => {
 	it('出現 h1、統計範圍、總得分卡，並列名次同號且跳號', () => {
 		const html = renderPage([row(1, 1), row(1, 2), row(3, 3)]);
 		expect(html).toMatch(/<h1[^>]*>[^<]*排行榜<\/h1>/);
-		expect(html).toContain('統計至 11 月 2 日 · 共 6 場');
+		expect(html).toContain('例行賽統計至 11 月 2 日 · 共 6 場');
 		expect(html).toMatch(/<h2[^>]*>總得分<\/h2>/);
 		expect(html).toContain('名次');
 		expect(ranks(html)).toEqual(['1', '1', '3']);
@@ -104,23 +104,41 @@ it('預設計數榜並提供兩個可操作的分段', () => {
 
 it('比率卡顯示標題、門檻、比率與分子分母，無人達門檻時顯示空狀態', () => {
 	const board: LeaderBoardView = {
-		key: 'attack_success_rate', label: '攻擊成功率', kind: 'rate', threshold: '門檻：出賽 5 局、攻擊 10 次',
+		key: 'attack_success_rate', label: '攻擊成功率', kind: 'rate', threshold: '門檻：攻擊次數達所屬球隊已打局數 × 2（目前 20 次）',
 		rows: [{ ...row(1, 1), value: 37.5, numerator: 45, denominator: 120, title: null }]
 	};
 	const html = render(LeaderBoard, { props: { board, season: season.name, group: 'men' }, context }).body;
 	expect(html).toMatch(/<h2[^>]*>攻擊成功率<\/h2>/);
-	expect(html).toContain('門檻：出賽 5 局、攻擊 10 次');
+	expect(html).toContain('門檻：攻擊次數達所屬球隊已打局數 × 2（目前 20 次）');
 	expect(html).toContain('37.5%');
 	expect(html).toContain('45／120');
 	const empty = render(LeaderBoard, { props: { board: { ...board, rows: [] }, season: season.name, group: 'men' }, context }).body;
 	expect(empty).toContain('尚無球員達門檻');
 });
 
+it('補算達標的列顯示標籤，卡底有一句說明；沒有補算列時都不出現', () => {
+	const board: LeaderBoardView = {
+		key: 'attack_success_rate', label: '攻擊成功率', kind: 'rate', threshold: '門檻：攻擊次數達所屬球隊已打局數 × 2（目前 40 次）',
+		rows: [
+			{ ...row(1, 1), value: 83.33, numerator: 25, denominator: 30, title: null, makeup: true },
+			{ ...row(2, 2), value: 50, numerator: 20, denominator: 40, title: null }
+		]
+	};
+	const render_ = (b: LeaderBoardView) => render(LeaderBoard, { props: { board: b, season: season.name, group: 'men' }, context }).body;
+	const html = render_(board);
+	expect(html.split('>補算達標<').length - 1).toBe(1);
+	expect(html).toMatch(/<span id="[^"]*-1-info" hidden="">[^<]*補算達標<\/span>/);
+	expect(html).toMatch(/<p class="note[^"]*">補算達標：[^<]*MLB 規則 9\.22\(a\)[^<]*<\/p>/);
+	const plain = render_({ ...board, rows: board.rows.slice(1) });
+	expect(plain).not.toContain('補算達標');
+	expect(plain).not.toContain('MLB 規則 9.22(a)');
+});
+
 it('只傳入計數榜與六個比率榜時，不產生每局攔網卡與 chip', () => {
 	const boards: LeaderBoardView[] = [
 		{ key: 'total_points', label: '總得分', kind: 'count', threshold: null, rows: [row(1, 1)] },
 		...RATE_STAT_KEYS.filter((key) => key !== 'blocks_per_set').map((key): LeaderBoardView => ({
-			key, label: STAT_LABELS[key], kind: 'rate', threshold: '門檻：出賽 2 場', rows: []
+			key, label: STAT_LABELS[key], kind: 'rate', threshold: '門檻：防守次數達所屬球隊已打局數 × 1（目前 10 次）', rows: []
 		}))
 	];
 	const props: PageProps = { params: { season: season.name, group: 'men' }, data: { season, group: 'men', summary: null, boards, volumeRates: [] } };

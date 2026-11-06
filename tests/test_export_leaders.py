@@ -1,8 +1,17 @@
+import pytest
+
 from tests.conftest import seed_player, seed_registration, seed_stat
 
 MATCH_SQL = """
-    INSERT INTO matches (game_id, gender, cup_id, match_date, home_team, away_team, home_team_id, away_team_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO matches (game_id, gender, cup_id, match_date, home_team, away_team, home_team_id, away_team_id,
+                         round_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, '例行賽 Week 1')
+"""
+
+MATCH_SQL_ROUND = """
+    INSERT INTO matches (game_id, gender, cup_id, match_date, home_team, away_team, home_team_id, away_team_id,
+                         round_name, home_sets_won, away_sets_won)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 
@@ -55,12 +64,12 @@ def test_only_groups_with_stats_have_entries_men_before_women(export_json):
 
 
 def test_golden_set_rows_are_excluded_from_counts_rates_and_thresholds(export_json):
-    """黃金決勝局統計列不進計數、比率，也不算出賽一場或局數。"""
+    """黃金決勝局統計列不進計數、比率，也不算進參賽次數。"""
     def build_golden(conn):
         seed_player(conn, 1, "王小明")
         seed_registration(conn, 1, 1, 1, position="OH")
-        conn.execute(MATCH_SQL, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2))
-        conn.execute(MATCH_SQL, (2, "M", 21, "2025-11-08", "雲林美津濃", "屏東台電", 2, 1))
+        conn.execute(MATCH_SQL_ROUND, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 1", 3, 1))
+        conn.execute(MATCH_SQL_ROUND, (2, "M", 21, "2025-11-08", "雲林美津濃", "屏東台電", 2, 1, "例行賽 Week 2", 1, 3))
         # (sets, atk_tot, atk_pts, blk, srv_tot, srv_pts, rcv_tot, rcv_exc, dig_tot, dig_exc, set_tot, set_exc, pts)
         seed_stat(conn, 1, (3, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5), "2025-11-01", "雲林美津濃")
         seed_stat(conn, 1, (1, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4), "2025-11-08", "雲林美津濃")
@@ -70,24 +79,55 @@ def test_golden_set_rows_are_excluded_from_counts_rates_and_thresholds(export_js
     boards = {b["key"]: b for b in payload["leaders"][0]["boards"]}
     assert boards["total_points"]["rows"][0]["value"] == 9
     assert boards["attack_points"]["rows"][0]["value"] == 9
-    # 正規場次 4 局、攻擊 14 次；含黃金決勝局才會是 5 局、20 次而跨過門檻
+    # 球隊已打 8 局，攻擊門檻 16 次；正規場次只有 14 次，含黃金決勝局才會是 20 次而跨過門檻
     assert boards["attack_success_rate"]["rows"] == []
     assert boards["points_per_game"]["rows"] == []
 
 
-def test_golden_set_only_appearance_does_not_count_as_a_game(export_json):
+def test_golden_set_attempts_do_not_cross_the_floor(export_json):
     def build_golden(conn):
         seed_player(conn, 1, "王小明")
         seed_registration(conn, 1, 1, 1, position="OH")
         conn.execute(MATCH_SQL, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2))
         conn.execute(MATCH_SQL, (2, "M", 21, "2025-11-08", "雲林美津濃", "屏東台電", 2, 1))
-        # 局數未知時門檻是出賽 2 場
-        seed_stat(conn, 1, (None, 20, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10), "2025-11-01", "雲林美津濃")
-        seed_stat(conn, 1, (None, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1), "2025-11-08", "雲林美津濃", golden=1)
+        seed_stat(conn, 1, (None, 8, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4), "2025-11-01", "雲林美津濃")
+        seed_stat(conn, 1, (None, 4, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2), "2025-11-08", "雲林美津濃", golden=1)
 
     payload, _ = export_json(build_golden, "leaders")
     boards = {b["key"]: b for b in payload["leaders"][0]["boards"]}
     assert boards["attack_success_rate"]["rows"] == []
+
+
+def test_rate_threshold_follows_each_teams_regular_sets(export_json):
+    def build_sets(conn):
+        seed_player(conn, 1, "王小明")
+        seed_player(conn, 2, "李大華")
+        seed_registration(conn, 1, 1, 1, position="OH")
+        seed_registration(conn, 2, 2, 2, position="OH")
+        seed_player(conn, 3, "陳大文")
+        seed_registration(conn, 3, 3, 1, position="L", week="例行賽 Week 2", week_start="2025-11-08")
+        conn.execute(MATCH_SQL_ROUND, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 1", 3, 1))
+        conn.execute(MATCH_SQL_ROUND, (2, "M", 21, "2025-11-08", "屏東台電", "臺北鳳凰", 1, 4, "例行賽 Week 2", 3, 1))
+        seed_stat(conn, 1, (None, 15, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7), "2025-11-01", "雲林美津濃")
+        seed_stat(conn, 2, (None, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5), "2025-11-01", "屏東台電")
+        seed_stat(conn, 3, (None, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), "2025-11-08", "臺北鳳凰")
+
+    payload, _ = export_json(build_sets, "leaders")
+    attack = next(b for b in payload["leaders"][0]["boards"] if b["key"] == "attack_success_rate")
+    assert [r["player_id"] for r in attack["rows"]] == [2]
+    assert attack["threshold"] == "門檻：攻擊次數達所屬球隊已打局數 × 2，季初至少 10 次（目前 10 到 16 次）"
+
+
+def test_blocks_per_set_board_exists_for_official_source_season(export_json):
+    def build_blocks(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1, position="MB")
+        conn.execute(MATCH_SQL_ROUND, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 1", 3, 1))
+        seed_stat(conn, 1, (None, 20, 8, 3, 0, 0, 0, 0, 0, 0, 0, 0, 11), "2025-11-01", "雲林美津濃")
+
+    payload, _ = export_json(build_blocks, "leaders")
+    blocks = next(b for b in payload["leaders"][0]["boards"] if b["key"] == "blocks_per_set")
+    assert [(r["value"], r["denominator"]) for r in blocks["rows"]] == [(0.75, 4)]
 
 
 def test_each_group_has_four_volume_rates_without_golden_set_rows(export_json):
@@ -113,3 +153,102 @@ def test_each_group_has_four_volume_rates_without_golden_set_rows(export_json):
     }
     assert [p["player_id"] for p in women["volume_rates"][0]["points"]] == [2]
     assert women["volume_rates"][3]["points"] == []
+
+
+def test_leaders_only_count_regular_season_and_expose_scope(export_json):
+    def build_round(conn):
+        seed_player(conn, 1, "甲")
+        seed_registration(conn, 1, 1, 1)
+        conn.execute(MATCH_SQL_ROUND, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 1", 3, 1))
+        conn.execute(MATCH_SQL_ROUND, (2, "M", 21, "2026-03-01", "屏東台電", "雲林美津濃", 1, 2, "總決賽 Week 19", 3, 0))
+        seed_stat(conn, 1, stat(12), "2025-11-01", "雲林美津濃")
+        seed_stat(conn, 1, stat(30), "2026-03-01", "雲林美津濃")
+
+    payload, _ = export_json(build_round, "leaders")
+    scope = payload["leaders"][0]
+    assert scope["scope"] == "regular" and scope["games"] == 1 and scope["through_date"] == "2025-11-01"
+    total = next(b for b in scope["boards"] if b["key"] == "total_points")
+    assert total["rows"][0]["value"] == 12
+
+
+def test_playoff_only_player_is_absent(export_json):
+    def build_round(conn):
+        seed_player(conn, 1, "甲")
+        seed_player(conn, 2, "乙")
+        seed_registration(conn, 1, 1, 1)
+        seed_registration(conn, 2, 2, 2)
+        conn.execute(MATCH_SQL_ROUND, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 1", 3, 1))
+        conn.execute(MATCH_SQL_ROUND, (2, "M", 21, "2026-03-01", "屏東台電", "雲林美津濃", 1, 2, "總決賽 Week 19", 3, 0))
+        seed_stat(conn, 1, stat(12), "2025-11-01", "雲林美津濃")
+        seed_stat(conn, 2, stat(30), "2026-03-01", "屏東台電")
+
+    payload, _ = export_json(build_round, "leaders")
+    scope = payload["leaders"][0]
+    assert scope["games"] == 1
+    names = {r["name"] for b in scope["boards"] for r in b["rows"]}
+    assert names == {"甲"}
+
+
+ATTACK = (None, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5)
+SHORT_ATTACK = (None, 9, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6)
+
+
+def build_makeup(conn, second_match=None):
+    seed_player(conn, 1, "王小明")
+    seed_player(conn, 2, "李大華")
+    seed_registration(conn, 1, 1, 1, position="OH")
+    seed_registration(conn, 2, 2, 2, position="OH")
+    conn.execute(MATCH_SQL_ROUND, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 1", 3, 0))
+    if second_match is not None:
+        conn.execute(MATCH_SQL_ROUND, (2, "M", 21, "2025-11-08", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 2", *second_match))
+    seed_stat(conn, 1, ATTACK, "2025-11-01", "雲林美津濃")
+    seed_stat(conn, 2, SHORT_ATTACK, "2025-11-01", "屏東台電")
+
+
+def makeup_flags(payload):
+    return [r["makeup"] for b in payload["leaders"][0]["boards"] for r in b["rows"]]
+
+
+@pytest.mark.parametrize("second_match", [(None, None), (3, 0)])
+def test_makeup_is_absent_when_a_regular_match_has_no_score_or_no_stats(export_json, second_match):
+    payload, _ = export_json(lambda conn: build_makeup(conn, second_match), "leaders")
+    assert not any(makeup_flags(payload))
+
+
+def test_makeup_is_present_when_regular_season_is_complete(export_json):
+    payload, _ = export_json(lambda conn: build_makeup(conn), "leaders")
+    attack = next(b for b in payload["leaders"][0]["boards"] if b["key"] == "attack_success_rate")
+    assert [(r["player_id"], r["makeup"]) for r in attack["rows"]] == [(2, True), (1, False)]
+
+
+def test_scored_match_without_stats_does_not_count_toward_team_sets(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_registration(conn, 1, 1, 1, position="OH")
+        conn.execute(MATCH_SQL_ROUND, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 1", 3, 2))
+        conn.execute(MATCH_SQL_ROUND, (2, "M", 21, "2025-11-08", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 2", 3, 2))
+        seed_stat(conn, 1, ATTACK, "2025-11-01", "雲林美津濃")
+
+    payload, _ = export_json(build, "leaders")
+    attack = next(b for b in payload["leaders"][0]["boards"] if b["key"] == "attack_success_rate")
+    assert attack["threshold"] == "門檻：攻擊次數達所屬球隊已打局數 × 2（目前 10 次）"
+
+
+def test_shared_team_id_counts_sets_per_gender(export_json):
+    def build(conn):
+        seed_player(conn, 1, "王小明")
+        seed_player(conn, 2, "陳小美", gender="F")
+        seed_registration(conn, 1, 1, 4, position="OH")
+        seed_registration(conn, 2, 2, 4, gender="F", position="OH")
+        conn.execute(MATCH_SQL_ROUND, (1, "M", 21, "2025-11-01", "臺北鳳凰", "屏東台電", 4, 1, "例行賽 Week 1", 3, 1))
+        conn.execute(MATCH_SQL_ROUND, (2, "M", 21, "2025-11-08", "臺北鳳凰", "屏東台電", 4, 1, "例行賽 Week 2", 3, 1))
+        conn.execute(MATCH_SQL_ROUND, (3, "F", 21, "2025-11-01", "高雄台電", "新北中纖", 4, 5, "例行賽 Week 1", 3, 0))
+        seed_stat(conn, 1, ATTACK, "2025-11-01", "屏東台電")
+        seed_stat(conn, 1, ATTACK, "2025-11-08", "屏東台電")
+        seed_stat(conn, 2, ATTACK, "2025-11-01", "新北中纖")
+
+    payload, _ = export_json(build, "leaders")
+    men, women = [next(b for b in e["boards"] if b["key"] == "attack_success_rate")["threshold"]
+                  for e in payload["leaders"]]
+    assert "目前 16 次" in men
+    assert "目前 10 次" in women

@@ -7,7 +7,7 @@ from pathlib import Path
 from statistics import median
 from zoneinfo import ZoneInfo
 
-from src.export.leaders import compute_leaders, compute_volume_rates
+from src.export.leaders import compute_leaders, compute_volume_rates, count_team_sets, regular_totals
 from src.export.records import compute_records
 from src.export.player_advanced import compute_advanced, distributions
 from src.export.player_seasons import STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
@@ -423,14 +423,16 @@ def _resolve_opponents(conn: sqlite3.Connection) -> dict[str, tuple[int, str] | 
 
 def _parent_matches(conn: sqlite3.Connection) -> dict[tuple, list[tuple]]:
     matches: dict[tuple, list[tuple]] = {}
-    for cup_id, game_id, gender, match_date, home_id, away_id in conn.execute(
+    for cup_id, game_id, gender, match_date, home_id, away_id, round_name, home_sets, away_sets in conn.execute(
         """
-        SELECT cup_id, game_id, gender, match_date, home_team_id, away_team_id
+        SELECT cup_id, game_id, gender, match_date, home_team_id, away_team_id,
+               round_name, home_sets_won, away_sets_won
         FROM matches WHERE is_golden_set = 0 AND home_team_id IS NOT NULL AND away_team_id IS NOT NULL
         """
     ):
         key = (match_date, gender, frozenset((home_id, away_id)))
-        matches.setdefault(key, []).append((cup_id, game_id, match_date, home_id))
+        sets = None if home_sets is None or away_sets is None else home_sets + away_sets
+        matches.setdefault(key, []).append((cup_id, game_id, match_date, home_id, away_id, round_name, sets))
     return matches
 
 
@@ -485,13 +487,17 @@ def _box_score_games(conn: sqlite3.Connection) -> dict[tuple[int, str], dict[int
                 stat_id, match_date, team_id, opponent, reason,
             )
             continue
-        cup_id, game_id, match_date, home_id = found
+        cup_id, game_id, match_date, home_id, away_id, round_name, sets = found
         game = games.setdefault((cup_id, gender), {}).setdefault(
-            game_id, {"game_id": game_id, "date": match_date, "home": [], "away": [], "golden_set": None}
+            game_id, {"game_id": game_id, "date": match_date, "home": [], "away": [], "golden_set": None,
+                      "home_team_id": home_id, "away_team_id": away_id, "round_name": round_name, "sets": sets}
         )
         side = "home" if team_id == home_id else "away"
         _side_rows(game, golden, side).append(_stat_entry(player_id, team_id, *rest))
     return games
+
+
+GAME_INTERNAL_KEYS = {"date", "home_team_id", "away_team_id", "round_name", "sets"}
 
 
 def _box_scores_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict[int, dict]]) -> dict:
@@ -503,7 +509,7 @@ def _box_scores_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], d
             box_scores.append({
                 "cup_id": cup_id,
                 "group": group,
-                "games": [{k: v for k, v in g.items() if k != "date"} for g in ordered],
+                "games": [{k: v for k, v in g.items() if k not in GAME_INTERNAL_KEYS} for g in ordered],
             })
     return {"box_scores": box_scores}
 
@@ -521,23 +527,44 @@ def _team_shorts(conn: sqlite3.Connection) -> dict[tuple[int, str], str]:
     }
 
 
+def _regular_complete(conn: sqlite3.Connection) -> dict[tuple[int, str], tuple[int, int, set[int]]]:
+    found: dict[tuple[int, str], tuple[int, int, set[int]]] = {}
+    for cup_id, gender, game_id, has_result in conn.execute(
+        f"""
+        SELECT cup_id, gender, game_id, {HAS_RESULT_WHERE}
+        FROM matches WHERE is_golden_set = 0 AND round_name LIKE '例行賽%'
+        """
+    ):
+        total, scored, ids = found.get((cup_id, gender), (0, 0, set()))
+        found[(cup_id, gender)] = (total + 1, scored + has_result, ids | {game_id})
+    return found
+
+
 def _leaders_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict[int, dict]]) -> dict:
     names = _player_names(conn)
     shorts = _team_shorts(conn)
     leaders = []
+    schedule = _regular_complete(conn)
     for cup_id, gender, rows in _advanced_scopes(conn, exclude_golden_set=True):
-        dates = [g["date"] for g in games.get((cup_id, gender), {}).values()]
+        regular = [g for g in games.get((cup_id, gender), {}).values() if (g["round_name"] or "").startswith("例行賽")]
+        dates = [g["date"] for g in regular]
+        totals = regular_totals(regular)
+        team_sets = count_team_sets(regular)
+        total, scored, scheduled_ids = schedule.get((cup_id, gender), (0, 0, set()))
+        regular_complete = total > 0 and total == scored and scheduled_ids <= {g["game_id"] for g in regular}
         named = [
-            {**r, "name": names[r["player_id"]], "team_short": shorts[(r["team_id"], gender)]}
-            for r in rows
+            {**{k: r[k] for k in ("player_id", "team_id", "position")}, **totals[r["player_id"]],
+             "name": names[r["player_id"]], "team_short": shorts[(r["team_id"], gender)]}
+            for r in rows if r["player_id"] in totals
         ]
         leaders.append({
             "cup_id": cup_id,
             "group": GROUP_BY_GENDER[gender],
+            "scope": "regular",
             "through_date": max(dates, default=None),
             "games": len(dates),
-            "boards": compute_leaders(named),
-            "volume_rates": compute_volume_rates(named),
+            "boards": compute_leaders(named, team_sets, apply_makeup=regular_complete),
+            "volume_rates": compute_volume_rates(named, team_sets),
         })
     return {"leaders": leaders}
 
