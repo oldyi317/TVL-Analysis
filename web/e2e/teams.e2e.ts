@@ -206,7 +206,7 @@ test('改過名的球隊頁標題用現行隊名、下方列曾用名；未改�
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('臺北鳳凰');
 	await expect(page.locator('header .former')).toHaveText('曾用名：臺北國北獅（2025-26）');
 	await page.goto(`${BASE}/${current}/men/teams/5/`);
-	await expect(page.locator('header .former')).toHaveText('曾用名：桃園臺灣產險（2021-22、2022-23、2023-24、2024-25、2025-26）');
+	await expect(page.locator('header .former')).toHaveText('曾用名：桃園臺灣產險（2020-21、2021-22、2022-23、2023-24、2024-25、2025-26）');
 	await page.goto(`${BASE}/${current}/men/teams/1/`);
 	await expect(page.locator('header .former')).toHaveCount(0);
 });

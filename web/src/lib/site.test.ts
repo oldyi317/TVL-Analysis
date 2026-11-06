@@ -102,7 +102,7 @@ describe('formerNames', () => {
 	const men = (id: number) => teams.find((t) => t.group === 'men' && t.team_id === id)!;
 	it('只列與現行隊名不同的季，同名的季合併並依賽季排序', () => {
 		expect(formerNames(men(4))).toEqual([{ name: '臺北國北獅', seasons: ['2025-26'] }]);
-		expect(formerNames(men(5))).toEqual([{ name: '桃園臺灣產險', seasons: ['2021-22', '2022-23', '2023-24', '2024-25', '2025-26'] }]);
+		expect(formerNames(men(5))).toEqual([{ name: '桃園臺灣產險', seasons: ['2020-21', '2021-22', '2022-23', '2023-24', '2024-25', '2025-26'] }]);
 	});
 	it('沒改過名的球隊回空陣列', () => {
 		expect(formerNames(men(1))).toEqual([]);
@@ -401,7 +401,7 @@ describe('playersByTeam', () => {
 		expect(groups.find((g) => g.team.team_id === 4)?.team.cup_id).toBe(CUP);
 	});
 	it('沒有登錄的賽季回空陣列', () => {
-		expect(playersByTeam(16, 'men')).toEqual([]);
+		expect(playersByTeam(15, 'men')).toEqual([]);
 	});
 });
 
