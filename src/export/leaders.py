@@ -104,6 +104,7 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int]) -> d
         rows = [r for r in rows if r["position"] == spec.position]
     tiebreak = {}
     makeup_ids: set[int] = set()
+    candidate = None
     if spec.kind == "rate":
         qualified = []
         for r in rows:
@@ -126,13 +127,15 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int]) -> d
         candidate = makeup_candidate(spec, rows, team_sets, leader_rate) if spec.makeup else None
         if candidate:
             makeup_ids.add(candidate["player_id"])
-            qualified.append({**candidate, spec.key: round(compute_ratios(candidate)[spec.key], 2),
-                              "_denominator": candidate[spec.denominator]})
-            tiebreak[candidate["player_id"]] = candidate[spec.denominator]
         rows = qualified
     ordered = sorted(rows, key=lambda r: (-r[spec.key], -tiebreak.get(r["player_id"], 0), r["name"]))
+    ranks = rank_ordered([r[spec.key] for r in ordered])
+    if candidate:
+        ordered.insert(0, {**candidate, spec.key: round(compute_ratios(candidate)[spec.key], 2),
+                           "_denominator": candidate[spec.denominator]})
+        ranks = [1] + [rank + 1 for rank in ranks]
     leaders = []
-    for r, rank in zip(ordered, rank_ordered([r[spec.key] for r in ordered])):
+    for r, rank in zip(ordered, ranks):
         leaders.append({
             "rank": rank,
             "player_id": r["player_id"],

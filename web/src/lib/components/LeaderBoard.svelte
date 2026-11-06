@@ -49,7 +49,7 @@
 							<td class="rank"><RankDot rank={row.rank} /></td>
 							<td>
 								<a class="player" href={playerHref(row.player_id)} aria-label={row.name} aria-describedby="{uid}-{row.player_id}-info" title={row.name}>
-									<span id="{uid}-{row.player_id}-info" hidden>{row.team.short_name}{row.position ? ` · ${positionLabel(row.position)}` : ''}{row.title ? ` · ${row.title}` : ''}</span>
+									<span id="{uid}-{row.player_id}-info" hidden>{row.team.short_name}{row.position ? ` · ${positionLabel(row.position)}` : ''}{row.title ? ` · ${row.title}` : ''}{row.makeup ? ' · 補算達標' : ''}</span>
 									<TeamBadge team={row.team} size="sm" label={row.team.short_name} />
 									<span class="identity">
 										<span class="name">{row.name}</span>

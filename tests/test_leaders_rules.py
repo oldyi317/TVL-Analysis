@@ -297,9 +297,18 @@ def test_makeup_takes_only_the_best_candidate_and_demotes_tied_leaders():
     rows = [
         rate_row(1, attack_total=40, attack_points=16), rate_row(2, attack_total=40, attack_points=16),
         rate_row(3, attack_total=30, attack_points=28), rate_row(4, attack_total=20, attack_points=19),
+        rate_row(5, attack_total=40, attack_points=10),
     ]
     got = [(r["player_id"], r["rank"], r["makeup"]) for r in attack_board(rows)["rows"]]
-    assert got == [(3, 1, True), (1, 2, False), (2, 2, False)]
+    assert got == [(3, 1, True), (1, 2, False), (2, 2, False), (5, 4, False)]
+
+
+def test_makeup_stays_first_when_rounded_value_equals_leader():
+    rows = [rate_row(1, attack_total=1_000_000, attack_points=500_039),
+            rate_row(2, attack_total=99_999, attack_points=50_004)]
+    board = attack_board(rows, {1: 50_000})
+    assert [r["value"] for r in board["rows"]] == [50.0, 50.0]
+    assert [(r["player_id"], r["rank"], r["makeup"]) for r in board["rows"]] == [(2, 1, True), (1, 2, False)]
 
 
 def test_makeup_tie_prefers_more_attempts_then_name():

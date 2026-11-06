@@ -127,6 +127,7 @@ it('補算達標的列顯示標籤，卡底有一句說明；沒有補算列時�
 	const render_ = (b: LeaderBoardView) => render(LeaderBoard, { props: { board: b, season: season.name, group: 'men' }, context }).body;
 	const html = render_(board);
 	expect(html.split('>補算達標<').length - 1).toBe(1);
+	expect(html).toMatch(/<span id="[^"]*-1-info" hidden="">[^<]*補算達標<\/span>/);
 	expect(html).toMatch(/<p class="note[^"]*">補算達標：[^<]*MLB 規則 9\.22\(a\)[^<]*<\/p>/);
 	const plain = render_({ ...board, rows: board.rows.slice(1) });
 	expect(plain).not.toContain('補算達標');
