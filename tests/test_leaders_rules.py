@@ -56,8 +56,9 @@ def loaded(player_id=1, **changes):
     return rate_row(player_id, **{**totals, **changes})
 
 
-def rate_board(rows, key, team_sets=None):
-    return next(b for b in compute_leaders(rows, {1: 10} if team_sets is None else team_sets) if b["key"] == key)
+def rate_board(rows, key, team_sets=None, apply_makeup=False):
+    boards = compute_leaders(rows, {1: 10} if team_sets is None else team_sets, apply_makeup=apply_makeup)
+    return next(b for b in boards if b["key"] == key)
 
 
 def test_rate_boards_apply_threshold_and_order_ties_by_sample_size():
@@ -267,7 +268,15 @@ def test_team_sets_sum_both_sides():
 
 
 def attack_board(rows, team_sets=None):
-    return rate_board(rows, "attack_success_rate", {1: 20} if team_sets is None else team_sets)
+    return rate_board(rows, "attack_success_rate", {1: 20} if team_sets is None else team_sets, apply_makeup=True)
+
+
+def test_makeup_is_off_by_default_and_when_season_incomplete():
+    rows = [rate_row(1, attack_total=40, attack_points=20), rate_row(2, attack_total=30, attack_points=25)]
+    off = rate_board(rows, "attack_success_rate", {1: 20})
+    assert [(r["player_id"], r["makeup"]) for r in off["rows"]] == [(1, False)]
+    on = rate_board(rows, "attack_success_rate", {1: 20}, apply_makeup=True)
+    assert [(r["player_id"], r["makeup"]) for r in on["rows"]] == [(2, True), (1, False)]
 
 
 def test_makeup_lists_short_player_first_with_actual_rate():

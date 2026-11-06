@@ -527,15 +527,31 @@ def _team_shorts(conn: sqlite3.Connection) -> dict[tuple[int, str], str]:
     }
 
 
+def _regular_complete(conn: sqlite3.Connection) -> dict[tuple[int, str], tuple[int, int, set[int]]]:
+    found: dict[tuple[int, str], tuple[int, int, set[int]]] = {}
+    for cup_id, gender, game_id, has_result in conn.execute(
+        f"""
+        SELECT cup_id, gender, game_id, {HAS_RESULT_WHERE}
+        FROM matches WHERE is_golden_set = 0 AND round_name LIKE '例行賽%'
+        """
+    ):
+        total, scored, ids = found.get((cup_id, gender), (0, 0, set()))
+        found[(cup_id, gender)] = (total + 1, scored + has_result, ids | {game_id})
+    return found
+
+
 def _leaders_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict[int, dict]]) -> dict:
     names = _player_names(conn)
     shorts = _team_shorts(conn)
     leaders = []
+    schedule = _regular_complete(conn)
     for cup_id, gender, rows in _advanced_scopes(conn, exclude_golden_set=True):
         regular = [g for g in games.get((cup_id, gender), {}).values() if (g["round_name"] or "").startswith("例行賽")]
         dates = [g["date"] for g in regular]
         totals = regular_totals(regular)
         team_sets = count_team_sets(regular)
+        total, scored, scheduled_ids = schedule.get((cup_id, gender), (0, 0, set()))
+        regular_complete = total > 0 and total == scored and scheduled_ids <= {g["game_id"] for g in regular}
         named = [
             {**{k: r[k] for k in ("player_id", "team_id", "position")}, **totals[r["player_id"]],
              "name": names[r["player_id"]], "team_short": shorts[(r["team_id"], gender)]}
@@ -547,7 +563,7 @@ def _leaders_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict
             "scope": "regular",
             "through_date": max(dates, default=None),
             "games": len(dates),
-            "boards": compute_leaders(named, team_sets),
+            "boards": compute_leaders(named, team_sets, apply_makeup=regular_complete),
             "volume_rates": compute_volume_rates(named, team_sets),
         })
     return {"leaders": leaders}

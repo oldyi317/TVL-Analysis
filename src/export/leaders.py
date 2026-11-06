@@ -98,7 +98,7 @@ def makeup_candidate(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, 
     return min(candidates, key=lambda c: c[0])[1] if candidates else None
 
 
-def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int]) -> dict:
+def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int], apply_makeup: bool = False) -> dict:
     threshold = threshold_text(spec, team_sets) if spec.kind == "rate" else None
     if spec.position is not None:
         rows = [r for r in rows if r["position"] == spec.position]
@@ -114,17 +114,17 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int]) -> d
             if spec.key == "blocks_per_set":
                 if not sets:
                     continue
-                qualified.append({**r, spec.key: round(r["block_points"] / sets * 1.0, 2), "_denominator": sets})
+                qualified.append({**r, spec.key: round(r["block_points"] / sets, 2), "_denominator": sets})
                 tiebreak[r["player_id"]] = r["block_points"]
             elif r[spec.denominator]:
                 qualified.append({**r, spec.key: round(compute_ratios(r)[spec.key], 2),
                                   "_denominator": r[spec.denominator]})
                 tiebreak[r["player_id"]] = r[spec.denominator]
-        if spec.makeup and qualified:
+        if spec.makeup and apply_makeup and qualified:
             leader_rate = max(r[spec.numerator] / r[spec.denominator] * 100 for r in qualified)
         else:
             leader_rate = None
-        candidate = makeup_candidate(spec, rows, team_sets, leader_rate) if spec.makeup else None
+        candidate = makeup_candidate(spec, rows, team_sets, leader_rate) if spec.makeup and apply_makeup else None
         if candidate:
             makeup_ids.add(candidate["player_id"])
         rows = qualified
@@ -153,8 +153,9 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int]) -> d
 
 
 def compute_leaders(rows: list[dict], team_sets: Mapping[int, int],
-                    boards: Sequence[BoardSpec] = COUNT_BOARDS + RATE_BOARDS) -> list[dict]:
-    return [_board(spec, rows, team_sets) for spec in boards]
+                    boards: Sequence[BoardSpec] = COUNT_BOARDS + RATE_BOARDS,
+                    apply_makeup: bool = False) -> list[dict]:
+    return [_board(spec, rows, team_sets, apply_makeup) for spec in boards]
 
 
 VOLUME_RATE_KEYS = ("attack_success_rate", "receive_excellent_rate", "dig_excellent_rate", "set_excellent_rate")

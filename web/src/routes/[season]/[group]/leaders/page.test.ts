@@ -38,7 +38,7 @@ describe('排行榜頁有單場數據', () => {
 	it('出現 h1、統計範圍、總得分卡，並列名次同號且跳號', () => {
 		const html = renderPage([row(1, 1), row(1, 2), row(3, 3)]);
 		expect(html).toMatch(/<h1[^>]*>[^<]*排行榜<\/h1>/);
-		expect(html).toContain('統計至 11 月 2 日 · 共 6 場');
+		expect(html).toContain('例行賽統計至 11 月 2 日 · 共 6 場');
 		expect(html).toMatch(/<h2[^>]*>總得分<\/h2>/);
 		expect(html).toContain('名次');
 		expect(ranks(html)).toEqual(['1', '1', '3']);
