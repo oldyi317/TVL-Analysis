@@ -89,6 +89,6 @@ export function volumeRateOption(v: VolumeRateView): object | null {
 }
 
 export function volumeRateNote(v: VolumeRateView, threshold: string | null): string {
-	const scope = threshold ? `只列達比率榜門檻（${threshold.replace(/^門檻：/, '')}）的球員；` : '';
+	const scope = threshold ? `只列達比率榜門檻的球員，${threshold.replace(/^門檻：/, '')}；` : '';
 	return `${scope}虛線是兩軸中位數（${v.countLabel} ${v.median_count}、${v.rateLabel} ${v.median_rate}%），右上是量大又準、左下是量少又不準。`;
 }
