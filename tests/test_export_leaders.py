@@ -1,8 +1,15 @@
 from tests.conftest import seed_player, seed_registration, seed_stat
 
 MATCH_SQL = """
-    INSERT INTO matches (game_id, gender, cup_id, match_date, home_team, away_team, home_team_id, away_team_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO matches (game_id, gender, cup_id, match_date, home_team, away_team, home_team_id, away_team_id,
+                         round_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, '例行賽 Week 1')
+"""
+
+MATCH_SQL_ROUND = """
+    INSERT INTO matches (game_id, gender, cup_id, match_date, home_team, away_team, home_team_id, away_team_id,
+                         round_name, home_sets_won, away_sets_won)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 
@@ -113,3 +120,37 @@ def test_each_group_has_four_volume_rates_without_golden_set_rows(export_json):
     }
     assert [p["player_id"] for p in women["volume_rates"][0]["points"]] == [2]
     assert women["volume_rates"][3]["points"] == []
+
+
+def test_leaders_only_count_regular_season_and_expose_scope(export_json):
+    def build_round(conn):
+        seed_player(conn, 1, "甲")
+        seed_registration(conn, 1, 1, 1)
+        conn.execute(MATCH_SQL_ROUND, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 1", 3, 1))
+        conn.execute(MATCH_SQL_ROUND, (2, "M", 21, "2026-03-01", "屏東台電", "雲林美津濃", 1, 2, "總決賽 Week 19", 3, 0))
+        seed_stat(conn, 1, stat(12), "2025-11-01", "雲林美津濃")
+        seed_stat(conn, 1, stat(30), "2026-03-01", "雲林美津濃")
+
+    payload, _ = export_json(build_round, "leaders")
+    scope = payload["leaders"][0]
+    assert scope["scope"] == "regular" and scope["games"] == 1 and scope["through_date"] == "2025-11-01"
+    total = next(b for b in scope["boards"] if b["key"] == "total_points")
+    assert total["rows"][0]["value"] == 12
+
+
+def test_playoff_only_player_is_absent(export_json):
+    def build_round(conn):
+        seed_player(conn, 1, "甲")
+        seed_player(conn, 2, "乙")
+        seed_registration(conn, 1, 1, 1)
+        seed_registration(conn, 2, 2, 2)
+        conn.execute(MATCH_SQL_ROUND, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 1", 3, 1))
+        conn.execute(MATCH_SQL_ROUND, (2, "M", 21, "2026-03-01", "屏東台電", "雲林美津濃", 1, 2, "總決賽 Week 19", 3, 0))
+        seed_stat(conn, 1, stat(12), "2025-11-01", "雲林美津濃")
+        seed_stat(conn, 2, stat(30), "2026-03-01", "屏東台電")
+
+    payload, _ = export_json(build_round, "leaders")
+    scope = payload["leaders"][0]
+    assert scope["games"] == 1
+    names = {r["name"] for b in scope["boards"] for r in b["rows"]}
+    assert names == {"甲"}

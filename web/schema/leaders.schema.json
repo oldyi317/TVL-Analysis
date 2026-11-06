@@ -13,10 +13,11 @@
         "title": "GroupLeaders",
         "type": "object",
         "additionalProperties": false,
-        "required": ["cup_id", "group", "through_date", "games", "boards", "volume_rates"],
+        "required": ["cup_id", "group", "scope", "through_date", "games", "boards", "volume_rates"],
         "properties": {
           "cup_id": { "type": "integer" },
           "group": { "type": "string", "enum": ["men", "women"] },
+          "scope": { "type": "string", "enum": ["regular"], "description": "排行榜只算例行賽" },
           "through_date": { "type": ["string", "null"], "format": "date", "description": "已有單場數據的最後一場日期；查無可對回賽程的場次為 null" },
           "games": { "type": "integer", "minimum": 0, "description": "已有單場數據且對得回賽程的場次數" },
           "boards": {

@@ -1,9 +1,10 @@
-from collections.abc import Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from statistics import median
 from typing import Literal
 
 from src.export.player_advanced import MIN_GAMES, MIN_SETS, compute_ratios
+from src.export.player_seasons import STAT_FIELDS
 
 
 @dataclass(frozen=True)
@@ -114,3 +115,27 @@ def compute_volume_rates(rows: list[dict]) -> list[dict]:
             "points": points,
         })
     return result
+
+
+def regular_totals(games: Iterable[Mapping]) -> dict[int, dict]:
+    totals: dict[int, dict] = {}
+    for game in games:
+        for row in (*game["home"], *game["away"]):
+            total = totals.setdefault(row["player_id"], {"games": 0, **{f: 0 for f in STAT_FIELDS}})
+            total["games"] += 1
+            for field in STAT_FIELDS:
+                if total[field] is None or row[field] is None:
+                    total[field] = None
+                else:
+                    total[field] += row[field]
+    return totals
+
+
+def count_team_sets(games: Iterable[Mapping]) -> dict[int, int]:
+    sets: dict[int, int] = {}
+    for game in games:
+        if game["sets"] is None:
+            continue
+        for team_id in (game["home_team_id"], game["away_team_id"]):
+            sets[team_id] = sets.get(team_id, 0) + game["sets"]
+    return sets

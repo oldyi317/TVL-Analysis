@@ -1,4 +1,5 @@
-from src.export.leaders import compute_leaders, compute_volume_rates
+from src.export.leaders import compute_leaders, compute_volume_rates, count_team_sets, regular_totals
+from src.export.player_seasons import STAT_FIELDS
 
 
 def row(player_id, name, total_points, position="S"):
@@ -186,3 +187,32 @@ def test_volume_rate_medians_are_precomputed_for_both_axes():
 def test_volume_rate_medians_are_null_without_points():
     empty = compute_volume_rates([rate_row(1, sets_played=1)])
     assert all(v["points"] == [] and v["median_count"] is None and v["median_rate"] is None for v in empty)
+
+
+def entry(player_id, team_id, **stats):
+    base = {f: (None if f == "sets_played" else 0) for f in STAT_FIELDS}
+    return {"player_id": player_id, "team_id": team_id, "jersey_number": None, "position": None, **base, **stats}
+
+
+def game(game_id, home_rows, away_rows, home_team_id=1, away_team_id=2, sets=4, round_name="例行賽 Week 1"):
+    return {"game_id": game_id, "date": "2025-11-01", "home": home_rows, "away": away_rows,
+            "golden_set": None, "home_team_id": home_team_id, "away_team_id": away_team_id,
+            "round_name": round_name, "sets": sets}
+
+
+def test_regular_totals_sum_stat_fields_and_count_games():
+    g1 = game(1, [entry(7, 1, attack_total=10, attack_points=4)], [])
+    g2 = game(2, [], [entry(7, 1, attack_total=5, attack_points=1)])
+    totals = regular_totals([g1, g2])
+    assert totals[7]["games"] == 2 and totals[7]["attack_total"] == 15 and totals[7]["attack_points"] == 5
+    assert totals[7]["sets_played"] is None
+
+
+def test_regular_totals_sum_sets_played_when_all_present():
+    g1 = game(1, [entry(7, 1, sets_played=3)], [])
+    g2 = game(2, [entry(7, 1, sets_played=2)], [])
+    assert regular_totals([g1, g2])[7]["sets_played"] == 5
+
+
+def test_team_sets_sum_both_sides():
+    assert count_team_sets([game(1, [], [], 1, 2, sets=4), game(2, [], [], 2, 3, sets=5)]) == {1: 4, 2: 9, 3: 5}
