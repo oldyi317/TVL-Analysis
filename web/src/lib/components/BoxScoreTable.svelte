@@ -4,19 +4,16 @@
 
 	const goodOverTotal = (good: number, total: number) => `${good}／${total}`;
 
-	// label 用在展開列，short 用在表頭；沒有 short 就共用 label
-	const DETAIL_COLS: { label: string; short?: string; value: (r: BoxRow) => string }[] = [
+	const DETAIL_COLS: { label: string; value: (r: BoxRow) => string }[] = [
 		{ label: '攻擊次數', value: (r) => String(r.attack_total) },
 		{ label: '發球次數', value: (r) => String(r.serve_total) },
 		{ label: '接發', value: (r) => goodOverTotal(r.receive_excellent, r.receive_total) },
 		{ label: '防守', value: (r) => goodOverTotal(r.dig_excellent, r.dig_total) },
-		{ label: '舉球', value: (r) => goodOverTotal(r.set_excellent, r.set_total) },
-		{ label: '出賽局數', short: '局數', value: (r) => String(r.sets_played ?? '—') }
+		{ label: '舉球', value: (r) => goodOverTotal(r.set_excellent, r.set_total) }
 	];
 </script>
 
 <script lang="ts">
-	import DataNote from '#lib/components/DataNote.svelte';
 	let { rows, label }: { rows: BoxRow[]; label: string } = $props();
 
 	const uid = $props.id();
@@ -25,10 +22,6 @@
 	const detailId = (row: BoxRow) => `${uid}-${row.player_id}`;
 	const toggle = (row: BoxRow) => (open[row.player_id] = !open[row.player_id]);
 </script>
-
-{#if rows.some((row) => row.sets_played === null)}
-	<DataNote text="官網單場數據不提供出賽局數" />
-{/if}
 
 <div class="scroll">
 	<table aria-label={label}>
@@ -41,7 +34,7 @@
 				<th scope="col" class="num">攔網</th>
 				<th scope="col" class="num">發球</th>
 				{#each DETAIL_COLS as col (col.label)}
-					<th scope="col" class="num wide">{col.short ?? col.label}</th>
+					<th scope="col" class="num wide">{col.label}</th>
 				{/each}
 				<th scope="col" class="toggle"><span class="sr">詳細</span></th>
 			</tr>

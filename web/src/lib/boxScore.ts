@@ -6,7 +6,6 @@ export type BoxRow = {
 	name: string;
 	number: number | null;
 	position: string | null;
-	sets_played: StatRow['sets_played'];
 	total_points: number;
 	attack_points: number;
 	attack_total: number;
@@ -44,7 +43,6 @@ function toRow(row: StatRow, group: Group, players: readonly PlayerEntry[]): Box
 		name: playerName(group, row.player_id, players),
 		number: row.jersey_number,
 		position: row.position,
-		sets_played: row.sets_played,
 		total_points: row.total_points,
 		attack_points: row.attack_points,
 		attack_total: row.attack_total,
