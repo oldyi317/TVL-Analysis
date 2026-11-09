@@ -75,12 +75,12 @@ describe('toBoxScoreView', () => {
 	it('背號與位置為 null 原樣保留，列順序與數值不變', () => {
 		const game = {
 			game_id: 9,
-			home: [stat(2, { jersey_number: null, position: null, sets_played: 0, total_points: 0 }), stat(1)],
+			home: [stat(2, { jersey_number: null, position: null, total_points: 0 }), stat(1)],
 			away: [],
 			golden_set: null
 		};
 		const [first, second] = toBoxScoreView(game, 'men', players).home;
-		expect(first).toMatchObject({ player_id: 2, number: null, position: null, sets_played: 0, total_points: 0 });
+		expect(first).toMatchObject({ player_id: 2, number: null, position: null, total_points: 0 });
 		expect(second).toMatchObject({ player_id: 1, number: 1, position: 'OH', attack_points: 10, dig_total: 9 });
 	});
 
@@ -103,11 +103,11 @@ describe('toBoxScoreView', () => {
 });
 
 
-it('box score 保留未知局數並顯示破折號', () => {
-	const view = toBoxScoreView({ game_id: 9, home: [stat(1, { sets_played: null })], away: [], golden_set: null }, 'men', []);
-	expect(view.home[0].sets_played).toBeNull();
+it('單場數據表不顯示出賽局數欄與相關提示', () => {
+	const view = toBoxScoreView({ game_id: 9, home: [stat(1, { sets_played: null }), stat(2, { sets_played: 3 })], away: [], golden_set: null }, 'men', []);
+	expect(view.home[0]).not.toHaveProperty('sets_played');
 	const html = render(BoxScoreTable, { props: { rows: view.home, label: '測試' } }).body;
-	expect(html).toMatch(/class="num wide[^"]*"[^>]*>—<\/td>/);
+	expect(html).not.toContain('局數');
+	expect(html).not.toContain('官網單場數據不提供出賽局數');
 	expect(html).not.toContain('>null<');
-	expect(html).toContain('官網單場數據不提供出賽局數');
 });

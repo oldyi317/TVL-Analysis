@@ -68,7 +68,7 @@ test.describe('手機', () => {
 		}).toPass({ timeout: 10_000 });
 		const detail = page.locator(`#${detailId}`);
 		await expect(detail).toBeVisible();
-		for (const text of ['接發', '防守', '舉球', '出賽局數']) {
+		for (const text of ['接發', '防守', '舉球']) {
 			await expect(detail).toContainText(text);
 		}
 		await expect(table.locator('tbody tr.main').first().locator('.pos')).toBeVisible();
@@ -104,9 +104,10 @@ test.describe('桌機', () => {
 		const tables = page.getByRole('table', { name: /單場數據$/ });
 		await expect(tables).toHaveCount(2);
 		for (const i of [0, 1]) {
-			for (const name of ['接發', '防守', '舉球', '局數']) {
+			for (const name of ['接發', '防守', '舉球']) {
 				await expect(tables.nth(i).getByRole('columnheader', { name, exact: true })).toBeVisible();
 			}
+			await expect(tables.nth(i).getByRole('columnheader', { name: '局數' })).toHaveCount(0);
 		}
 
 		const firstRow = tables.first().locator('tbody tr.main').first();
