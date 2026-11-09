@@ -86,7 +86,7 @@
 	<EmptyState title="本季尚無單場數據" hint="單場數據匯入後就會出現" />
 {:else}
 	{#if data.summary?.through_date}
-		<p class="scope">例行賽統計至 {formatThroughDate(data.summary.through_date)} · 共 {data.summary.games} 場</p>
+		<p class="scope">例行賽統計至 {formatThroughDate(data.summary.through_date)} · 共 {data.summary.games} 場 · 不含黃金決勝局</p>
 	{/if}
 	<SeasonChampions boards={data.boards} season={data.season.name} group={data.group} />
 	<div class="segments" role="group" aria-label="榜單類型">

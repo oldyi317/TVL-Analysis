@@ -38,7 +38,7 @@ describe('排行榜頁有單場數據', () => {
 	it('出現 h1、統計範圍、總得分卡，並列名次同號且跳號', () => {
 		const html = renderPage([row(1, 1), row(1, 2), row(3, 3)]);
 		expect(html).toMatch(/<h1[^>]*>[^<]*排行榜<\/h1>/);
-		expect(html).toContain('例行賽統計至 11 月 2 日 · 共 6 場');
+		expect(html).toContain('例行賽統計至 11 月 2 日 · 共 6 場 · 不含黃金決勝局');
 		expect(html).toMatch(/<h2[^>]*>總得分<\/h2>/);
 		expect(html).toContain('名次');
 		expect(ranks(html)).toEqual(['1', '1', '3']);
@@ -114,6 +114,14 @@ it('比率卡顯示標題、門檻、比率與分子分母，無人達門檻時�
 	expect(html).toContain('45／120');
 	const empty = render(LeaderBoard, { props: { board: { ...board, rows: [] }, season: season.name, group: 'men' }, context }).body;
 	expect(empty).toContain('尚無球員達門檻');
+});
+
+it('計數榜 threshold 有字串時顯示只計舉球（S）', () => {
+	const board: LeaderBoardView = {
+		key: 'set_excellent', label: '舉球到位', kind: 'count', threshold: '只計舉球（S）', rows: [row(1, 1)]
+	};
+	const html = render(LeaderBoard, { props: { board, season: season.name, group: 'men' }, context }).body;
+	expect(html).toMatch(/<p class="threshold[^"]*">只計舉球（S）<\/p>/);
 });
 
 it('補算達標的列顯示標籤，卡底有一句說明；沒有補算列時都不出現', () => {

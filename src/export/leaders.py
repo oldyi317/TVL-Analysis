@@ -23,7 +23,8 @@ def threshold_text(spec: BoardSpec, team_sets: Mapping[int, int]) -> str:
     low, high = min(thresholds), max(thresholds)
     current = f"{low} 次" if low == high else f"{low} 到 {high} 次"
     floor = f"，季初至少 {THRESHOLD_FLOOR} 次" if raw_below_floor else ""
-    return f"門檻：{spec.attempts_label}達所屬球隊已打局數 × {spec.coefficient:g}{floor}（目前 {current}）"
+    setter = "，只計舉球（S）" if spec.position == "S" else ""
+    return f"門檻：{spec.attempts_label}達所屬球隊已打局數 × {spec.coefficient:g}{floor}（目前 {current}）{setter}"
 
 
 def rank_ordered(values: Sequence) -> list[int]:
@@ -52,7 +53,10 @@ def makeup_candidate(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, 
 
 
 def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int], apply_makeup: bool = False) -> dict:
-    threshold = threshold_text(spec, team_sets) if spec.kind == "rate" else None
+    if spec.kind == "rate":
+        threshold = threshold_text(spec, team_sets)
+    else:
+        threshold = "只計舉球（S）" if spec.position == "S" else None
     if spec.position is not None:
         rows = [r for r in rows if r["position"] == spec.position]
     tiebreak = {}
