@@ -25,17 +25,17 @@ RATE_BOARDS = (
     BoardSpec("attack_success_rate", "攻擊成功率", "rate", None, "attack_points", "attack_total",
               "attack_total", "攻擊次數", 2.0, makeup=True),
     BoardSpec("serve_point_rate", "發球得分率", "rate", None, "serve_points", "serve_total",
-              "serve_total", "發球次數", 1.3, makeup=True),
+              "serve_total", "發球次數", 1.75, makeup=True),
     BoardSpec("receive_excellent_rate", "接發球到位率", "rate", None, "receive_excellent", "receive_total",
-              "receive_total", "接發球次數", 1.3, makeup=True),
+              "receive_total", "接發球次數", 3.0, makeup=True),
     BoardSpec("dig_excellent_rate", "防守到位率", "rate", None, "dig_excellent", "dig_total",
               "dig_total", "防守次數", 1.0, makeup=True),
     BoardSpec("set_excellent_rate", "舉球到位率", "rate", None, "set_excellent", "set_total",
-              "set_total", "舉球次數", 5.0, position="S", makeup=True),
+              "set_total", "舉球次數", 8.0, position="S", makeup=True),
     BoardSpec("points_per_game", "場均得分", "rate", None, "total_points", "games",
-              "attack_serve_total", "攻擊＋發球次數", 2.0),
+              "attack_serve_total", "攻擊＋發球次數", 3.0),
     BoardSpec("blocks_per_set", "每局攔網", "rate", None, "block_points", None,
-              "attack_serve_total", "攻擊＋發球次數", 2.0),
+              "attack_serve_total", "攻擊＋發球次數", 3.0),
 )
 
 
