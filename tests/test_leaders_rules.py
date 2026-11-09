@@ -118,7 +118,7 @@ def test_all_seven_rates_use_their_own_denominators_and_match_player_page():
         "門檻：發球次數達所屬球隊已打局數 × 1.3（目前 13 次）",
         "門檻：接發球次數達所屬球隊已打局數 × 1.3（目前 13 次）",
         "門檻：防守次數達所屬球隊已打局數 × 1（目前 10 次）",
-        "門檻：舉球次數達所屬球隊已打局數 × 5（目前 50 次）",
+        "門檻：舉球次數達所屬球隊已打局數 × 5（目前 50 次），只計舉球（S）",
         "門檻：攻擊＋發球次數達所屬球隊已打局數 × 2（目前 20 次）",
         "門檻：攻擊＋發球次數達所屬球隊已打局數 × 2（目前 20 次）"]
     assert [b["rows"][0]["value"] for b in boards] == [50, 50, 50, 50, 40, 2, 2]
@@ -141,6 +141,11 @@ def test_blocks_per_set_ties_order_by_block_points():
     rows = [rate_row(1, team_id=1, block_points=4, attack_total=40), rate_row(2, team_id=2, block_points=8, attack_total=80)]
     board = rate_board(rows, "blocks_per_set", {1: 20, 2: 40})
     assert [r["player_id"] for r in board["rows"]] == [2, 1] and [r["rank"] for r in board["rows"]] == [1, 1]
+
+
+def test_threshold_text_appends_setter_only_for_position_s():
+    setter = next(s for s in RATE_BOARDS if s.key == "set_excellent_rate")
+    assert threshold_text(setter, {1: 10, 2: 21}) == "門檻：舉球次數達所屬球隊已打局數 × 5（目前 50 到 105 次），只計舉球（S）"
 
 
 def test_threshold_text_formats():
@@ -182,7 +187,9 @@ def test_setting_boards_only_include_setters_while_other_boards_include_all_posi
             for r in boards["set_excellent_rate"]["rows"]] == [
         (1, 1, 60.0, 30, 50), (2, 2, 0.0, 0, 50),
     ]
-    assert boards["set_excellent_rate"]["threshold"] == "門檻：舉球次數達所屬球隊已打局數 × 5（目前 50 次）"
+    assert boards["set_excellent_rate"]["threshold"] == "門檻：舉球次數達所屬球隊已打局數 × 5（目前 50 次），只計舉球（S）"
+    assert boards["set_excellent"]["threshold"] == "只計舉球（S）"
+    assert all(b["threshold"] is None for k, b in boards.items() if b["kind"] == "count" and k != "set_excellent")
     for key, board in boards.items():
         if key not in ("set_excellent", "set_excellent_rate"):
             assert {r["player_id"] for r in board["rows"]} == {1, 2, 3, 4, 5, 6, 7}
