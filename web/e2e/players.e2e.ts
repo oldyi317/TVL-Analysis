@@ -7,7 +7,6 @@ type Season = {
 	jersey_number: number | null;
 	position: string | null;
 	games: number;
-	sets_played: number | null;
 };
 type Player = { player_id: number; group: string; name: string | null; seasons: Season[] };
 const players: Player[] = readJson('players').players;
@@ -84,7 +83,6 @@ test('舉球員的主卡顯示舉球到位率等匯出值，位置顯示中文�
 	const totals = page.locator('dl.totals');
 	for (const [label, value] of [
 		['出賽場次', String(s.games)],
-		['出賽局數', s.sets_played === null ? '—' : String(s.sets_played)],
 		['總得分', String(s.total_points)]
 	] as const) {
 		await expect(totals.locator('div', { hasText: label }).locator('dd')).toHaveText(value);

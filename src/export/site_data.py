@@ -330,8 +330,8 @@ def _advanced_entry(cup_id: int, group: str, result: dict) -> dict:
         "group": group,
         "position": result["position"],
         "games": result["games"],
-        "sets_played": result["sets_played"],
-        "insufficient_sets": result["insufficient_sets"],
+        "team_sets": result["team_sets"],
+        "below_threshold": result["below_threshold"],
         "ratios": {key: round(value, 2) if value is not None else None for key, value in result["ratios"].items()},
         "pr": result["pr"],
     }
@@ -342,7 +342,6 @@ def _distribution_entry(cup_id: int, group: str, position: str, metrics: dict[st
         "cup_id": cup_id,
         "group": group,
         "position": position,
-        "player_count": len(metrics["attack_success_rate"]),
         "metrics": {
             key: {"median": round(median(values), 2) if values else None, "values": [round(v, 2) for v in values]}
             for key, values in metrics.items()
@@ -350,12 +349,12 @@ def _distribution_entry(cup_id: int, group: str, position: str, metrics: dict[st
     }
 
 
-def _player_advanced_payload(conn: sqlite3.Connection) -> dict:
+def _player_advanced_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict[int, dict]]) -> dict:
     players: list[dict] = []
     dists: list[dict] = []
     for cup_id, gender, rows in _advanced_scopes(conn):
         group = GROUP_BY_GENDER[gender]
-        results = compute_advanced(rows)
+        results = compute_advanced(rows, count_team_sets(games.get((cup_id, gender), {}).values(), include_golden_set=True))
         players.extend(_advanced_entry(cup_id, group, r) for r in results)
         dists.extend(
             _distribution_entry(cup_id, group, position, metrics)
@@ -676,9 +675,9 @@ def export_site_data(db_path: Path, out_dir: Path) -> None:
         _write_json(out_dir / "standings.json", _standings_payload(conn))
         _write_json(out_dir / "matches.json", _matches_payload(conn))
         _write_json(out_dir / "players.json", _players_payload(conn))
-        _write_json(out_dir / "player_advanced.json", _player_advanced_payload(conn))
-        _write_json(out_dir / "rosters.json", _rosters_payload(conn))
         games = _box_score_games(conn)
+        _write_json(out_dir / "player_advanced.json", _player_advanced_payload(conn, games))
+        _write_json(out_dir / "rosters.json", _rosters_payload(conn))
         _write_json(out_dir / "box_scores.json", _box_scores_payload(conn, games))
         _write_json(out_dir / "leaders.json", _leaders_payload(conn, games))
         _write_json(out_dir / "records.json", _records_payload(conn))

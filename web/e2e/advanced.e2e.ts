@@ -6,8 +6,9 @@ type Adv = {
 	cup_id: number;
 	group: string;
 	position: string | null;
-	insufficient_sets: boolean;
-	sets_played: number | null;
+	below_threshold: boolean;
+	pr: Record<string, number | null> | null;
+	ratios: { blocks_per_set: number | null };
 };
 type Player = { player_id: number; group: string; seasons: { cup_id: number; games: number }[] };
 // 開季初當季還沒有進階數據，退回最近一個有進階數據的賽季
@@ -34,12 +35,12 @@ const played = (a: Adv) =>
 			p.player_id === a.player_id &&
 			p.seasons.some((s) => s.cup_id === cup && s.games > 0)
 	);
-const pick = (insufficient: boolean) =>
+const pick = (below: boolean) =>
 	advanced.find(
 		(a) =>
 			a.cup_id === cup &&
-			a.insufficient_sets === insufficient &&
-			(insufficient || a.position !== null) &&
+			a.below_threshold === below &&
+			(below || (a.position !== null && a.pr?.attack_success_rate != null)) &&
 			played(a) &&
 			hasGameLog(a)
 	);
@@ -56,7 +57,7 @@ const open = async (page: Page, a: Adv) => {
 
 test('進階數據預設收合，展開後有 PR 值與兩個圖表', async ({ page }) => {
 	const a = pick(false);
-	test.skip(!a, '用於比對的賽季沒有局數足夠且有位置的出賽球員');
+	test.skip(!a, '用於比對的賽季沒有達浮動門檻且有位置的出賽球員');
 	await open(page, a!);
 	const table = page.getByRole('table', { name: 'PR 值' });
 	await expect(table.getByRole('row', { name: /攻擊成功率/ })).toBeVisible();
@@ -68,7 +69,7 @@ test('進階數據預設收合，展開後有 PR 值與兩個圖表', async ({ p
 
 test('同位置分佈切換指標後圖表會重畫', async ({ page }) => {
 	const a = pick(false);
-	test.skip(!a, '用於比對的賽季沒有局數足夠且有位置的出賽球員');
+	test.skip(!a, '用於比對的賽季沒有達浮動門檻且有位置的出賽球員');
 	await open(page, a!);
 	const canvas = page.locator('[role="img"]').first().locator('canvas').first();
 	await expect(canvas).toBeVisible();
@@ -90,13 +91,13 @@ test('同位置分佈切換指標後圖表會重畫', async ({ page }) => {
 
 test('逐場趨勢預設依主要位置選指標，可切換其他指標', async ({ page }) => {
 	const a = pick(false);
-	test.skip(!a, '用於比對的賽季沒有局數足夠且有位置的出賽球員');
+	test.skip(!a, '用於比對的賽季沒有達浮動門檻且有位置的出賽球員');
 	await open(page, a!);
 	const defaults: Record<string, string> = {
 		S: '舉球到位率',
 		L: '接發球到位率',
 		OH: '攻擊成功率',
-		MB: a!.sets_played === null ? '攔網得分' : '每局攔網',
+		MB: a!.ratios.blocks_per_set === null ? '攔網得分' : '每局攔網',
 		OP: '攻擊成功率'
 	};
 	const group = page.getByRole('group', { name: '選擇逐場趨勢指標' });
@@ -113,12 +114,12 @@ test('逐場趨勢預設依主要位置選指標，可切換其他指標', async
 const BLOCK_LABELS = ['每局攔網', '場均攔網', '攔網得分'];
 const pickAt = (match: (position: string) => boolean) =>
 	advanced.find(
-		(x) => x.cup_id === cup && !x.insufficient_sets && x.position !== null && match(x.position) && played(x) && hasGameLog(x)
+		(x) => x.cup_id === cup && !x.below_threshold && x.position !== null && match(x.position) && played(x) && hasGameLog(x)
 	);
 
 test('非自由（L）球員的 PR 表、分佈與趨勢可選場均攔網／攔網得分', async ({ page }) => {
 	const a = pickAt((pos) => pos !== 'L');
-	test.skip(!a, '用於比對的賽季沒有局數足夠的非自由（L）球員');
+	test.skip(!a, '用於比對的賽季沒有達浮動門檻的非自由（L）球員');
 	await open(page, a!);
 	const chip = (group: string, name: string) =>
 		page.getByRole('group', { name: group }).getByRole('button', { name, exact: true });
@@ -129,7 +130,7 @@ test('非自由（L）球員的 PR 表、分佈與趨勢可選場均攔網／攔
 
 test('自由（L）球員進階數據區不出現任何攔網指標', async ({ page }) => {
 	const a = pickAt((pos) => pos === 'L');
-	test.skip(!a, '用於比對的賽季沒有局數足夠的自由（L）球員');
+	test.skip(!a, '用於比對的賽季沒有達浮動門檻的自由（L）球員');
 	await open(page, a!);
 	await expect(page.getByRole('table', { name: 'PR 值' })).toBeVisible();
 	const panel = page.locator('[id$="-panel"]');
@@ -138,17 +139,15 @@ test('自由（L）球員進階數據區不出現任何攔網指標', async ({ p
 
 // 文案刻意寫死、不 import noPrReason：測試要獨立於實作，才能抓到頁面文案改了測試沒跟的情況（#84）
 const expectedReason = (a: Adv) => {
-	if (!a.insufficient_sets) return '本季無登錄位置';
-	// 官網單場數據不提供局數（sets_played 為 null）時，樣本門檻改以場數計
-	if (a.sets_played === null) return '出賽場數不足 2 場';
-	return '出賽局數不足 5 局';
+	if (!a.below_threshold) return '本季無登錄位置';
+	return '技術次數未達浮動門檻';
 };
 
-test('沒有 PR 值的球員（局數不足或無位置）展開後看到說明', async ({ page }) => {
+test('沒有 PR 值的球員（未達浮動門檻或無位置）展開後看到說明', async ({ page }) => {
 	const a = advanced.find(
-		(x) => x.cup_id === cup && (x.insufficient_sets || x.position === null) && played(x)
+		(x) => x.cup_id === cup && (x.below_threshold || x.position === null) && played(x)
 	);
-	test.skip(!a, '用於比對的賽季沒有局數不足或無位置的出賽球員');
+	test.skip(!a, '用於比對的賽季沒有未達浮動門檻或無位置的出賽球員');
 	await open(page, a!);
 	await expect(page.getByRole('note').filter({ hasText: expectedReason(a!) })).toBeVisible();
 	await expect(page.getByRole('table', { name: 'PR 值' })).toHaveCount(0);

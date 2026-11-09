@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "player_advanced.schema.json",
   "title": "PlayerAdvancedData",
-  "description": "球員進階數據：每位球員每賽季的十項比率與八項 PR 值（同組別同位置內計算，0 到 100），以及每組別每位置各指標的分佈；黃金決勝局的統計計入；由 src.export.site_data 產出",
+  "description": "球員進階數據：每位球員每賽季的十項比率與八項 PR 值（同組別同位置、該項次數達浮動門檻的球員間計算，0 到 100），以及每組別每位置各指標的分佈；黃金決勝局的統計計入；由 src.export.site_data 產出",
   "type": "object",
   "additionalProperties": false,
   "required": ["players", "distributions"],
@@ -22,7 +22,7 @@
         "dig_excellent_rate": { "type": "number", "description": "防守到位率（%）" },
         "points_per_game": { "type": "number", "description": "場均得分" },
         "set_excellent_rate": { "type": "number", "description": "舉球到位率（%）" },
-        "blocks_per_set": { "type": ["number", "null"], "description": "每局攔網" },
+        "blocks_per_set": { "type": ["number", "null"], "description": "每局攔網：攔網得分除以球隊已打局數，球隊已打局數為 0 時為空" },
         "blocks_per_game": { "type": "number", "description": "場均攔網" },
         "defense_load": { "type": "number", "description": "防守負荷：接發加防守次數" },
         "defense_efficiency": { "type": "number", "description": "防守效率：接發加防守的到位率（%）" }
@@ -54,7 +54,7 @@
       "required": ["median", "values"],
       "properties": {
         "median": { "type": ["number", "null"] },
-        "values": { "type": "array", "items": { "type": "number" }, "description": "升冪排列，每位球員一筆" }
+        "values": { "type": "array", "items": { "type": "number" }, "description": "該項達浮動門檻且有位置的球員值，升冪排列，每位球員一筆；長度即納入比較的人數" }
       }
     }
   },
@@ -65,15 +65,15 @@
         "title": "PlayerAdvancedEntry",
         "type": "object",
         "additionalProperties": false,
-        "required": ["player_id", "cup_id", "group", "position", "games", "sets_played", "insufficient_sets", "ratios", "pr"],
+        "required": ["player_id", "cup_id", "group", "position", "games", "team_sets", "below_threshold", "ratios", "pr"],
         "properties": {
           "player_id": { "type": "integer" },
           "cup_id": { "type": "integer" },
           "group": { "type": "string", "enum": ["men", "women"] },
           "position": { "type": ["string", "null"], "description": "該季主要位置（週登錄最多次的位置，同數取最近）；為空者不計算 PR 值" },
           "games": { "type": "integer", "minimum": 1, "description": "該季統計列數，黃金決勝局列也算一場" },
-          "sets_played": { "type": ["integer", "null"], "minimum": 0 },
-          "insufficient_sets": { "type": "boolean", "description": "已知局數未達 5；局數未知時改以場數未達 2 判斷。PR 值為空，比率照常輸出" },
+          "team_sets": { "type": "integer", "minimum": 0, "description": "所屬球隊已打局數（例行賽、非黃金決勝局、已有單場數據的場次總局數）；浮動門檻與每局攔網的分母，查無為 0" },
+          "below_threshold": { "type": "boolean", "description": "八項 PR 指標的次數全部未達浮動門檻：PR 值皆為空、不進分佈，比率照常輸出；單項未達門檻時只有該項 PR 值為空" },
           "ratios": { "$ref": "#/$defs/Ratios" },
           "pr": { "$ref": "#/$defs/PercentileRanks" }
         }
@@ -85,12 +85,11 @@
         "title": "PositionDistribution",
         "type": "object",
         "additionalProperties": false,
-        "required": ["cup_id", "group", "position", "player_count", "metrics"],
+        "required": ["cup_id", "group", "position", "metrics"],
         "properties": {
           "cup_id": { "type": "integer" },
           "group": { "type": "string", "enum": ["men", "women"] },
           "position": { "type": "string" },
-          "player_count": { "type": "integer", "minimum": 1, "description": "納入 PR 值計算的球員數" },
           "metrics": {
             "type": "object",
             "additionalProperties": false,

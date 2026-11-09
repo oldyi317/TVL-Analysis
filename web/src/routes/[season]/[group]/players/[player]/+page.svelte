@@ -4,7 +4,6 @@
 	import AdvancedStats from '#lib/components/AdvancedStats.svelte';
 	import BigStat from '#lib/components/BigStat.svelte';
 	import Icon from '#lib/components/Icon.svelte';
-	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
@@ -16,7 +15,7 @@
 
 	const name = $derived(playerDisplayName(data.player));
 	const stats = $derived(data.stats);
-	const headline = $derived(headlineStats(stats));
+	const headline = $derived(headlineStats(stats, data.advanced));
 	const listHref = $derived(
 		`${resolve('/[season]/[group]/players', { season: data.season.name, group: data.group })}/`
 	);
@@ -78,9 +77,6 @@
 {#if stats.games === 0}
 	<EmptyState title="本季尚無上場紀錄" hint="有單場數據後就會出現" />
 {:else}
-	{#if stats.sets_played === null}
-		<DataNote text="官網單場數據不提供出賽局數" />
-	{/if}
 	<div class="stats">
 		{#each headline.items as item, i (item.label)}
 			<BigStat label={item.label} value={item.value} detail={item.detail} tone={(i % 3) + 1 as 1 | 2 | 3} />
@@ -92,17 +88,13 @@
 			<dd>{stats.games}</dd>
 		</div>
 		<div>
-			<dt>出賽局數</dt>
-			<dd>{stats.sets_played ?? '—'}</dd>
-		</div>
-		<div>
 			<dt>{STAT_LABELS.total_points}</dt>
 			<dd>{stats.total_points}</dd>
 		</div>
 	</dl>
 {/if}
 
-<AdvancedStats setsPlayed={stats.sets_played} position={displayPosition(stats)} advanced={data.advanced} distribution={data.distribution} gameLog={data.gameLog} />
+<AdvancedStats position={displayPosition(stats)} advanced={data.advanced} distribution={data.distribution} gameLog={data.gameLog} />
 
 <style>
 	.back {

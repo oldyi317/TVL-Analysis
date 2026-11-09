@@ -354,3 +354,10 @@ def test_volume_rates_exclude_makeup_rows():
     assert [r["player_id"] for r in board["rows"] if r["makeup"]] == [2]
     attack = next(v for v in compute_volume_rates(rows, {1: 20}) if v["key"] == "attack_success_rate")
     assert [p["player_id"] for p in attack["points"]] == [1]
+
+
+def test_count_team_sets_adds_one_set_per_golden_set_game_only_when_asked():
+    plain = {"home_team_id": 1, "away_team_id": 2, "sets": 3, "golden_set": None}
+    golden = {"home_team_id": 1, "away_team_id": 3, "sets": 4, "golden_set": {"home": [], "away": []}}
+    assert count_team_sets([plain, golden]) == {1: 7, 2: 3, 3: 4}
+    assert count_team_sets([plain, golden], include_golden_set=True) == {1: 8, 2: 3, 3: 5}
