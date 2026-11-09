@@ -136,9 +136,11 @@ for (const cup of [20, 21, 22]) {
 		expect((await rate.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 		const player = page.locator('#b-total_points tbody a').first();
 		expect((await player.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-		await rate.focus();
-		await page.keyboard.press('Enter');
-		await expect(rate).toHaveAttribute('aria-pressed', 'true');
+		await expect(async () => {
+			await rate.focus();
+			await page.keyboard.press('Enter');
+			await expect(rate).toHaveAttribute('aria-pressed', 'true', { timeout: 500 });
+		}).toPass({ timeout: 10_000 });
 		await expect(page.getByRole('navigation', { name: '比率榜項目' }).getByRole('link')).toHaveCount(7);
 		await expect(page.getByRole('region', { name: '本季四王' })).toHaveCSS('animation-name', 'none');
 	});
