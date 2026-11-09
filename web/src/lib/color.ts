@@ -60,38 +60,58 @@ function hslToRgb([h, s, l]: [number, number, number]): Rgb {
 	return [hue(p, q, h + 1 / 3) * 255, hue(p, q, h) * 255, hue(p, q, h - 1 / 3) * 255];
 }
 
-// 把一個顏色（通常是隊色）調到能當 surface 上的文字用：保留色相與飽和度，
-// 只往背景的反方向改明度，直到達到 4.5:1。已達標就原樣回傳。
-const AA = 4.5;
-
-export function inkOn(hex: string, surface: string): string {
-	if (contrastRatio(hex, surface) >= AA) return hex;
-	const darken = luminance(surface) > 0.5;
+// 保留色相與飽和度，只朝一個方向每步 0.01 改明度，直到 passes 成立；走到底還不成立回傳 null
+function adjustLightness(hex: string, darken: boolean, passes: (c: string) => boolean): string | null {
 	const [h, s, l0] = rgbToHsl(parseHex(hex));
 	let l = l0;
 	for (let i = 0; i < 100; i++) {
 		l = darken ? l - 0.01 : l + 0.01;
 		if (l <= 0 || l >= 1) break;
 		const candidate = toHex(hslToRgb([h, s, l]));
-		if (contrastRatio(candidate, surface) >= AA) return candidate;
+		if (passes(candidate)) return candidate;
 	}
-	return darken ? '#000000' : '#ffffff';
+	return null;
+}
+
+// 把一個顏色（通常是隊色）調到能當 surface 上的文字用：只往背景的反方向改明度，
+// 直到達到 4.5:1。已達標就原樣回傳。
+const AA = 4.5;
+
+export function inkOn(hex: string, surface: string): string {
+	const passes = (c: string) => contrastRatio(c, surface) >= AA;
+	if (passes(hex)) return hex;
+	const darken = luminance(surface) > 0.5;
+	return adjustLightness(hex, darken, passes) ?? (darken ? '#000000' : '#ffffff');
 }
 
 // 與 src/app.css 的 --surface 同步（tokens.test.ts 守著）；JS 端需要表面色一律從這裡拿
 export const SURFACE = { light: '#ffffff', dark: '#1b1e2e' } as const;
 
-// 隊色的四個衍生值：填色、填色上的字、淺色模式文字色、深色模式文字色
+// 圖表色（非文字）門檻 3:1。把隊色調到對淺色與深色表面同時達標：保留色相與飽和度，
+// 太暗就調亮、太亮就調暗；兩個門檻之間有一段明度窗口，所以一個值兩種模式通用。
+const GRAPHIC = 3;
+
+export function chartColorOn(hex: string, surfaces: readonly string[]): string {
+	const passes = (c: string) => surfaces.every((s) => contrastRatio(c, s) >= GRAPHIC);
+	if (passes(hex)) return hex;
+	const lightest = surfaces.reduce((a, b) => (luminance(a) > luminance(b) ? a : b));
+	const darken = contrastRatio(hex, lightest) < GRAPHIC;
+	return adjustLightness(hex, darken, passes) ?? hex;
+}
+
+// 隊色的五個衍生值：填色、填色上的字、淺色模式文字色、深色模式文字色、圖表色
 export function teamPalette(color: string): {
 	fill: string;
 	onFill: string;
 	inkLight: string;
 	inkDark: string;
+	chart: string;
 } {
 	return {
 		fill: color,
 		onFill: textColorOn(color),
 		inkLight: inkOn(color, SURFACE.light),
-		inkDark: inkOn(color, SURFACE.dark)
+		inkDark: inkOn(color, SURFACE.dark),
+		chart: chartColorOn(color, [SURFACE.light, SURFACE.dark])
 	};
 }

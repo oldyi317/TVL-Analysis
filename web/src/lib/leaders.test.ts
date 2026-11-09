@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { VolumeRate } from '#lib/data/types.js';
-import { seasons, seasonTeam, teams } from '#lib/site.js';
+import { teamPalette } from '#lib/color.js';
+import { seasons, seasonTeam, teams, teamsIn } from '#lib/site.js';
 import {
 	formatThroughDate,
 	toVolumeRateView,
@@ -63,8 +64,33 @@ describe('量率散點', () => {
 		const [series] = option.series;
 		expect(series.type).toBe('scatter');
 		expect(series.data.map((d: { value: number[] }) => d.value)).toEqual([[40, 60], [20, 40]]);
-		expect(series.markLine.data).toEqual([{ xAxis: 30 }, { yAxis: 50 }]);
-		expect(series.markLine.lineStyle.type).toBe('dashed');
+		const medians = option.series.at(-1);
+		expect(medians.markLine.data).toEqual([{ xAxis: 30 }, { yAxis: 50 }]);
+		expect(medians.markLine.lineStyle.type).toBe('dashed');
+	});
+
+	it('一隊一個 series：順序照 teams.json、顏色用隊色的圖表色、圖例只列有人達門檻的隊、中位數虛線不隨任一隊隱藏', () => {
+		const [a, b] = teamsIn(seasons[0].cup_id, 'men');
+		const mixed: VolumeRate = {
+			...attack,
+			points: [
+				{ ...point(1, 40, 60), team_id: b.team_id, team_short: b.short_name },
+				{ ...point(2, 20, 40), team_id: a.team_id, team_short: a.short_name },
+				{ ...point(3, 25, 45), team_id: b.team_id, team_short: b.short_name }
+			]
+		};
+		const mixedView = toVolumeRateView(mixed, 'men', seasons[0].cup_id);
+		expect(mixedView.points.map((p) => p.color)).toEqual([b, a, b].map((t) => teamPalette(t.color).chart));
+		const option = volumeRateOption(mixedView) as any;
+		expect(option.legend.show).not.toBe(false);
+		expect(option.legend.data).toEqual([a.short_name, b.short_name]);
+		const [sa, sb, medians] = option.series;
+		expect([sa.name, sb.name]).toEqual([a.short_name, b.short_name]);
+		expect([sa.itemStyle.color, sb.itemStyle.color]).toEqual([a, b].map((t) => teamPalette(t.color).chart));
+		expect(sb.data.map((d: { value: number[] }) => d.value)).toEqual([[40, 60], [25, 45]]);
+		expect([sa.markLine, sb.markLine]).toEqual([undefined, undefined]);
+		expect(medians.markLine.data).toEqual([{ xAxis: 30 }, { yAxis: 50 }]);
+		expect(option.legend.data).not.toContain(medians.name);
 	});
 
 	it('點的提示顯示球員、隊名、次數與率', () => {

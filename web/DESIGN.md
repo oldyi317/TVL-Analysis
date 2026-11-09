@@ -267,7 +267,7 @@ components:
 - **分隔線**（`line`）：表格列線、卡片內的次級分隔、深色模式卡片邊線（`--card-edge`）、隊徽圓標的 1px 內描邊。
 
 ### Named Rules
-**The One Job Rule.** 靛藍只出現在「我在哪、可以點什麼」的位置：選中狀態、連結、焦點、進度。它不當裝飾、不當資料色；資料色只從 `series-*` 拿。
+**The One Job Rule.** 靛藍只出現在「我在哪、可以點什麼」的位置：選中狀態、連結、焦點、進度。它不當裝飾、不當資料色；資料色只從 `series-*` 拿；圖表上顏色代表球隊身分時才改用 `teamPalette().chart`。
 
 **榮耀標籤規則：勝與王用警示黃。** 賽事卡勝方旁的「勝」與排行榜的「得分王、攻擊王、攔網王、發球王」標籤用 `warn-tint`／`warn-ink`；王的稱號只出現在四個稱號榜的第一名列（並列都加）與本季四王卡。戰績表近五場的 W／L 仍用 `win`／`loss` 語意色。兩者不互換。
 
@@ -275,7 +275,7 @@ components:
 
 **The Two Copies Rule.** 色值只准在三處出現：`src/app.css`（唯一來源）、`src/lib/chart/theme.ts`（ECharts 不吃 CSS 變數）、`src/lib/color.ts` 的 `SURFACE`（隊色對比計算）。後兩處由 `tokens.test.ts` 鎖住必須與 `app.css` 相同；其他檔案一律 `var(--token)`。
 
-**The Team Colour Rule.** 隊色由資料庫 `teams.color` 給定、不可改。`teamPalette()` 只衍生四個值：填色、填色上的黑或白字（WCAG 亮度門檻 0.179）、淺色與深色表面上達 4.5:1 的文字色（只動明度、不動色相）。靠隊色區分的地方一定有簡稱文字。
+**The Team Colour Rule.** 隊色由資料庫 `teams.color` 給定、不可改。`teamPalette()` 只衍生五個值：填色、填色上的黑或白字（WCAG 亮度門檻 0.179）、淺色與深色表面上達 4.5:1 的文字色、對淺色與深色表面同時達 3:1 的圖表色（後三者只動明度、不動色相）。圖表上顏色代表球隊時只用圖表色，不用原始隊色。靠隊色區分的地方一定有簡稱文字。
 
 ## Typography
 
@@ -406,11 +406,11 @@ h2「本季四王」在卡外；卡內四列各至少 56px，高亮稱號使用�
 - **Do** 可點的東西至少 44px 高（`--tap`），hover 升起只在 `(hover: hover)` 下做。
 
 ### Don't:
-- **Don't** 把靛藍拿來當資料色或裝飾；資料色只從 `series-*` 拿，介面上只用前三條。
+- **Don't** 把靛藍拿來當資料色或裝飾；資料色只從 `series-*` 拿，介面上只用前三條；顏色代表球隊時才用 `teamPalette().chart`。
 - **Don't** 在卡片上加隊色或任何彩色左邊條。
 - **Don't** 在 `app.css`、`chart/theme.ts`、`color.ts SURFACE` 以外寫死色值；元件一律 `var(--token)`。
 - **Don't** 載網路字型、加 icon 套件、用 emoji 或 unicode 符號當 icon。
 - **Don't** 讓正文或表格內容小於 16px；`--text-sm` 只給附註與標籤。
 - **Don't** 用 ECharts 畫甜甜圈，用 `WinRing`；數據磚超過三個並列就改回白卡清單。
-- **Don't** 改隊色；對比不足時用 `teamPalette()` 的衍生值處理文字，不換色。
+- **Don't** 改隊色；對比不足時用 `teamPalette()` 的衍生值處理文字與圖表色，不換色。
 - **Don't** 為每個區塊加入場動畫；`.rise` 只給首屏卡片，最多六張。
