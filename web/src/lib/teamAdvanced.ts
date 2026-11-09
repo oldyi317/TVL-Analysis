@@ -1,5 +1,6 @@
 import type { TeamAdvanced, TeamAdvancedData, TeamGameMetric, TeamMetrics, TeamTrendGame } from '#lib/data/types.js';
 import { formatMetricValue, trendLineOption } from '#lib/advanced.js';
+import { teamPalette } from '#lib/color.js';
 import type { Group } from '#lib/site.js';
 import { STAT_LABELS } from '#lib/statLabels.js';
 
@@ -298,7 +299,7 @@ export function pregameBarOption(m: PregameComparison, names: Pair<string>, colo
 			type: 'bar',
 			name: names[side],
 			stack: 'pregame',
-			itemStyle: { color: colors[side], borderRadius: side === 'home' ? [6, 0, 0, 6] : [0, 6, 6, 0] },
+			itemStyle: { color: teamPalette(colors[side]).chart, borderRadius: side === 'home' ? [6, 0, 0, 6] : [0, 6, 6, 0] },
 			label: {
 				show: true,
 				position: side === 'home' ? 'left' : 'right',
