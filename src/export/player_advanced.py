@@ -5,8 +5,8 @@
 """
 from collections.abc import Iterable, Mapping, Sequence
 
-MIN_SETS = 5
-MIN_GAMES = 2
+from src.export.thresholds import eligible_metrics
+
 RATIO_KEYS = (
     "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
     "points_per_game", "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_load",
@@ -26,8 +26,8 @@ def _per(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator > 0 else 0.0
 
 
-def compute_ratios(totals: Mapping) -> dict[str, float | None]:
-    """十項比率，沿用舊站公式：率類為百分比，分母為 0 給 0；局數未知時每局攔網為 None。"""
+def compute_ratios(totals: Mapping, sets: int | None = None) -> dict[str, float | None]:
+    """十項比率，沿用舊站公式：率類為百分比，分母為 0 給 0；球隊已打局數 sets 缺或為 0 時每局攔網為 None。"""
     defense_total = totals["receive_total"] + totals["dig_total"]
     return {
         "attack_success_rate": _pct(totals["attack_points"], totals["attack_total"]),
@@ -36,8 +36,7 @@ def compute_ratios(totals: Mapping) -> dict[str, float | None]:
         "dig_excellent_rate": _pct(totals["dig_excellent"], totals["dig_total"]),
         "points_per_game": _per(totals["total_points"], totals["games"]),
         "set_excellent_rate": _pct(totals["set_excellent"], totals["set_total"]),
-        "blocks_per_set": (None if totals["sets_played"] is None
-                           else _per(totals["block_points"], totals["sets_played"])),
+        "blocks_per_set": None if not sets else totals["block_points"] / sets,
         "blocks_per_game": _per(totals["block_points"], totals["games"]),
         "defense_load": defense_total,
         "defense_efficiency": _pct(totals["receive_excellent"] + totals["dig_excellent"], defense_total),
@@ -61,51 +60,48 @@ def percentile_ranks(values: Sequence[float]) -> list[float]:
     return ranks
 
 
-def _in_pool(result: Mapping) -> bool:
-    return not result["insufficient_sets"] and result["position"] is not None
+def compute_advanced(rows: Iterable[Mapping], team_sets: Mapping[int, int]) -> list[dict]:
+    """同組別同賽季的球員合計 → 每人比率、PR 值與未達門檻標記。
 
-
-def compute_advanced(rows: Iterable[Mapping]) -> list[dict]:
-    """同組別同賽季的球員合計 → 每人比率、PR 值與局數不足標記。
-
-    PR 值只在同位置且樣本足夠的球員間計算：已知局數須達 MIN_SETS，未知時須達 MIN_GAMES。
-    每局攔網在未知局數時為 None，不進該指標的 PR 與分佈。
+    PR 值只在同位置、且該指標次數達浮動門檻（與排行榜同一份，見 thresholds）的球員間逐項計算；
+    每局攔網的分母是球員所屬球隊已打局數，查無時為 None。
     """
-    results = [
-        {
+    results = []
+    for row in rows:
+        sets = team_sets.get(row["team_id"], 0)
+        eligible = eligible_metrics(row, sets)
+        results.append({
             "player_id": row["player_id"],
             "position": row["position"],
             "games": row["games"],
-            "sets_played": row["sets_played"],
-            "insufficient_sets": (row["games"] < MIN_GAMES if row["sets_played"] is None
-                                  else row["sets_played"] < MIN_SETS),
-            "ratios": compute_ratios(row),
+            "team_sets": sets,
+            "eligible": eligible,
+            "below_threshold": not eligible & set(PR_KEYS),
+            "ratios": compute_ratios(row, sets),
             "pr": {key: None for key in PR_KEYS},
-        }
-        for row in rows
-    ]
+        })
     pools: dict[str, list[dict]] = {}
     for result in results:
-        if _in_pool(result):
+        if result["position"] is not None:
             pools.setdefault(result["position"], []).append(result)
     for members in pools.values():
         for key in PR_KEYS:
-            eligible = [m for m in members if m["ratios"][key] is not None]
-            ranks = percentile_ranks([m["ratios"][key] for m in eligible])
-            for member, rank in zip(eligible, ranks):
+            ranked = [m for m in members if key in m["eligible"] and m["ratios"][key] is not None]
+            ranks = percentile_ranks([m["ratios"][key] for m in ranked])
+            for member, rank in zip(ranked, ranks):
                 member["pr"][key] = rank
     return results
 
 
 def distributions(results: Iterable[Mapping]) -> dict[str, dict[str, list[float]]]:
-    """每位置各指標的分佈：取 PR 值計算池內的球員值，升冪排列。"""
+    """每位置各指標的分佈：只收該指標達門檻且有位置的球員值，升冪排列。"""
     out: dict[str, dict[str, list[float]]] = {}
     for result in results:
-        if not _in_pool(result):
+        if result["position"] is None or result["below_threshold"]:
             continue
         metrics = out.setdefault(result["position"], {key: [] for key in RATIO_KEYS})
         for key in RATIO_KEYS:
-            if result["ratios"][key] is not None:
+            if key in result["eligible"] and result["ratios"][key] is not None:
                 metrics[key].append(result["ratios"][key])
     for metrics in out.values():
         for values in metrics.values():

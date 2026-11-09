@@ -2,10 +2,11 @@
 	import {
 		availableMetrics,
 		defaultTrendMetric,
+		distributionMetricKeys,
+		distributionNote,
 		distributionOption,
 		distributionSummary,
 		formatMetricValue,
-		METRIC_KEYS,
 		METRIC_LABELS,
 		noPrReason as prReason,
 		PR_METRICS,
@@ -29,14 +30,12 @@
 		advanced,
 		distribution,
 		gameLog,
-		position,
-		setsPlayed
+		position
 	}: {
 		advanced: PlayerAdvancedEntry | null;
 		distribution: PositionDistribution | null;
 		gameLog: GameLogEntry[];
 		position: string | null;
-		setsPlayed: number | null;
 	} = $props();
 
 	const uid = $props.id();
@@ -45,11 +44,13 @@
 	onMount(() => {
 		if (window.matchMedia('(min-width: 64rem)').matches) open = true;
 	});
-	const metricKeys = $derived(availableMetrics(METRIC_KEYS, setsPlayed, position));
-	const prKeys = $derived(availableMetrics(PR_METRICS, setsPlayed, position));
-	const trendKeys = $derived(availableMetrics(TREND_METRICS, setsPlayed, position));
+	const blocksPerSet = $derived(advanced?.ratios.blocks_per_set ?? null);
+	const metricKeys = $derived(advanced && distribution ? distributionMetricKeys(advanced, distribution, position) : []);
+	const prKeys = $derived(availableMetrics(PR_METRICS, blocksPerSet, position));
+	const trendKeys = $derived(availableMetrics(TREND_METRICS, blocksPerSet, position));
 	let selectedMetric = $state<MetricKey>('attack_success_rate');
-	const metric = $derived(metricKeys.includes(selectedMetric) ? selectedMetric : 'attack_success_rate');
+	const metric = $derived<MetricKey | undefined>(metricKeys.includes(selectedMetric) ? selectedMetric : metricKeys[0]);
+	const hasMissingPr = $derived(advanced ? prKeys.some((key) => advanced.pr[key] === null) : false);
 
 	const positionText = $derived(
 		advanced?.position ? positionLabel(advanced.position, true) : ''
@@ -57,17 +58,17 @@
 	const noPrReason = $derived(prReason(advanced));
 	const fmt = formatMetricValue;
 	const distOption = $derived(
-		distribution
+		distribution && metric
 			? distributionOption(distribution.metrics[metric], advanced?.ratios[metric] ?? null, METRIC_LABELS[metric])
 			: null
 	);
 	let selectedTrend = $state<TrendMetric | null>(null);
 	const trendMetric = $derived(
-		selectedTrend && trendKeys.includes(selectedTrend) ? selectedTrend : defaultTrendMetric(position, setsPlayed)
+		selectedTrend && trendKeys.includes(selectedTrend) ? selectedTrend : defaultTrendMetric(position, blocksPerSet)
 	);
 	const points = $derived(trendPoints(gameLog, trendMetric));
 	const trend = $derived(points.length ? trendLineOption(points, trendMetric) : null);
-	const distSummary = $derived(distribution
+	const distSummary = $derived(distribution && metric
 		? distributionSummary(distribution.metrics[metric], advanced?.ratios[metric] ?? null, metric)
 		: null);
 </script>
@@ -86,7 +87,9 @@
 			{#if noPrReason}
 				<DataNote text={noPrReason} />
 			{:else if advanced}
-				<p class="sub">與本季同組別 {positionText} {distribution?.player_count ?? '—'} 位球員比較</p>
+				{#if distribution && metric}
+					<p class="sub">{distributionNote(positionText, distribution.metrics[metric].values.length)}</p>
+				{/if}
 				<table aria-label="PR 值">
 					<thead>
 						<tr>
@@ -112,10 +115,13 @@
 						{/each}
 					</tbody>
 				</table>
+				{#if hasMissingPr}
+					<p class="sub">— 為該項次數未達浮動門檻</p>
+				{/if}
 			{/if}
 		</section>
 
-		{#if distOption && distribution}
+		{#if distOption && distribution && metric}
 			<ChartFrame
 				title="同位置分佈"
 				games={gameLog.length}

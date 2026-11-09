@@ -1,28 +1,9 @@
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
 from statistics import median
-from typing import Literal
 
 from src.export.player_advanced import compute_ratios
 from src.export.player_seasons import STAT_FIELDS
-
-
-THRESHOLD_FLOOR = 10
-
-
-@dataclass(frozen=True)
-class BoardSpec:
-    key: str
-    label: str
-    kind: Literal["count", "rate"]
-    title: str | None
-    numerator: str | None = None
-    denominator: str | None = None
-    attempts_key: str | None = None
-    attempts_label: str | None = None
-    coefficient: float | None = None
-    position: str | None = None
-    makeup: bool = False
+from src.export.thresholds import RATE_BOARDS, THRESHOLD_FLOOR, BoardSpec, attempts, threshold_for
 
 
 COUNT_BOARDS = (
@@ -34,34 +15,6 @@ COUNT_BOARDS = (
     BoardSpec("dig_excellent", "防守到位", "count", None),
     BoardSpec("set_excellent", "舉球到位", "count", None, position="S"),
 )
-
-
-RATE_BOARDS = (
-    BoardSpec("attack_success_rate", "攻擊成功率", "rate", None, "attack_points", "attack_total",
-              "attack_total", "攻擊次數", 2.0, makeup=True),
-    BoardSpec("serve_point_rate", "發球得分率", "rate", None, "serve_points", "serve_total",
-              "serve_total", "發球次數", 1.3, makeup=True),
-    BoardSpec("receive_excellent_rate", "接發球到位率", "rate", None, "receive_excellent", "receive_total",
-              "receive_total", "接發球次數", 1.3, makeup=True),
-    BoardSpec("dig_excellent_rate", "防守到位率", "rate", None, "dig_excellent", "dig_total",
-              "dig_total", "防守次數", 1.0, makeup=True),
-    BoardSpec("set_excellent_rate", "舉球到位率", "rate", None, "set_excellent", "set_total",
-              "set_total", "舉球次數", 5.0, position="S", makeup=True),
-    BoardSpec("points_per_game", "場均得分", "rate", None, "total_points", "games",
-              "attack_serve_total", "攻擊＋發球次數", 2.0),
-    BoardSpec("blocks_per_set", "每局攔網", "rate", None, "block_points", None,
-              "attack_serve_total", "攻擊＋發球次數", 2.0),
-)
-
-
-def attempts(row: Mapping, spec: BoardSpec) -> int:
-    if spec.attempts_key == "attack_serve_total":
-        return row["attack_total"] + row["serve_total"]
-    return row[spec.attempts_key]
-
-
-def threshold_for(spec: BoardSpec, sets: int) -> int:
-    return max(THRESHOLD_FLOOR, int(spec.coefficient * sets))
 
 
 def threshold_text(spec: BoardSpec, team_sets: Mapping[int, int]) -> str:
@@ -114,7 +67,7 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int], appl
             if spec.key == "blocks_per_set":
                 if not sets:
                     continue
-                qualified.append({**r, spec.key: round(r["block_points"] / sets, 2), "_denominator": sets})
+                qualified.append({**r, spec.key: round(compute_ratios(r, sets)[spec.key], 2), "_denominator": sets})
                 tiebreak[r["player_id"]] = r["block_points"]
             elif r[spec.denominator]:
                 qualified.append({**r, spec.key: round(compute_ratios(r)[spec.key], 2),
@@ -198,11 +151,12 @@ def regular_totals(games: Iterable[Mapping]) -> dict[int, dict]:
     return totals
 
 
-def count_team_sets(games: Iterable[Mapping]) -> dict[int, int]:
+def count_team_sets(games: Iterable[Mapping], include_golden_set: bool = False) -> dict[int, int]:
     sets: dict[int, int] = {}
     for game in games:
         if game["sets"] is None:
             continue
+        played = game["sets"] + (1 if include_golden_set and game["golden_set"] is not None else 0)
         for team_id in (game["home_team_id"], game["away_team_id"]):
-            sets[team_id] = sets.get(team_id, 0) + game["sets"]
+            sets[team_id] = sets.get(team_id, 0) + played
     return sets

@@ -43,11 +43,11 @@ const BLOCK_METRICS: ReadonlySet<string> = new Set(['blocks_per_set', 'blocks_pe
 
 export const availableMetrics = <T extends string>(
 	keys: readonly T[],
-	setsPlayed: number | null,
+	blocksPerSet: number | null,
 	position: string | null = null
 ): T[] =>
 	keys.filter(
-		(key) => (setsPlayed !== null || key !== 'blocks_per_set') && (position !== 'L' || !BLOCK_METRICS.has(key))
+		(key) => (blocksPerSet !== null || key !== 'blocks_per_set') && (position !== 'L' || !BLOCK_METRICS.has(key))
 	);
 
 const RATE_METRICS: ReadonlySet<string> = new Set([
@@ -92,16 +92,22 @@ const blockPoints = (s: PlayerSeason) => count(STAT_LABELS.block_points, s.block
 
 const attackRate = (s: PlayerSeason) => rate(STAT_LABELS.attack_success_rate, s.attack_points, s.attack_total, '得分');
 
-const blocksPerSet = (s: PlayerSeason): HeadlineStat =>
-	s.sets_played === null || s.sets_played === 0
-		? { label: STAT_LABELS.blocks_per_set, value: '—', detail: null }
-		: {
-				label: STAT_LABELS.blocks_per_set,
-				value: (s.block_points / s.sets_played).toFixed(2),
-				detail: `攔網 ${s.block_points}／${s.sets_played} 局`
-			};
+type HeadlineAdvanced = Pick<PlayerAdvancedEntry, 'below_threshold' | 'team_sets'> & {
+	ratios: Pick<PlayerAdvancedEntry['ratios'], 'blocks_per_set'>;
+};
 
-const HEADLINES: Record<string, (s: PlayerSeason) => HeadlineStat[]> = {
+const blocksPerSet = (s: PlayerSeason, a: HeadlineAdvanced | undefined): HeadlineStat[] =>
+	a?.ratios.blocks_per_set == null
+		? []
+		: [
+				{
+					label: STAT_LABELS.blocks_per_set,
+					value: a.ratios.blocks_per_set.toFixed(2),
+					detail: `攔網 ${s.block_points}／球隊 ${a.team_sets} 局`
+				}
+			];
+
+const HEADLINES: Record<string, (s: PlayerSeason, a?: HeadlineAdvanced) => HeadlineStat[]> = {
 	S: (s) => [
 		excellentRate(STAT_LABELS.set_excellent_rate, s.set_excellent, s.set_total),
 		excellentRate(STAT_LABELS.dig_excellent_rate, s.dig_excellent, s.dig_total),
@@ -117,8 +123,8 @@ const HEADLINES: Record<string, (s: PlayerSeason) => HeadlineStat[]> = {
 		excellentRate(STAT_LABELS.receive_excellent_rate, s.receive_excellent, s.receive_total),
 		blockPoints(s)
 	],
-	MB: (s) => [
-		...(s.sets_played === null ? [] : [blocksPerSet(s)]),
+	MB: (s, a) => [
+		...blocksPerSet(s, a),
 		attackRate(s),
 		blockPoints(s)
 	],
@@ -131,17 +137,14 @@ const scoringHeadlines = (s: PlayerSeason) => [
 	count(STAT_LABELS.serve_points, s.serve_points)
 ];
 
-const MIN_SETS = 5;
-const MIN_GAMES = 2;
-
-export function headlineStats(season: PlayerSeason): {
+export function headlineStats(season: PlayerSeason, advanced?: HeadlineAdvanced | null): {
 	items: HeadlineStat[];
 	fewSets: boolean;
 } {
 	const headlines = HEADLINES[displayPosition(season) ?? ''] ?? scoringHeadlines;
 	return {
-		items: headlines(season),
-		fewSets: season.sets_played === null ? season.games < MIN_GAMES : season.sets_played < MIN_SETS
+		items: headlines(season, advanced ?? undefined),
+		fewSets: advanced?.below_threshold ?? false
 	};
 }
 
@@ -164,6 +167,28 @@ export function findDistribution(
 		(d) => d.cup_id === cupId && d.group === group && d.position === position
 	);
 }
+
+const SHARED_GATE: Partial<Record<MetricKey, string>> = {
+	points_per_game: 'blocks_per_game',
+	defense_load: 'blocks_per_game'
+};
+
+export function distributionMetricKeys(
+	advanced: PlayerAdvancedEntry,
+	distribution: PositionDistribution,
+	position: string | null
+): MetricKey[] {
+	const pr: Partial<Record<string, number | null>> = { ...advanced.pr };
+	return availableMetrics(METRIC_KEYS, advanced.ratios.blocks_per_set, position).filter(
+		(key) =>
+			advanced.ratios[key] !== null &&
+			pr[SHARED_GATE[key] ?? key] !== null &&
+			distribution.metrics[key].values.length > 0
+	);
+}
+
+export const distributionNote = (positionText: string, count: number) =>
+	`與本季同組別 ${positionText} ${count} 位球員比較`;
 
 export function distributionSummary(dist: MetricDistribution, playerValue: number | null, metric: MetricKey): string {
 	const first = playerValue === null ? -1 : dist.values.indexOf(playerValue);
@@ -222,22 +247,18 @@ export function distributionOption(
 	};
 }
 
-type PoolFields = Pick<PlayerAdvancedEntry, 'insufficient_sets' | 'position'> &
-	Partial<Pick<PlayerAdvancedEntry, 'sets_played'>>;
+type PoolFields = Pick<PlayerAdvancedEntry, 'below_threshold' | 'position'>;
 
-// 與後端 player_advanced.py 的 _in_pool 同一規則：樣本足夠且有登錄位置才有 PR 值與分佈
 export function inPrPool(
 	advanced: PoolFields | null | undefined
 ): advanced is PoolFields & { position: string } {
-	return !!advanced && !advanced.insufficient_sets && advanced.position !== null;
+	return !!advanced && !advanced.below_threshold && advanced.position !== null;
 }
 
 export function noPrReason(advanced: PoolFields | null): string | null {
 	if (inPrPool(advanced)) return null;
 	if (!advanced) return '本季沒有進階數據';
-	if (advanced.insufficient_sets) return advanced.sets_played === null
-		? '出賽場數不足 2 場，不計算 PR 值與分佈'
-		: '出賽局數不足 5 局，不計算 PR 值與分佈';
+	if (advanced.below_threshold) return '技術次數未達浮動門檻，不計算 PR 值與分佈';
 	return '本季無登錄位置，不計算 PR 值與分佈';
 }
 
@@ -246,6 +267,7 @@ export type GameStats = Omit<StatRow, 'player_id' | 'team_id' | 'jersey_number' 
 export type GameLogEntry = {
 	date: string;
 	golden: boolean;
+	sets: number | null;
 	stats: GameStats;
 };
 
@@ -258,7 +280,7 @@ type TrendDef = {
 	label: string;
 	isRate: boolean;
 	integer?: boolean;
-	compute: (s: GameStats) => TrendValue;
+	compute: (s: GameStats, sets: number | null) => TrendValue;
 };
 
 const trendRate =
@@ -286,12 +308,12 @@ const TREND_DEFS = {
 	blocks_per_set: {
 		label: METRIC_LABELS.blocks_per_set,
 		isRate: false,
-		compute: (s) =>
-			s.sets_played === null || s.sets_played === 0
+		compute: (s, sets) =>
+			!sets
 				? { value: null, detail: null }
 				: {
-						value: Math.round((s.block_points / s.sets_played) * 100) / 100,
-						detail: `攔網 ${s.block_points}／${s.sets_played} 局`
+						value: Math.round((s.block_points / sets) * 100) / 100,
+						detail: `攔網 ${s.block_points}／${sets} 局`
 					}
 	},
 	block_points: {
@@ -331,8 +353,8 @@ const DEFAULT_TREND: Record<string, TrendMetric> = {
 	OP: 'attack_success_rate'
 };
 
-export const defaultTrendMetric = (position: string | null, setsPlayed: number | null = 0): TrendMetric =>
-	setsPlayed === null && position === 'MB' ? 'block_points' : DEFAULT_TREND[position ?? ''] ?? 'points';
+export const defaultTrendMetric = (position: string | null, blocksPerSet: number | null): TrendMetric =>
+	blocksPerSet === null && position === 'MB' ? 'block_points' : DEFAULT_TREND[position ?? ''] ?? 'points';
 
 const goldenPoint = (value: number) => ({ value, symbol: 'diamond', symbolSize: 14, golden: true });
 
@@ -340,7 +362,7 @@ export type TrendPoint = TrendValue & { date: string; heading: string; golden: b
 
 export function trendPoints(log: GameLogEntry[], metric: TrendMetric): TrendPoint[] {
 	const compute = TREND_DEFS[metric].compute as TrendDef['compute'];
-	return log.map((e) => ({ ...compute(e.stats), date: e.date, heading: e.date, golden: e.golden }));
+	return log.map((e) => ({ ...compute(e.stats, e.sets), date: e.date, heading: e.date, golden: e.golden }));
 }
 
 export function trendSummary(points: TrendPoint[], metric: TrendMetric): string {
@@ -410,7 +432,7 @@ export function playerGameLog(
 		const golden = game.golden_set
 			? inRows(game.golden_set.home, playerId) || inRows(game.golden_set.away, playerId)
 			: false;
-		log.push({ date: match.date, golden, stats: toGameStats(row) });
+		log.push({ date: match.date, golden, sets: match.sets.length || null, stats: toGameStats(row) });
 	}
 	return log.sort((a, b) => a.date.localeCompare(b.date));
 }
