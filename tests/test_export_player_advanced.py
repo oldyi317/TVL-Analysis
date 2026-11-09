@@ -302,7 +302,7 @@ def test_below_threshold_only_when_all_eight_pr_metrics_unmet_and_team_sets_repo
 def test_blocks_per_set_uses_team_sets_and_is_none_without_them():
     from src.export.player_advanced import compute_advanced, distributions
 
-    rows = [prow(1, attack_total=20, block_points=5), prow(2, team_id=2, attack_total=20, block_points=5)]
+    rows = [prow(1, attack_total=30, block_points=5), prow(2, team_id=2, attack_total=30, block_points=5)]
     results = {r["player_id"]: r for r in compute_advanced(rows, {1: 10})}
 
     assert results[1]["ratios"]["blocks_per_set"] == 0.5
