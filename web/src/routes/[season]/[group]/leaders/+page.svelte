@@ -140,7 +140,7 @@
 						{#each volumeRate.points as p (p.player_id)}
 							<tr>
 								<th scope="row">{p.name}</th>
-								<td>{p.team}</td>
+								<td><span class="team-dot" style="--team-chart:{p.color}" aria-hidden="true"></span>{p.team}</td>
 								<td class="num">{p.count}</td>
 								<td class="num">{p.rate}%</td>
 							</tr>
@@ -218,6 +218,16 @@
 		flex-wrap: wrap;
 		gap: var(--space-1);
 		margin-block-end: var(--space-2);
+	}
+
+	.team-dot {
+		display: inline-block;
+		inline-size: 10px;
+		block-size: 10px;
+		margin-inline-end: var(--space-1);
+		border-radius: 50%;
+		background: var(--team-chart);
+		vertical-align: middle;
 	}
 
 	@media (min-width: 40rem) {

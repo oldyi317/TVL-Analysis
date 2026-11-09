@@ -1,6 +1,7 @@
 import leadersJson from '#lib/data/leaders.json';
 import type { GroupLeaders, LeaderBoard, LeaderRow, LeadersData, VolumeRate, VolumeRatePoint } from '#lib/data/types.js';
-import { teamOf, type Group, type SeasonTeam } from '#lib/site.js';
+import { teamPalette } from '#lib/color.js';
+import { teamOf, teams as allTeams, type Group, type SeasonTeam } from '#lib/site.js';
 import { STAT_LABELS } from '#lib/statLabels.js';
 
 export const TOP_N = 10;
@@ -37,33 +38,56 @@ export const VOLUME_RATE_TECHNIQUES: readonly { key: VolumeRateKey; label: strin
 	{ key: 'set_excellent_rate', label: '舉球' }
 ];
 
-export type VolumeRatePointView = VolumeRatePoint & { team: string };
+export type VolumeRatePointView = VolumeRatePoint & { team: string; color: string };
+export type VolumeRateTeam = { team_id: number; name: string; color: string };
 export type VolumeRateView = Omit<VolumeRate, 'points'> & {
 	technique: string;
 	countLabel: string;
 	rateLabel: string;
 	points: VolumeRatePointView[];
+	teams: VolumeRateTeam[];
 };
 
 export function toVolumeRateView(v: VolumeRate, group: Group, cupId: number): VolumeRateView {
 	const technique = VOLUME_RATE_TECHNIQUES.find((t) => t.key === v.key)!.label;
-	return {
-		...v,
-		technique,
-		countLabel: `${technique}次數`,
-		rateLabel: STAT_LABELS[v.key],
-		points: v.points.map((p) => ({ ...p, team: teamOf(p.team_id, group, cupId, '排行榜').short_name }))
-	};
+	const order = allTeams.filter((t) => t.group === group).map((t) => t.team_id);
+	const teams: VolumeRateTeam[] = [...new Set(v.points.map((p) => p.team_id))]
+		.sort((a, b) => order.indexOf(a) - order.indexOf(b))
+		.map((id) => teamOf(id, group, cupId, '排行榜'))
+		.map((t) => ({ team_id: t.team_id, name: t.short_name, color: teamPalette(t.color).chart }));
+	const byId = new Map(teams.map((t) => [t.team_id, t]));
+	const points = v.points.map((p) => {
+		const { name, color } = byId.get(p.team_id)!;
+		return { ...p, team: name, color };
+	});
+	return { ...v, technique, countLabel: `${technique}次數`, rateLabel: STAT_LABELS[v.key], points, teams };
 }
 
 type VolumeRateDatum = { value: [number, number]; name: string; team: string };
 
 export function volumeRateOption(v: VolumeRateView): object | null {
 	if (v.points.length === 0) return null;
-	const data: VolumeRateDatum[] = v.points.map((p) => ({ value: [p.count, p.rate], name: p.name, team: p.team }));
+	const byTeam = v.teams.map((t) => {
+		const data: VolumeRateDatum[] = v.points
+			.filter((p) => p.team_id === t.team_id)
+			.map((p) => ({ value: [p.count, p.rate], name: p.name, team: p.team }));
+		return { type: 'scatter', name: t.name, itemStyle: { color: t.color }, data };
+	});
+	const medians = {
+		type: 'scatter',
+		name: '中位數',
+		data: [],
+		markLine: {
+			silent: true,
+			symbol: 'none',
+			lineStyle: { type: 'dashed' },
+			label: { show: false },
+			data: [{ xAxis: v.median_count }, { yAxis: v.median_rate }]
+		}
+	};
 	return {
-		legend: { show: false },
-		grid: { top: 32, right: 24, bottom: 32 },
+		legend: { data: v.teams.map((t) => t.name) },
+		grid: { top: 32, right: 24, bottom: 64 },
 		tooltip: {
 			trigger: 'item',
 			formatter: ({ data: d }: { data: VolumeRateDatum }) =>
@@ -71,20 +95,7 @@ export function volumeRateOption(v: VolumeRateView): object | null {
 		},
 		xAxis: { type: 'value', name: v.countLabel, nameLocation: 'middle', nameGap: 28, scale: true },
 		yAxis: { type: 'value', name: `${v.rateLabel}（%）`, nameTextStyle: { align: 'left' }, scale: true },
-		series: [
-			{
-				type: 'scatter',
-				name: v.rateLabel,
-				data,
-				markLine: {
-					silent: true,
-					symbol: 'none',
-					lineStyle: { type: 'dashed' },
-					label: { show: false },
-					data: [{ xAxis: v.median_count }, { yAxis: v.median_rate }]
-				}
-			}
-		]
+		series: [...byTeam, medians]
 	};
 }
 
