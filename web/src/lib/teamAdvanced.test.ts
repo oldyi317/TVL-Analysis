@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { teamPalette } from '#lib/color.js';
 import type { TeamAdvanced, TeamAdvancedData, TeamGameMetrics, TeamMetric, TeamMetrics, TeamTrendGame } from '#lib/data/types.js';
 import {
 	metricsConclusion,
@@ -343,12 +344,20 @@ describe('pregameBarOption', () => {
 	const option = () =>
 		pregameBarOption(m, { home: '台電', away: '鳳凰' }, { home: '#c00000', away: '#0050a0' }) as any;
 
-	it('主隊在左、客隊在右，各用自己的隊色', () => {
+	it('主隊在左、客隊在右', () => {
 		const [h, a] = option().series;
-		expect(h).toMatchObject({ name: '台電', itemStyle: { color: '#c00000' } });
-		expect(a).toMatchObject({ name: '鳳凰', itemStyle: { color: '#0050a0' } });
+		expect(h).toMatchObject({ name: '台電' });
+		expect(a).toMatchObject({ name: '鳳凰' });
 		expect(h.data.every((d: { value: number | null }) => d.value === null || d.value <= 0)).toBe(true);
 		expect(a.data.every((d: { value: number | null }) => d.value === null || d.value >= 0)).toBe(true);
+	});
+
+	it('長條用 teamPalette().chart 圖表隊色，不用原始 hex（#175）', () => {
+		const [h, a] = (pregameBarOption(m, { home: '台電', away: '鳳凰' }, { home: '#0B304B', away: '#0A4951' }) as any).series;
+		expect(h.itemStyle.color).toBe(teamPalette('#0B304B').chart);
+		expect(h.itemStyle.color).not.toBe('#0B304B');
+		expect(a.itemStyle.color).toBe(teamPalette('#0A4951').chart);
+		expect(a.itemStyle.color).not.toBe('#0A4951');
 	});
 
 	it('長條以組內最高值為滿格；缺值不畫', () => {
