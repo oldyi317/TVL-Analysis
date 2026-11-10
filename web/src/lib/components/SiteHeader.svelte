@@ -38,26 +38,9 @@
 </header>
 
 <style>
+	/* 桌面側欄；手機改由 TopBar 與 TabBar 負責 */
 	header {
-		display: grid;
-		gap: var(--space-3);
-		padding: var(--space-3) calc(var(--space-4) + var(--safe-right)) var(--space-4) calc(var(--space-4) + var(--safe-left));
-		background: var(--surface);
-		border-block-end: 1px solid var(--card-edge);
-		box-shadow: var(--shadow-card);
-	}
-
-	.top {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		column-gap: var(--space-3);
-	}
-
-	.brand {
-		font-size: var(--text-lg);
-		font-weight: 800;
-		color: var(--text);
+		display: none;
 	}
 
 	.note {
@@ -65,9 +48,20 @@
 		color: var(--text-muted);
 	}
 
+	.brand {
+		font-size: var(--text-xl);
+		font-weight: 800;
+		color: var(--text);
+	}
+
+	.top {
+		display: grid;
+		gap: var(--space-1);
+	}
+
 	.switches {
 		display: grid;
-		gap: var(--space-3);
+		gap: var(--space-5);
 		min-inline-size: 0;
 	}
 
@@ -75,27 +69,14 @@
 		header {
 			position: sticky;
 			inset-block-start: 0;
+			display: grid;
 			block-size: 100dvh;
 			align-content: start;
 			gap: var(--space-5);
 			padding: var(--space-5);
 			overflow-y: auto;
-			border-block-end: 0;
+			background: var(--surface);
 			border-inline-end: 1px solid var(--card-edge);
-			box-shadow: none;
-		}
-
-		.top {
-			display: grid;
-			gap: var(--space-1);
-		}
-
-		.brand {
-			font-size: var(--text-xl);
-		}
-
-		.switches {
-			gap: var(--space-5);
 		}
 	}
 </style>

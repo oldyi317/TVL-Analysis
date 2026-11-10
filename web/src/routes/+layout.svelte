@@ -5,6 +5,7 @@
 	import SiteFooter from '#lib/components/SiteFooter.svelte';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
 	import TabBar from '#lib/components/TabBar.svelte';
+	import TopBar from '#lib/components/TopBar.svelte';
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
 	import { currentSeason, findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
@@ -75,6 +76,7 @@
 	<link rel="icon" href={asset('favicon.svg')} />
 </svelte:head>
 
+<TopBar {season} {group} records={onRecords} hrefFor={switchHref} />
 <SiteHeader {season} {group} records={onRecords} hrefFor={switchHref} />
 
 <div class="wrap">

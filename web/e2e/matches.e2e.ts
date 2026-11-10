@@ -1,5 +1,14 @@
 import { expect, test } from '@playwright/test';
-import { BASE, currentSeason, findSeason, readJson, seasonsData } from './helpers.js';
+import {
+	BASE,
+	currentSeason,
+	findSeason,
+	groupLink,
+	openSeasonSheet,
+	readJson,
+	seasonSheet,
+	seasonsData
+} from './helpers.js';
 import { isPlayed } from '../src/lib/match.js';
 
 // 開季初當季還沒有已完賽場次，退回最近一個有已完賽場次的賽季
@@ -80,13 +89,13 @@ test('詳情頁的組別與賽季切換退回賽事列表', async ({ page }) => 
 	test.skip(!picked, noPlayed);
 	const first = menMatches[0];
 	await page.goto(`${URL}${first.game_id}/`);
-	await expect(
-		page.getByRole('navigation', { name: '組別' }).getByRole('link', { name: '女子組' })
-	).toHaveAttribute('href', `${BASE}/${current}/women/matches/`);
+	await expect(groupLink(page, '女子')).toHaveAttribute('href', `${BASE}/${current}/women/matches/`);
 	const other = seasonsData.seasons.find((s: { name: string }) => s.name !== current);
-	await expect(
-		page.getByRole('navigation', { name: '賽季' }).getByRole('link', { name: other.name })
-	).toHaveAttribute('href', `${BASE}/${other.name}/men/matches/`);
+	await openSeasonSheet(page);
+	await expect(seasonSheet(page).getByRole('link', { name: other.name })).toHaveAttribute(
+		'href',
+		`${BASE}/${other.name}/men/matches/`
+	);
 });
 
 test('歷史賽季賽事卡與賽事頁顯示當季隊名', async ({ page }) => {

@@ -31,6 +31,7 @@ export const SITE_DESCRIPTION =
 export const GROUPS = ['men', 'women'] as const;
 export type Group = (typeof GROUPS)[number];
 export const GROUP_LABEL: Record<Group, string> = { men: '男子組', women: '女子組' };
+export const GROUP_SHORT_LABEL: Record<Group, string> = { men: '男子', women: '女子' };
 
 const seasonsData = seasonsJson as SeasonsData;
 export const seasons: readonly Season[] = seasonsData.seasons;

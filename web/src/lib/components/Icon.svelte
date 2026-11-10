@@ -6,6 +6,7 @@
 		| 'shield'
 		| 'user'
 		| 'chevron-left'
+		| 'chevron-down'
 		| 'arrow-up-right'
 		| 'map-pin'
 		| 'podium'
@@ -49,6 +50,8 @@
 		<path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
 	{:else if name === 'chevron-left'}
 		<path d="m15 5-7 7 7 7" />
+	{:else if name === 'chevron-down'}
+		<path d="m5 9 7 7 7-7" />
 	{:else if name === 'arrow-up-right'}
 		<path d="M7 17 17 7" />
 		<path d="M8 7h9v9" />

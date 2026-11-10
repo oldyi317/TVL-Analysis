@@ -1,5 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
-import { BASE, currentSeason, findSeason, OLD_CUP, OLD_SEASON, openMoreSheet, readJson } from './helpers.js';
+import {
+	BASE,
+	currentSeason,
+	findSeason,
+	groupLink,
+	OLD_CUP,
+	OLD_SEASON,
+	openMoreSheet,
+	readJson,
+	switchGroup
+} from './helpers.js';
 
 type Season = {
 	cup_id: number;
@@ -155,11 +165,8 @@ test('球員頁切換組別退回列表', async ({ page }) => {
 	test.skip(!picked, noPlayers);
 	const player = registeredIn(currentCup, 'men')[0];
 	await page.goto(`${BASE}/${current}/men/players/${player.player_id}/`);
-	const href = await page
-		.getByRole('navigation', { name: '組別' })
-		.getByRole('link', { name: '女子組' })
-		.getAttribute('href');
-	expect(href!.endsWith(`/${current}/women/players/`)).toBe(true);
+	await expect(groupLink(page, '女子')).toHaveAttribute('href', `${BASE}/${current}/women/players/`);
+	await switchGroup(page, '女子', `${BASE}/${current}/women/players/`);
 });
 
 test('歷史賽季球員列表與球員頁顯示當季隊名', async ({ page }) => {
