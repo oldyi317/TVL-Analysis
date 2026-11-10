@@ -1,4 +1,4 @@
-# PR 守門：pytest、svelte-check、vitest。pages.yml 只負責部署（匯出器不裝 pip 套件），本 workflow 才裝 requirements.txt。
+# PR 守門：pytest、svelte-check、vitest、Playwright e2e。pages.yml 只負責部署（匯出器不裝 pip 套件），本 workflow 才裝 requirements.txt。
 name: ci
 
 on:
@@ -48,3 +48,9 @@ jobs:
       - name: 單元測試
         working-directory: web
         run: npm run test:unit
+      - name: 安裝 Playwright 的 Chromium
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: e2e（先 build）
+        working-directory: web
+        run: npm run test:e2e
