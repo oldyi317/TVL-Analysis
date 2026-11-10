@@ -66,6 +66,13 @@
 		'Microsoft JhengHei', sans-serif;
 	--measure: 40rem;
 	--tap: 2.75rem;
+	/* 原型：安全區與殼層位移 */
+	--safe-top: env(safe-area-inset-top, 0px);
+	--safe-bottom: env(safe-area-inset-bottom, 0px);
+	--safe-left: env(safe-area-inset-left, 0px);
+	--safe-right: env(safe-area-inset-right, 0px);
+	--tabbar-h: 0px;
+	--shell-sticky-top: 0px;
 	--sidebar: 17rem;
 	--content-max: 72rem;
 	color-scheme: light dark;
@@ -371,5 +378,56 @@ button.chip {
 @media (prefers-color-scheme: dark) {
 	[style*='--team-ink-light'] {
 		--team-ink: var(--team-ink-dark);
+	}
+}
+
+/* 原型：?safe=1 模擬 iPhone 瀏海與底部指示條 */
+html[data-safe='1'] {
+	--safe-top: 59px;
+	--safe-bottom: 34px;
+}
+
+/* 原型：三個殼層變體只影響手機版型 */
+@media (max-width: 63.99rem) {
+	body {
+		padding-inline: var(--safe-left) var(--safe-right);
+	}
+
+	/* 狀態列底下墊一條純色，內容捲動時不會透到時間與電量後面 */
+	html[data-shell='A'] body::before,
+	html[data-shell='B'] body::before {
+		content: '';
+		position: fixed;
+		inset: 0 0 auto;
+		block-size: var(--safe-top);
+		background: var(--bg);
+		z-index: 3;
+	}
+
+	html[data-shell='A'] header {
+		padding-block-start: calc(var(--space-3) + var(--safe-top));
+	}
+
+	html[data-shell='B'] {
+		--shell-sticky-top: calc(var(--safe-top) + 52px);
+	}
+
+	html[data-shell='B'] header {
+		padding-block-start: calc(var(--space-3) + var(--safe-top));
+	}
+
+	html[data-shell='B'] header nav[aria-label='頁面'] {
+		display: none;
+	}
+
+	html[data-shell='C'],
+	html[data-shell='D'] {
+		--shell-sticky-top: calc(var(--safe-top) + 44px);
+		--tabbar-h: 56px;
+	}
+
+	html[data-shell='C'] header,
+	html[data-shell='D'] header {
+		display: none;
 	}
 }

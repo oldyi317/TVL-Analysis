@@ -12,7 +12,7 @@ export default defineConfig({
 			},
 			adapter: adapter(),
 			// GitHub Pages 專案站台的子路徑；dev、preview、正式站一致
-			paths: { base: '/TVL-Analysis', relative: false }
+			paths: { base: '/tvl-shell-proto', relative: false }
 		})
 	],
 	test: {

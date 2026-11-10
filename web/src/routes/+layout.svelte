@@ -4,12 +4,18 @@
 	import { asset } from '$app/paths';
 	import SiteFooter from '#lib/components/SiteFooter.svelte';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
+	import BarB from '#lib/prototype/BarB.svelte';
+	import BarC from '#lib/prototype/BarC.svelte';
+	import PrototypeSwitcher from '#lib/prototype/PrototypeSwitcher.svelte';
+	import { trackNav } from '#lib/prototype/shell.svelte.js';
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
 	import { currentSeason, findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
+
+	trackNav();
 
 	// 切換賽季或組別：只替換路徑中該片段的第一次出現，停留在同一頁面類型。
 	// base 是固定的 /TVL-Analysis，賽季與組別是 base 之後的前兩段，不會與其他片段撞名。
@@ -75,6 +81,9 @@
 </svelte:head>
 
 <SiteHeader {season} {group} records={onRecords} hrefFor={switchHref} />
+<BarB {season} {group} />
+<BarC {season} {group} records={onRecords} hrefFor={switchHref} />
+<PrototypeSwitcher />
 
 <div class="wrap">
 	<main>
@@ -87,7 +96,8 @@
 	.wrap {
 		display: grid;
 		gap: var(--space-7);
-		padding: var(--space-4) var(--space-4) var(--space-7);
+		padding: var(--space-4) var(--space-4)
+			calc(var(--space-7) + var(--tabbar-h) + var(--safe-bottom) + 3.5rem);
 		min-inline-size: 0;
 	}
 

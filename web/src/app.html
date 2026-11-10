@@ -2,7 +2,29 @@
 <html lang="zh-Hant">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/icons/icon-180.png" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-title" content="TVL 數據" />
+		<script>
+			// 原型專用：水合前先套用殼層變體與 ?safe=1，避免閃爍（邏輯見 src/lib/prototype/）
+			(function () {
+				var d = document.documentElement;
+				try {
+					var q = new URLSearchParams(location.search), s = localStorage;
+					var v = q.get('variant');
+					if (v === 'A' || v === 'B' || v === 'C' || v === 'D') s.setItem('proto-shell-variant', v);
+					if (q.get('safe') !== null) s.setItem('proto-shell-safe', q.get('safe') === '1' ? '1' : '0');
+					d.dataset.shell = s.getItem('proto-shell-variant') || 'A';
+					if (s.getItem('proto-shell-safe') === '1') d.dataset.safe = '1';
+				} catch (e) {
+					d.dataset.shell = 'A';
+				}
+			})();
+		</script>
 		<meta name="text-scale" content="scale" />
 		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f4f9" />
 		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#12141f" />

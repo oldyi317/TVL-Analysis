@@ -83,7 +83,7 @@
 
 <style>
 	section {
-		scroll-margin-block-start: calc(var(--tap) + 2 * var(--space-2) + var(--space-4));
+		scroll-margin-block-start: calc(var(--shell-sticky-top, 0px) + var(--tap) + 2 * var(--space-2) + var(--space-4));
 	}
 
 	h2 {

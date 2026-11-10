@@ -98,7 +98,7 @@
 
 	.months {
 		position: sticky;
-		inset-block-start: 0;
+		inset-block-start: var(--shell-sticky-top, 0px);
 		z-index: 1;
 		display: flex;
 		gap: var(--space-1);
@@ -119,7 +119,7 @@
 
 	/* 月份列高 = 44px 觸控高 + 上下各 8px 內距；錨點停在列下方再留 16px */
 	section {
-		scroll-margin-block-start: calc(var(--tap) + 2 * var(--space-2) + var(--space-4));
+		scroll-margin-block-start: calc(var(--shell-sticky-top, 0px) + var(--tap) + 2 * var(--space-2) + var(--space-4));
 	}
 
 	h2 {
