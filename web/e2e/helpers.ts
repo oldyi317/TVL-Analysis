@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { expect, type Page } from '@playwright/test';
 import { KINDS, pickSeason, type Kind } from './pick-season.js';
 
 export const BASE = '/TVL-Analysis';
@@ -20,3 +21,11 @@ export const findSeason = (kind: Kind, group = 'men') => {
 		currentCupId: seasonsData.current_cup_id
 	});
 };
+
+// 進頁後第一個互動可能早於 hydration：點到沒反應就重試
+export async function openMoreSheet(page: Page) {
+	await expect(async () => {
+		await page.getByRole('navigation', { name: '主要分頁' }).getByRole('button', { name: '更多' }).click();
+		await expect(page.getByRole('dialog', { name: '更多' })).toBeVisible({ timeout: 1000 });
+	}).toPass({ timeout: 10_000 });
+}

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { BASE, currentSeason, findSeason, OLD_CUP, OLD_SEASON, readJson } from './helpers.js';
+import { BASE, currentSeason, findSeason, OLD_CUP, OLD_SEASON, openMoreSheet, readJson } from './helpers.js';
 
 type Season = {
 	cup_id: number;
@@ -24,14 +24,16 @@ const registeredIn = (cup: number, group: string) =>
 const seasonOf = (p: Player, cup: number) => p.seasons.find((s) => s.cup_id === cup)!;
 const noOverflow = (page: Page) =>
 	page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-const nav = (page: Page) => page.getByRole('navigation', { name: '頁面' });
-const playerLink = (page: Page) => nav(page).getByRole('link', { name: '球員', exact: true });
+const moreButton = (page: Page) =>
+	page.getByRole('navigation', { name: '主要分頁' }).getByRole('button', { name: '更多' });
 
 test('導覽「球員」到球員列表', async ({ page }) => {
 	await page.goto(`${BASE}/${current}/men/`);
-	await playerLink(page).click();
+	const sheet = page.getByRole('dialog', { name: '更多' });
+	await openMoreSheet(page);
+	await sheet.getByRole('link', { name: '球員', exact: true }).click();
 	await expect(page).toHaveURL(`${BASE}/${current}/men/players/`);
-	await expect(playerLink(page)).toHaveAttribute('aria-current', 'page');
+	await expect(moreButton(page)).toHaveAttribute('aria-current', 'page');
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('球員');
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
@@ -57,7 +59,7 @@ test('列表第一張球員卡進球員頁：球員資料與本季數據', async
 		await expect(page.locator('.stats .value')).toHaveCount(3);
 	}
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
-	await expect(playerLink(page)).toHaveAttribute('aria-current', 'page');
+	await expect(moreButton(page)).toHaveAttribute('aria-current', 'page');
 });
 
 test('舉球員的主卡顯示舉球到位率等匯出值，位置顯示中文簡稱', async ({ page }) => {

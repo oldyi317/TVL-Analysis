@@ -54,7 +54,12 @@ test('男女組長姓名、四王首屏、深淺模式與桌面欄數', async ({
 			const leaderHeight = (await first.locator('tbody tr').first().boundingBox())!.height;
 			expect(leaderHeight).toBeLessThanOrEqual(49);
 			const expand = first.getByRole('button');
-			if (await expand.count()) await expand.click();
+			if (await expand.count()) {
+				await expect(async () => {
+					if ((await expand.getAttribute('aria-expanded')) !== 'true') await expand.click();
+					await expect(expand).toHaveAttribute('aria-expanded', 'true', { timeout: 500 });
+				}).toPass({ timeout: 10_000 });
+			}
 			await expect(first.getByRole('link', { name: longest.name, exact: true })).toBeVisible();
 			expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 			const columns = await page.locator('.boards').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);

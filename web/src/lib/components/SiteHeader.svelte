@@ -41,7 +41,7 @@
 	header {
 		display: grid;
 		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4) var(--space-4);
+		padding: var(--space-3) calc(var(--space-4) + var(--safe-right)) var(--space-4) calc(var(--space-4) + var(--safe-left));
 		background: var(--surface);
 		border-block-end: 1px solid var(--card-edge);
 		box-shadow: var(--shadow-card);
