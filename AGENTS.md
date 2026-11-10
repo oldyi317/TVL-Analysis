@@ -13,6 +13,10 @@ npm run check                                    # 型別檢查
 npm run test:unit                                # 單元測試
 npm run test:e2e                                 # Playwright smoke（需先 build）
 
+# Ticket 流程（從 repo 根目錄跑）
+bash scripts/new-worktree.sh <分支> [base]        # 在 ~/work 開 worktree，依賴與資料一併備好
+bash scripts/verify.sh                           # 收工四項依序跑，各自回報
+
 # 爬蟲（皆從 repo 根目錄以 module 方式執行）
 python -m src.etl.crawler                        # 官網球員名單 → data/raw/
 python -m src.etl.match_crawler                  # 官網各局比分 → matches 表
@@ -73,9 +77,13 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
 
 - 開工前從最新 main 開 `feat/issue-<N>-<簡述>` 分支，不在 main 上 commit；
   skill 說「commit 到目前分支」時，指的就是這個分支。
+  spec 指定整合分支時，分支與 PR 的 base、`Closes` 寫不寫都以 spec 為準。
+- worktree 用 `bash scripts/new-worktree.sh <分支> [base]` 開在 `~/work/`，在那裡實作與驗證：
+  `/mnt/d` 上 `npm run build` 一次 14 分鐘，`~/work` 整輪驗證約 2 分鐘。
 - 縮排沿用檔案既有風格（web/ 一律 tab），不混用。
 - 測試不寫檔到 repo 外，也不留除錯用截圖；截圖腳本不進 commit。
-- 收工前四項全過才算完成：pytest、`npm run check`、`npm run test:unit`、`npm run test:e2e`。
+- 收工前跑 `bash scripts/verify.sh`，四項全過才算完成：pytest、`npm run check`、
+  `npm run test:unit`、`npm run test:e2e`。
 - push 分支後開 PR，PR 內文寫 `Closes #<N>`；合併由使用者做，合併後才關票。
 
 ## 資料品質原則

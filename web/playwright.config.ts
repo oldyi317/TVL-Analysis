@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // 預設 4173；設了 PW_PORT 就在那個 port 起自己的 preview，不沿用別人的（scripts/verify.sh 用它避開其他 worktree）
-const port = Number(process.env.PW_PORT ?? 4173);
+const port = Number(process.env.PW_PORT || 4173);
 
 // 以手機視窗對建置產物（vite preview）跑 smoke
 export default defineConfig({
