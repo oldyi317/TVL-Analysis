@@ -60,7 +60,7 @@ const noOverflow = (page: import('@playwright/test').Page) =>
 test('當季男子組列表：現役隊整列可點', async ({ page }) => {
 	await page.goto(`${BASE}/${current}/men/teams/`);
 	const active = menIn(currentCup).filter((t) => t.is_active);
-	await expect(page.locator('li a')).toHaveCount(active.length);
+	await expect(page.getByRole('main').getByRole('listitem').getByRole('link')).toHaveCount(active.length);
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
@@ -68,8 +68,8 @@ test('2024-25 男子組列表：非現役隊也整列可點', async ({ page }) =
 	await page.goto(`${BASE}/${OLD_SEASON}/men/teams/`);
 	const all = menIn(OLD_CUP);
 	expect(all.some((t) => !t.is_active)).toBe(true);
-	await expect(page.locator('li')).toHaveCount(all.length);
-	await expect(page.locator('li a')).toHaveCount(all.length);
+	await expect(page.getByRole('main').getByRole('listitem')).toHaveCount(all.length);
+	await expect(page.getByRole('main').getByRole('listitem').getByRole('link')).toHaveCount(all.length);
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 

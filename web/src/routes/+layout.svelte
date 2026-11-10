@@ -4,6 +4,7 @@
 	import { asset } from '$app/paths';
 	import SiteFooter from '#lib/components/SiteFooter.svelte';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
+	import TabBar from '#lib/components/TabBar.svelte';
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
 	import { currentSeason, findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
@@ -83,11 +84,14 @@
 	<SiteFooter />
 </div>
 
+<TabBar {season} {group} />
+
 <style>
 	.wrap {
 		display: grid;
 		gap: var(--space-7);
-		padding: var(--space-4) var(--space-4) var(--space-7);
+		padding: var(--space-4) calc(var(--space-4) + var(--safe-right))
+			calc(var(--space-7) + var(--tabbar-h) + var(--safe-bottom)) calc(var(--space-4) + var(--safe-left));
 		min-inline-size: 0;
 	}
 
