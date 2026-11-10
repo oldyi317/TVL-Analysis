@@ -98,7 +98,7 @@
 
 	.months {
 		position: sticky;
-		inset-block-start: 0;
+		inset-block-start: var(--shell-top);
 		z-index: 1;
 		display: flex;
 		gap: var(--space-1);
@@ -117,9 +117,9 @@
 		flex: none;
 	}
 
-	/* 月份列高 = 44px 觸控高 + 上下各 8px 內距；錨點停在列下方再留 16px */
+	/* 錨點停在頂部列（手機）與月份列下方再留 16px；月份列高 = 44px 觸控高 + 上下各 8px 內距 */
 	section {
-		scroll-margin-block-start: calc(var(--tap) + 2 * var(--space-2) + var(--space-4));
+		scroll-margin-block-start: calc(var(--shell-top) + var(--tap) + 2 * var(--space-2) + var(--space-4));
 	}
 
 	h2 {

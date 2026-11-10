@@ -105,3 +105,18 @@ describe('殼層 token', () => {
 		expect(darkBlock).toMatch(/--scrim:\s*rgba\([^)]*\);/);
 	});
 });
+
+describe('頂部列 token', () => {
+	it('--topbar-h 已定義，且不小於觸控高 --tap（2.75rem）', () => {
+		expect(Number(rootBlock.match(/--topbar-h:\s*([\d.]+)rem;/)?.[1])).toBeGreaterThanOrEqual(2.75);
+	});
+	it('--z-topbar 高於頁內 sticky 元件的 z-index: 1', () => {
+		expect(Number(rootBlock.match(/--z-topbar:\s*(\d+);/)?.[1])).toBeGreaterThan(1);
+	});
+	it('--shell-top 手機是頂部列加上方安全區', () => {
+		expect(rootBlock).toContain('--shell-top: calc(var(--topbar-h) + var(--safe-top));');
+	});
+	it('--shell-top 在 64rem 以上歸零，桌面的 sticky 元件位置不變', () => {
+		expect(css).toMatch(/@media \(min-width: 64rem\)\s*\{[^@]*:root\s*\{\s*--shell-top:\s*0px;/);
+	});
+});

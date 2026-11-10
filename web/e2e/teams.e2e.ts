@@ -3,10 +3,14 @@ import {
 	BASE,
 	currentSeason as current,
 	findSeason,
+	groupLink,
 	OLD_CUP,
 	OLD_SEASON,
+	openSeasonSheet,
 	readJson,
-	seasonsData
+	seasonSheet,
+	seasonsData,
+	switchGroup
 } from './helpers.js';
 
 type Team = {
@@ -185,19 +189,15 @@ test('不存在的球隊沒有球隊頁', async ({ page }) => {
 test('球隊頁的組別與賽季切換', async ({ page }) => {
 	const team = menIn(currentCup).find((t) => t.is_active)!;
 	await page.goto(`${BASE}/${current}/men/teams/${team.team_id}/`);
-	await expect(
-		page.getByRole('navigation', { name: '組別' }).getByRole('link', { name: '女子組' })
-	).toHaveAttribute('href', new RegExp(`/${current}/women/teams/$`));
+	await expect(groupLink(page, '女子')).toHaveAttribute('href', new RegExp(`/${current}/women/teams/$`));
 	const expected = team.cup_ids.includes(OLD_CUP)
 		? `/${OLD_SEASON}/men/teams/${team.team_id}/`
 		: `/${OLD_SEASON}/men/teams/`;
-	const href = await page
-		.getByRole('navigation', { name: '賽季' })
-		.getByRole('link', { name: OLD_SEASON })
-		.getAttribute('href');
+	await openSeasonSheet(page);
+	const href = await seasonSheet(page).getByRole('link', { name: OLD_SEASON }).getAttribute('href');
 	expect(href!.endsWith(expected)).toBe(true);
-	await page.getByRole('navigation', { name: '組別' }).getByRole('link', { name: '女子組' }).click();
-	await expect(page).toHaveURL(new RegExp(`/${current}/women/teams/$`));
+	await page.keyboard.press('Escape');
+	await switchGroup(page, '女子', `${BASE}/${current}/women/teams/`);
 	await expect(page.getByRole('heading', { level: 1 })).toContainText('女子組 球隊');
 });
 

@@ -75,6 +75,10 @@
 	--safe-left: env(safe-area-inset-left, 0px);
 	--tabbar-h: 3.5rem;
 	--z-tabbar: 10;
+	--topbar-h: 3.5rem;
+	--z-topbar: 10;
+	/* 殼層頂部佔用高度：吸頂元件與錨點捲動位置都從這裡讓位 */
+	--shell-top: calc(var(--topbar-h) + var(--safe-top));
 	--scrim: rgba(38, 43, 74, 0.45);
 	color-scheme: light dark;
 }
@@ -131,6 +135,10 @@ html {
 }
 
 @media (min-width: 64rem) {
+	:root {
+		--shell-top: 0px;
+	}
+
 	html {
 		scroll-padding-block-end: 0;
 	}
