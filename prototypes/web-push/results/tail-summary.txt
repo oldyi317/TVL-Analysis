@@ -1,0 +1,126 @@
+# wrangler tail --format json 彙整（2026-11-10）：outcome, cpuTime ms, wallTime ms, 事件, 第一行 log
+ok 1 246 POST /api/subscribe | 
+ok 3 265 POST /api/send | payload {"id":"1794289009942-d3f1a8","sentAt":1794289009945,"title":"推播測試","body":"classic 測試推播","url":"/matches?from=push&mode=classic&id=1794289009942-d3f1a8&
+ok 7 368 POST /api/send | payload {"web_push":8030,"notification":{"title":"推播測試","body":"declarative 測試推播","navigate":"https://tvl-push-proto.tvl-push-proto.workers.dev/matches?from=pus
+ok 0 1 GET /api/config | 
+ok 2 406 GET /api/log | 
+ok 1 1 GET /api/config | 
+ok 2 957 GET /api/log | 
+ok 0 0 GET /favicon.ico | 
+ok 0 0 GET /api/config | 
+ok 0 100 cron scheduledTime=1794289366992 | cron scheduledTime=2026-11-10T05:42:46.992Z started=2026-11-10T05:42:47.591Z driftMs=599
+ok 1 27 GET /api/log | 
+ok 0 0 GET /api/config | 
+ok 0 0 GET /favicon.ico | 
+ok 1 664 GET /api/log | 
+ok 0 24 cron scheduledTime=1794289426992 | cron scheduledTime=2026-11-10T05:43:46.992Z started=2026-11-10T05:43:47.761Z driftMs=769
+ok 3 466 GET /api/log | 
+ok 1 2 GET /api/config | 
+ok 0 0 GET /favicon.ico | 
+ok 0 1 GET /apple-touch-icon-precomposed.png | 
+ok 0 0 GET /api/config | 
+ok 2 1032 GET /api/log | 
+ok 0 85 cron scheduledTime=1794289486992 | cron scheduledTime=2026-11-10T05:44:46.992Z started=2026-11-10T05:44:47.783Z driftMs=791
+ok 1 646 POST /api/subscribe | 
+ok 5 1076 POST /api/send | payload {"id":"1794289499708-25a24e","sentAt":1794289499711,"title":"推播測試","body":"classic 測試推播","url":"/matches?from=push&mode=classic&id=1794289499708-25a24e&
+ok 1 31 GET /api/log | 
+ok 0 448 POST /api/receipt | 
+ok 1 28 GET /api/log | 
+ok 1 665 POST /api/send | 
+ok 2 50 GET /api/log | 
+ok 4 681 POST /api/send | payload {"web_push":8030,"notification":{"title":"推播測試","body":"declarative 測試推播","navigate":"https://tvl-push-proto.tvl-push-proto.workers.dev/matches?from=pus
+ok 2 34 GET /api/log | 
+ok 2 41 GET /api/log | 
+ok 0 688 POST /api/send | 
+ok 1 33 GET /api/log | 
+ok 1 27 GET /api/log | 
+ok 1 24 GET /api/log | 
+ok 5 21040 POST /api/send | payload {"id":"1794289503398-32116b","sentAt":1794289523401,"title":"推播測試","body":"classic 測試推播","url":"/matches?from=push&mode=classic&id=1794289503398-32116b&
+ok 0 663 POST /api/receipt | 
+ok 5 634 GET /api/log | 
+ok 2 21055 POST /api/send | payload {"web_push":8030,"notification":{"title":"推播測試","body":"declarative 測試推播","navigate":"https://tvl-push-proto.tvl-push-proto.workers.dev/matches?from=pus
+ok 0 1150 POST /api/receipt | 
+ok 6 4547 cron scheduledTime=1794289546992 | cron scheduledTime=2026-11-10T05:45:46.992Z started=2026-11-10T05:45:48.131Z driftMs=1139
+ok 0 0 GET /api/config | 
+ok 4 1673 GET /api/log | 
+ok 0 728 POST /api/subscribe | 
+ok 0 45 cron scheduledTime=1794289606992 | cron scheduledTime=2026-11-10T05:46:46.992Z started=2026-11-10T05:46:47.618Z driftMs=626
+ok 0 614 POST /api/subscribe | 
+ok 0 0 GET /api/config | 
+ok 3 1902 GET /api/log | 
+ok 0 37 cron scheduledTime=1794289666992 | cron scheduledTime=2026-11-10T05:47:46.992Z started=2026-11-10T05:47:47.748Z driftMs=756
+ok 0 575 POST /api/subscribe | 
+ok 3 732 GET /api/log | 
+ok 0 66 cron scheduledTime=1794289726992 | cron scheduledTime=2026-11-10T05:48:46.992Z started=2026-11-10T05:48:47.504Z driftMs=512
+ok 2 50 GET /api/log | 
+ok 3 1283 POST /api/send | payload {"id":"1794289753155-d6715c","sentAt":1794289753159,"title":"推播測試","body":"classic 測試推播","url":"/matches?from=push&mode=classic&id=1794289753155-d6715c&
+ok 0 555 POST /api/receipt | 
+ok 3 1548 GET /api/log | 
+ok 0 657 POST /api/receipt | 
+ok 0 675 POST /api/receipt | 
+ok 0 1 GET /api/config | 
+ok 3 77 GET /api/log | 
+ok 3 72 GET /api/log | 
+ok 0 117 cron scheduledTime=1794289786992 | cron scheduledTime=2026-11-10T05:49:46.992Z started=2026-11-10T05:49:47.833Z driftMs=841
+ok 4 21075 POST /api/send | payload {"id":"1794289782159-676c89","sentAt":1794289802164,"title":"推播測試","body":"classic 測試推播","url":"/matches?from=push&mode=classic&id=1794289782159-676c89&
+ok 0 646 POST /api/receipt | 
+ok 4 771 GET /api/log | 
+ok 8 139 GET /api/log | 
+ok 0 2 GET /api/config | 
+ok 1 645 POST /api/receipt | 
+ok 0 682 POST /api/receipt | 
+ok 5 1719 GET /api/log | 
+ok 0 0 GET /api/config | 
+ok 3 79 GET /api/log | 
+ok 0 733 POST /api/send | 
+ok 3 80 GET /api/log | 
+ok 4 1196 cron scheduledTime=1794289846992 | cron scheduledTime=2026-11-10T05:50:46.992Z started=2026-11-10T05:50:47.515Z driftMs=523
+ok 0 472 POST /api/receipt | 
+ok 0 1 GET /api/config | 
+ok 3 83 GET /api/log | 
+ok 0 597 POST /api/receipt | 
+canceled 0 1525 POST /api/receipt | 
+ok 0 0 GET /api/config | 
+ok 4 1291 GET /api/log | 
+ok 4 1315 POST /api/send | payload {"web_push":8030,"notification":{"title":"推播測試","body":"declarative 測試推播","navigate":"https://tvl-push-proto.tvl-push-proto.workers.dev/matches?from=pus
+ok 4 114 GET /api/log | 
+ok 0 620 POST /api/receipt | 
+ok 0 0 GET /api/config | 
+ok 4 100 GET /api/log | 
+ok 3 21032 POST /api/send | payload {"web_push":8030,"notification":{"title":"推播測試","body":"declarative 測試推播","navigate":"https://tvl-push-proto.tvl-push-proto.workers.dev/matches?from=pus
+ok 0 450 POST /api/receipt | 
+ok 0 0 GET /api/config | 
+ok 5 1692 GET /api/log | 
+ok 0 463 POST /api/send | 
+ok 6 134 GET /api/log | 
+ok 3 1111 cron scheduledTime=1794289906992 | cron scheduledTime=2026-11-10T05:51:46.992Z started=2026-11-10T05:51:47.443Z driftMs=451
+ok 0 1219 POST /api/receipt | 
+ok 0 0 GET /api/config | 
+ok 6 819 GET /api/log | 
+ok 9 883 GET /api/log | 
+ok 2 2 GET /api/bench?n=1&jwt=once | 
+ok 3 3 GET /api/bench?n=5&jwt=once | 
+ok 4 4 GET /api/bench?n=10&jwt=once | 
+ok 10 11 GET /api/bench?n=20&jwt=once | 
+ok 12 13 GET /api/bench?n=50&jwt=once | 
+ok 3 3 GET /api/bench?n=5&jwt=each | 
+ok 5 5 GET /api/bench?n=10&jwt=each | 
+ok 1 2 GET /api/bench?n=1&jwt=once | 
+ok 2 2 GET /api/bench?n=5&jwt=once | 
+ok 5 5 GET /api/bench?n=10&jwt=once | 
+ok 4 5 GET /api/bench?n=20&jwt=once | 
+ok 21 23 GET /api/bench?n=50&jwt=once | 
+ok 3 4 GET /api/bench?n=5&jwt=each | 
+ok 10 11 GET /api/bench?n=10&jwt=each | 
+ok 1 2 GET /api/bench?n=1&jwt=once | 
+ok 2 2 GET /api/bench?n=5&jwt=once | 
+ok 2 2 GET /api/bench?n=10&jwt=once | 
+ok 10 11 GET /api/bench?n=20&jwt=once | 
+ok 13 15 GET /api/bench?n=50&jwt=once | 
+ok 2 2 GET /api/bench?n=5&jwt=each | 
+ok 5 5 GET /api/bench?n=10&jwt=each | 
+ok 0 83 cron scheduledTime=1794289966992 | cron scheduledTime=2026-11-10T05:52:46.992Z started=2026-11-10T05:52:47.924Z driftMs=932
+ok 0 268 cron scheduledTime=1794290026992 | cron scheduledTime=2026-11-10T05:53:46.992Z started=2026-11-10T05:53:47.781Z driftMs=789
+ok 0 48 cron scheduledTime=1794290086992 | cron scheduledTime=2026-11-10T05:54:46.992Z started=2026-11-10T05:54:47.462Z driftMs=470
+ok 12 974 GET /api/log | 
+ok 0 27 cron scheduledTime=1794290146992 | cron scheduledTime=2026-11-10T05:55:46.992Z started=2026-11-10T05:55:49.271Z driftMs=2279

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>落地頁</title>
+</head>
+<body>
+<h1>這頁是由通知開啟的</h1>
+<p id="q"></p>
+<p><a href="/">回首頁</a></p>
+<script>
+const p = new URLSearchParams(location.search);
+document.getElementById('q').textContent = 'query: ' + (location.search || '(無)');
+const id = p.get('id');
+if (id) fetch('/api/receipt', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, event: 'opened', at: Date.now(), mode: p.get('mode') }) });
+</script>
+</body>
+</html>

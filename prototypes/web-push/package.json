@@ -1,0 +1,12 @@
+{
+	"name": "tvl-push-proto",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test": "node scripts/test-webpush.mjs",
+		"dev": "wrangler dev"
+	},
+	"devDependencies": {
+		"wrangler": "^4.159.0"
+	}
+}

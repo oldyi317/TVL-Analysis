@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>推播測試</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>
+body { font-family: sans-serif; margin: 12px; }
+table { border-collapse: collapse; font-size: 12px; }
+td, th { border: 1px solid #999; padding: 2px 4px; }
+button { margin: 2px; padding: 8px; }
+pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>推播測試</h1>
+<pre id="status"></pre>
+<div><button id="sub">訂閱（要求通知權限）</button></div>
+<div id="sends"></div>
+<div><button id="refresh">重新整理紀錄</button></div>
+<pre id="msg"></pre>
+<table id="log"></table>
+<h3>最近 Cron 漂移</h3>
+<table id="drift"></table>
+<script>
+const $ = (id) => document.getElementById(id);
+let vapidKey = null;
+let reg = null;
+let sub = null;
+
+const b64uToBytes = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4)), (c) => c.charCodeAt(0));
+const say = (t) => { $('msg').textContent = t; };
+
+async function refreshState() {
+	if (reg) sub = await reg.pushManager.getSubscription();
+	const sw = reg ? (reg.active ? 'active' : reg.installing ? 'installing' : reg.waiting ? 'waiting' : '?') : '未註冊';
+	$('status').textContent = [
+		`獨立視窗 display-mode: ${matchMedia('(display-mode: standalone)').matches}／navigator.standalone: ${navigator.standalone}`,
+		`PushManager: ${'PushManager' in window}`,
+		`Notification.permission: ${'Notification' in window ? Notification.permission : '無 Notification'}`,
+		`User-Agent: ${navigator.userAgent}`,
+		`訂閱 endpoint 主機: ${sub ? new URL(sub.endpoint).host : '(無)'}`,
+		`service worker: ${sw}`,
+	].join('\n');
+}
+
+async function post(path, body) {
+	const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+	return { status: r.status, body: await r.json().catch(() => null) };
+}
+
+$('sub').onclick = async () => {
+	try {
+		const perm = await Notification.requestPermission(); // 必須在點擊事件內直接呼叫
+		if (perm !== 'granted') { say('權限：' + perm); return refreshState(); }
+		reg = await navigator.serviceWorker.ready;
+		sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(vapidKey) });
+		say('subscribe 存檔：' + JSON.stringify(await post('/api/subscribe', sub.toJSON())));
+	} catch (e) { say('訂閱失敗：' + e); }
+	refreshState();
+};
+
+for (const mode of ['classic', 'declarative']) {
+	for (const when of ['now', 'delay20', 'cron']) {
+		const b = document.createElement('button');
+		b.textContent = `${mode} / ${when}`;
+		b.onclick = async () => {
+			if (!sub) return say('尚未訂閱');
+			say('送出中…');
+			const r = await post('/api/send', { endpoint: sub.endpoint, mode, when });
+			say(`${mode}/${when}：` + JSON.stringify(r));
+			loadLog();
+		};
+		$('sends').appendChild(b);
+	}
+}
+$('refresh').onclick = () => { loadLog(); refreshState(); };
+
+const cell = (v) => `<td>${v ?? ''}</td>`;
+const hms = (t) => (t ? new Date(t).toLocaleTimeString('zh-TW', { hour12: false }) : '');
+const diag = (p) => (p && p.eventKeys ? `evNotif=${p.hasEventNotification} data=${p.hasData} native=${p.native} keys=${p.eventKeys.join(',')}` : '');
+async function loadLog() {
+	const { logs, drifts } = await (await fetch('/api/log')).json();
+	$('log').innerHTML = '<tr><th>時間<th>mode<th>when<th>狀態碼<th>fetch ms<th>發送→SW ms（裝置鐘）<th>發送→SW ms（伺服器收報）<th>click<th>opened<th>Cron 漂移 ms<th>SW 診斷<th>錯誤</tr>' +
+		logs.map((r) => `<tr>${cell(hms(r.sentAt))}${cell(r.mode)}${cell(r.when)}${cell(r.status)}${cell(r.fetchMs)}${cell(r.sendToSwMs)}${cell(r.sendToSwServerMs)}${cell(r.receipts.click ? 'Y' : '')}${cell(r.receipts.opened ? 'Y' : '')}${cell(r.drift)}${cell(diag(r.receipts.push))}${cell(r.error || r.responseText)}</tr>`).join('');
+	$('drift').innerHTML = '<tr><th>排定<th>實際開始<th>漂移 ms<th>發送數</tr>' +
+		drifts.map((d) => `<tr>${cell(hms(d.scheduledTime))}${cell(hms(d.startedAt))}${cell(d.driftMs)}${cell(d.sent)}</tr>`).join('');
+}
+
+(async () => {
+	try { vapidKey = (await (await fetch('/api/config')).json()).vapidPublicKey; } catch (e) {}
+	if ('serviceWorker' in navigator) {
+		try { reg = await navigator.serviceWorker.register('/sw.js'); } catch (e) { say('SW 註冊失敗：' + e); }
+	}
+	await refreshState();
+	loadLog();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "tvl-push-proto",
+	"main": "src/index.js",
+	"compatibility_date": "2026-11-01",
+	"assets": {
+		"directory": "./public",
+		"run_worker_first": ["/api/*"]
+	},
+	"kv_namespaces": [{ "binding": "PROTO_KV" }],
+	"triggers": { "crons": ["* * * * *"] },
+	"observability": { "enabled": true },
+	"vars": {
+		"VAPID_PUBLIC": "BIS0y4D6rwejyZfnCnb5ocPdsQL4rkkauzORRz_cQgb8DIJM6E_LEUEfKOawS0ndi6X53-xb9lpt6Qj0YEEJiYM"
+	}
+}
