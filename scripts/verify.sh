@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 收工四項依序跑：pytest、npm run check、npm run test:unit、e2e（先 build）。
+# 收工四項依序跑：pytest、npm run check、npm run test:unit、e2e（先 build，再跑 scripts/e2e.sh）。
 # 每一項都會跑完並各自回報，任何一項失敗就以非零結束；輸出寫到 log，失敗才印末段。
 #
 # 用法：bash scripts/verify.sh
@@ -29,16 +29,12 @@ step() {
 	return 1
 }
 
-free_port() {
-	"$python" -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'
-}
-
 step export "$repo" "$python" -m src.export.site_data
 step pytest "$repo" env OMP_NUM_THREADS="${OMP_NUM_THREADS:-2}" "$python" -m pytest -q
 step check "$repo/web" npm run check
 step unit "$repo/web" npm run test:unit
 if step build "$repo/web" npm run build; then
-	step e2e "$repo/web" env PW_PORT="${PW_PORT:-$(free_port)}" npx playwright test
+	step e2e "$repo" bash scripts/e2e.sh
 	grep -E '^\s+[0-9]+ (passed|failed|flaky|skipped)' "$logs/e2e.log" | sed 's/^/    /'
 else
 	echo "✗ e2e      略過（build 失敗）"
