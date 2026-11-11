@@ -32,7 +32,7 @@ python -m src.models.train                       # 重訓賽果預測模型 → 
 python -m src.models.predict                     # 未開打賽事的主隊賽前勝率 → match_predictions 表（daily_update 內含）
 ```
 
-npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔案編輯與 npm 分開呼叫；workdir 已是 web 時檔案路徑不再加 `web/` 前綴。讀／改檔前先 `rg --files` 找實際路徑（如 app.css、statLabels.ts）。git 寫入被沙箱拒絕走正式 escalation，不重試相同模式。
+npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔案編輯與 npm 分開呼叫；workdir 已是 web 時檔案路徑不再加 `web/` 前綴。讀／改檔前先 `rg --files` 找實際路徑（如 app.css、statLabels.ts）。git 寫入被沙箱拒絕走正式 escalation，不重試相同模式。跑 vitest 用 `npm run test:unit` 或 `web/node_modules/.bin/vitest`，不用 npx（沒有本地 node_modules 的 cwd 會靜默改用 `~/.npm/_npx` 快取的別版，`--no` 擋不住）。
 
 ## 地雷（改動前必讀）
 
