@@ -58,6 +58,7 @@ npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔�
   對不上就略過並 warning，不插入 `players`；整季沒有報名名單（legacy）時才以全域
   姓名比對、查無就動態新增。比對到人但查無登錄時補一筆 `source='backfill'`
   登錄（背號/位置先取自 `season_rosters`，查無才 NULL），下游計算仍須對缺值防禦。
+- **daily-crawl 失敗或排程異常先讀 `docs/ops/daily-crawl.md`**：runner 在使用者筆電 WSL，先查 runner 在線再查程式。
 - **換季前必跑 `docs/ops/season-switch.md` checklist**：cup_id 已進
   roster_registrations 的 UNIQUE（Phase 3），跨季同名週次不再互相覆寫；`seasons`
   新季列等仍是手動更新，未更新前爬蟲抓不到新季資料。外部統計系統（`EXT_*` 常數、
