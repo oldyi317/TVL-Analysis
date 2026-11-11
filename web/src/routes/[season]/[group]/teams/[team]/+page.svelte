@@ -10,6 +10,7 @@
 	import MatchLink from '#lib/components/MatchLink.svelte';
 	import PlayerLink from '#lib/components/PlayerLink.svelte';
 	import { isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
+	import { listHref } from '#lib/nav.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import {
 		metricLabel,
@@ -34,8 +35,8 @@
 	const CIRC = 2 * Math.PI * 34;
 
 	const team = $derived(data.team);
-	const listHref = $derived(
-		`${resolve('/[season]/[group]/teams', { season: data.season.name, group: data.group })}/`
+	const backHref = $derived(
+		listHref('teams', `${resolve('/[season]/[group]', { season: data.season.name, group: data.group })}/`)
 	);
 
 	const hasUnplayed = $derived(data.matches.some((m) => !isPlayed(m)));
@@ -59,7 +60,7 @@
 
 <SiteHead title="{team.name}｜{data.season.name} {GROUP_LABEL[data.group]} 球隊｜TVL 數據" />
 
-<a class="back" href={listHref}>
+<a class="back" href={backHref}>
 	<Icon name="chevron-left" size={16} />
 	球隊列表
 </a>
@@ -292,12 +293,18 @@
 	}
 
 	.back {
-		display: inline-flex;
+		display: none;
 		align-items: center;
 		gap: var(--space-1);
 		min-block-size: var(--tap);
 		color: var(--accent);
 		font-weight: 600;
+	}
+
+	@media (min-width: 64rem) {
+		.back {
+			display: inline-flex;
+		}
 	}
 
 	.back:hover {

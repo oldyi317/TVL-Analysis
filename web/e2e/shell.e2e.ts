@@ -297,7 +297,7 @@ test.describe('手機頂部列讓出的位置', () => {
 		const month = anyGame.date.slice(0, 7);
 		await page.goto(`${group}/matches/${anyGame.game_id}/`);
 		await expect(async () => {
-			await page.getByRole('link', { name: '賽事列表' }).click();
+			await topBar(page).getByRole('link', { name: '返回' }).click();
 			await expect(page).toHaveURL(`${group}/matches/#m-${month}`, { timeout: 1000 });
 		}).toPass({ timeout: 10_000 });
 		const heading = page.locator(`#h-${month}`);

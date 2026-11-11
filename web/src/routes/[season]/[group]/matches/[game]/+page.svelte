@@ -9,6 +9,7 @@
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import type { BoxRow } from '#lib/boxScore.js';
 	import { headToHeadText, isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
+	import { listHref } from '#lib/nav.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import { pregameBarOption, pregameConclusion, pregameTable } from '#lib/teamAdvanced.js';
 	import type { PageProps } from './$types';
@@ -25,8 +26,12 @@
 	const pregameOption = $derived(
 		pregame ? pregameBarOption(pregame, names, { home: match.home.color, away: match.away.color }) : null
 	);
-	const listHref = $derived(
-		`${resolve('/[season]/[group]/matches', { season: data.season.name, group: data.group })}/#m-${match.date.slice(0, 7)}`
+	const backHref = $derived(
+		listHref(
+			'matches',
+			`${resolve('/[season]/[group]', { season: data.season.name, group: data.group })}/`,
+			match.date
+		)
 	);
 </script>
 
@@ -39,7 +44,7 @@
 
 <SiteHead title="{match.home.short_name} 對 {match.away.short_name} {match.date}｜{data.season.name} {GROUP_LABEL[data.group]} 賽事｜TVL 數據" />
 
-<a class="back" href={listHref}>
+<a class="back" href={backHref}>
 	<Icon name="chevron-left" size={18} />
 	賽事列表
 </a>
@@ -151,12 +156,18 @@
 	}
 
 	.back {
-		display: inline-flex;
+		display: none;
 		align-items: center;
 		gap: var(--space-1);
 		min-block-size: var(--tap);
 		color: var(--accent);
 		font-weight: 600;
+	}
+
+	@media (min-width: 64rem) {
+		.back {
+			display: inline-flex;
+		}
 	}
 
 	.back:hover {

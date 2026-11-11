@@ -41,3 +41,29 @@ export function hrefOf(section: Section, base: string, recordsBase: string): str
 	if (section === 'records') return recordsBase;
 	return section === 'home' ? base : `${base}${section}/`;
 }
+
+export type ListSection = 'matches' | 'teams' | 'players';
+
+const DETAIL_ROUTES: Record<string, ListSection> = {
+	'/[season]/[group]/matches/[game]': 'matches',
+	'/[season]/[group]/teams/[team]': 'teams',
+	'/[season]/[group]/players/[player]': 'players'
+};
+
+export function detailListOf(routeId: string | null): ListSection | null {
+	return (routeId && DETAIL_ROUTES[routeId]) || null;
+}
+
+// base 是含結尾斜線的 `/<base>/<season>/<group>/`；單場頁帶 date 時落在該月份錨點
+export function listHref(section: ListSection, base: string, date?: string): string {
+	const href = `${base}${section}/`;
+	return section === 'matches' && date ? `${href}#m-${date.slice(0, 7)}` : href;
+}
+
+export type NavType = 'enter' | 'popstate' | 'goto' | 'link' | 'form' | 'leave';
+
+export function nextDepth(depth: number, type: NavType, delta = 0): number {
+	if (type === 'enter') return 0;
+	if (type === 'popstate') return Math.max(0, depth + delta);
+	return depth + 1;
+}

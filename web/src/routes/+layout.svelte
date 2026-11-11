@@ -1,15 +1,18 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
-	import { asset } from '$app/paths';
+	import { afterNavigate } from '$app/navigation';
+	import { asset, resolve } from '$app/paths';
 	import SiteFooter from '#lib/components/SiteFooter.svelte';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
 	import TabBar from '#lib/components/TabBar.svelte';
 	import TopBar from '#lib/components/TopBar.svelte';
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
+	import { detailListOf, listHref, nextDepth } from '#lib/nav.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
 	import { currentSeason, findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
 	import type { LayoutProps } from './$types';
+	import type { PageData as MatchPageData } from './[season]/[group]/matches/[game]/$types';
 
 	let { children }: LayoutProps = $props();
 
@@ -67,6 +70,21 @@
 	const onRecords = $derived(page.route.id?.startsWith('/records/') ?? false);
 	const season = $derived(page.params.season ?? (onRecords ? currentSeason.name : undefined));
 
+	// 站內瀏覽深度只留在記憶體：進站歸零，重新整理後也歸零
+	let depth = $state(0);
+	afterNavigate((nav) => {
+		depth = nextDepth(depth, nav.type, 'delta' in nav ? nav.delta : 0);
+	});
+
+	const back = $derived.by(() => {
+		const section = detailListOf(page.route.id);
+		const detailSeason = page.params.season;
+		if (!section || !detailSeason || !group) return undefined;
+		const date = section === 'matches' ? (page.data as MatchPageData).match.date : undefined;
+		const href = listHref(section, `${resolve('/[season]/[group]', { season: detailSeason, group })}/`, date);
+		return { href, canGoBack: depth > 0 };
+	});
+
 	$effect(() => {
 		if (group) writeGroup(browserStorage(), group);
 	});
@@ -76,7 +94,7 @@
 	<link rel="icon" href={asset('favicon.svg')} />
 </svelte:head>
 
-<TopBar {season} {group} records={onRecords} hrefFor={switchHref} />
+<TopBar {season} {group} records={onRecords} {back} hrefFor={switchHref} />
 <SiteHeader {season} {group} records={onRecords} hrefFor={switchHref} />
 
 <div class="wrap">

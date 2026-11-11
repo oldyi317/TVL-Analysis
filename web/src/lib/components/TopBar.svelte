@@ -10,11 +10,13 @@
 		season,
 		group,
 		records = false,
+		back,
 		hrefFor
 	}: {
 		season?: string;
 		group?: Group;
 		records?: boolean;
+		back?: { href: string; canGoBack: boolean };
 		hrefFor: (param: 'season' | 'group', value: string) => string | undefined;
 	} = $props();
 
@@ -22,7 +24,23 @@
 </script>
 
 <header>
-	<a class="brand" href={resolve('/')}>TVL 數據</a>
+	{#if back}
+		<a
+			class="back"
+			href={back.href}
+			aria-label="返回"
+			onclick={(event) => {
+				if (!back.canGoBack) return;
+				if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+				event.preventDefault();
+				history.back();
+			}}
+		>
+			<Icon name="chevron-left" size={24} />
+		</a>
+	{:else}
+		<a class="brand" href={resolve('/')}>TVL 數據</a>
+	{/if}
 	{#if season && group}
 		<div class="controls">
 			<div class="groups">
@@ -73,6 +91,20 @@
 		font-weight: 800;
 		color: var(--text);
 		white-space: nowrap;
+	}
+
+	.back {
+		flex: none;
+		display: grid;
+		place-items: center;
+		inline-size: var(--tap);
+		block-size: var(--tap);
+		border-radius: var(--radius-full);
+		color: var(--text);
+	}
+
+	.back:active {
+		background: var(--accent-tint);
 	}
 
 	.controls {
