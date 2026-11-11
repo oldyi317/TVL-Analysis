@@ -87,7 +87,10 @@
   只選 `TVL-Analysis`、Repository permissions 只開 Administration: Read and write，存成 `~/.config/tvl-runner/token`（chmod 600）。
   迴圈每輪重讀這個檔，PAT 到期換新只要覆寫檔案，不用重啟；PAT 只傳給 `gh`，不進 job 環境，但 job 與迴圈同一個使用者，讀得到這個檔。
   腳本會移除舊的 svc.sh 常駐服務與持久註冊，把 `scripts/runner_loop.sh` 複製到 `~/actions-runner/`，
-  並安裝 systemd service `tvl-runner`（enable 後重啟，隨 WSL 開機自啟；WSL 開機靠 Windows 工作排程器，見腳本步驟 5）。
+  並安裝 systemd service `tvl-runner`（enable 後重啟，隨 WSL 開機自啟；WSL 開機靠 Windows 工作排程器，見腳本步驟 6）。
+- 每日觸發：`setup_runner.sh` 步驟 5 會跑 `scripts/setup_crawl_trigger.sh`（也可單獨跑，不需 sudo、需 linger），裝 user 層級 timer `tvl-crawl-trigger`：
+  每天台北 09:23 `gh workflow run daily-crawl.yml`，`Persistent=true` 讓未開機錯過的那次在開機後補跑（開機當下網路可能未通，觸發失敗每 2 分鐘重試、最多 5 次）。workflow 自己的 schedule 實際常晚 4–7 小時（#196），只當備援；
+  一天跑兩次無害，`.db` 沒有實質變更就不 commit。查看：`systemctl --user list-timers tvl-crawl-trigger.timer`、`journalctl --user -u tvl-crawl-trigger`。
 - 運作：`tvl-runner` 跑迴圈「`gh api` 取註冊 token → `config.sh --ephemeral --replace` 註冊（名稱 `tvl-wsl`、label `tvl`）
   → `run.sh` 接一個 job → job 結束 runner 自動註銷 → 回到開頭」。每輪先清掉 `_work` 與殘留的本機註冊檔；但 job 仍以同一個使用者執行，`$HOME`（venv、gh 登入）不會重置。
   取 token、註冊失敗，或 `run.sh` 不到 60 秒就結束（它對 listener 異常也回 0）時退避重試（30 秒起倍增，上限 15 分鐘）。

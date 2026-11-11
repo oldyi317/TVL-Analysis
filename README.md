@@ -87,6 +87,7 @@ TVL-Analysis/
 │   ├── daily_update.sh            # 每日增量更新腳本（排程與本機演練共用）
 │   ├── export_snapshot.sh         # 匯出器 JSON 快照比對工具
 │   ├── setup_runner.sh            # 自架 GitHub Actions runner 安裝腳本
+│   ├── setup_crawl_trigger.sh     # 每日 09:23 本機觸發 daily-crawl 的 systemd timer 安裝腳本
 │   └── runner_loop.sh             # 自架 ephemeral runner 常駐迴圈
 ├── .github/workflows/
 │   ├── daily-crawl.yml            # 每日排程爬蟲（自架 runner）
@@ -149,7 +150,8 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
 專案透過三個 GitHub Actions workflow 協作（見 `.github/workflows/`）：
 
 1. **每日增量爬蟲（`daily-crawl.yml`）**：
-   - 每日台灣時間 09:23（`01:23 UTC`）排程觸發，亦可手動 `workflow_dispatch`。
+   - 觸發：runner 所在的 WSL 以 user 層級 systemd timer 每日台灣時間 09:23 用 `gh workflow run` 觸發（`scripts/setup_crawl_trigger.sh` 安裝；09:23 未開機就在開機後補跑一次；觸發失敗每 2 分鐘重試，最多 5 次）。workflow 內的 `01:23 UTC` 排程只當備援，GitHub 實際常晚 4–7 小時才觸發；亦可手動 `workflow_dispatch`。
+   - runner 在筆電上，週末通常不開機，週六、週日的賽果於週一早上開機後進站。
    - 因 TVL 官網有 Cloudflare 防護，雲端 runner 無法連線，故運行於自架 runner（`[self-hosted, tvl]`）。
    - 執行 `scripts/daily_update.sh`：依序跑官網賽事列表（`schedule_crawler`）、賽季報名名單（`crawler` + `db_loader`）、各局比分（`match_crawler`）、官網單場數據與週登錄（`match_stats_writer`）以及未開打賽事賽前勝率（`src.models.predict`）。
    - 腳本透過 SQLite `iterdump()` 計算資料庫邏輯內容 SHA-256 雜湊（忽略 `sqlite_sequence` 自增序號雜訊）；確認有實質資料變更才 commit 並 push `data/db/tvl_database.db`，隨後主動觸發 `pages.yml` 部署靜態站。

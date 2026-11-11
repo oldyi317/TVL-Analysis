@@ -1,5 +1,6 @@
-# 每日增量爬蟲：台灣 09:23（01:23 UTC）排程。錯開整點——GitHub 高負載時
-# 整點 schedule 事件可能延遲甚至丟棄（2026-08-28 首次排程即未觸發）。
+# 每日增量爬蟲。主要由 runner 所在 WSL 的 user systemd timer 於台灣 09:23 以 workflow_dispatch 觸發
+# （scripts/setup_crawl_trigger.sh，#196）；下方 schedule 只當備援，GitHub 實際常晚 4–7 小時才觸發。
+# schedule 錯開整點——GitHub 高負載時整點 schedule 事件可能延遲甚至丟棄（2026-08-28 首次排程即未觸發）。
 # 跑在 self-hosted runner（使用者 WSL；官網有 Cloudflare，雲端 runner 進不去）。
 # 機器未開機時 job 會排隊等 runner 上線（至多 24 小時），開機即補跑。
 name: daily-crawl
