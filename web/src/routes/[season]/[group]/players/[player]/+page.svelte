@@ -7,6 +7,7 @@
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
+	import { listHref } from '#lib/nav.js';
 	import { displayPosition, findTeam, GROUP_LABEL, playerDisplayName, positionLabel } from '#lib/site.js';
 	import { STAT_LABELS } from '#lib/statLabels.js';
 	import type { PageProps } from './$types';
@@ -16,8 +17,8 @@
 	const name = $derived(playerDisplayName(data.player));
 	const stats = $derived(data.stats);
 	const headline = $derived(headlineStats(stats, data.advanced));
-	const listHref = $derived(
-		`${resolve('/[season]/[group]/players', { season: data.season.name, group: data.group })}/`
+	const backHref = $derived(
+		listHref('players', `${resolve('/[season]/[group]', { season: data.season.name, group: data.group })}/`)
 	);
 	const teamHref = $derived(
 		findTeam(data.season.cup_id, data.group, data.team.team_id)
@@ -38,7 +39,7 @@
 
 <SiteHead title="{name}｜{data.season.name} {GROUP_LABEL[data.group]} 球員｜TVL 數據" />
 
-<a class="back" href={listHref}>
+<a class="back" href={backHref}>
 	<Icon name="chevron-left" size={16} />
 	球員列表
 </a>
@@ -98,12 +99,18 @@
 
 <style>
 	.back {
-		display: inline-flex;
+		display: none;
 		align-items: center;
 		gap: var(--space-1);
 		min-block-size: var(--tap);
 		color: var(--accent);
 		font-weight: 600;
+	}
+
+	@media (min-width: 64rem) {
+		.back {
+			display: inline-flex;
+		}
 	}
 
 	.back:hover {
