@@ -46,4 +46,4 @@ if [ ${#failed[@]} -gt 0 ]; then
 	echo "失敗：${failed[*]}（共 ${SECONDS}s，log 在 $logs）"
 	exit 1
 fi
-echo "四項全過（共 ${SECONDS}s，log 在 $logs）"
+echo "收工四項全過：pytest、check、unit、e2e（export、build 為前置步驟；共 ${SECONDS}s，log 在 $logs）"
