@@ -68,6 +68,18 @@
 	--tap: 2.75rem;
 	--sidebar: 17rem;
 	--content-max: 72rem;
+	/* 手機殼層 */
+	--safe-top: env(safe-area-inset-top, 0px);
+	--safe-right: env(safe-area-inset-right, 0px);
+	--safe-bottom: env(safe-area-inset-bottom, 0px);
+	--safe-left: env(safe-area-inset-left, 0px);
+	--tabbar-h: 3.5rem;
+	--z-tabbar: 10;
+	--topbar-h: 3.5rem;
+	--z-topbar: 10;
+	/* 殼層頂部佔用高度：吸頂元件與錨點捲動位置都從這裡讓位 */
+	--shell-top: calc(var(--topbar-h) + var(--safe-top));
+	--scrim: rgba(38, 43, 74, 0.45);
 	color-scheme: light dark;
 }
 
@@ -103,6 +115,7 @@
 		--shadow-card: none;
 		--shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.5);
 		--card-edge: var(--line);
+		--scrim: rgba(0, 0, 0, 0.6);
 	}
 }
 
@@ -118,6 +131,17 @@ html {
 	line-height: 1.5;
 	font-variant-numeric: tabular-nums;
 	-webkit-text-size-adjust: 100%;
+	scroll-padding-block-end: calc(var(--tabbar-h) + var(--safe-bottom));
+}
+
+@media (min-width: 64rem) {
+	:root {
+		--shell-top: 0px;
+	}
+
+	html {
+		scroll-padding-block-end: 0;
+	}
 }
 
 body {

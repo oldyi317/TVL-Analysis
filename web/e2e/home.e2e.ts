@@ -60,7 +60,8 @@ test('記住上次看的組別', async ({ page }) => {
 	await expect(page).toHaveURL(`${BASE}/${current}/women/`);
 });
 
-test('全站導覽七個項目，點球隊到球隊頁', async ({ page }) => {
+test('桌面側欄導覽七個項目，點球隊到球隊頁', async ({ page }) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
 	await page.goto(`${BASE}/${current}/men/`);
 	const nav = page.getByRole('navigation', { name: '頁面' });
 	for (const name of ['首頁', '賽事', '戰績', '球隊', '球員', '排行榜', '歷史紀錄']) {

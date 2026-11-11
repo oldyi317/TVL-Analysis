@@ -194,7 +194,7 @@
 
 	.items {
 		position: sticky;
-		inset-block-start: 0;
+		inset-block-start: var(--shell-top);
 		z-index: 1;
 		display: flex;
 		gap: var(--space-1);
@@ -204,7 +204,7 @@
 		background: var(--bg);
 	}
 	.items a { flex: none; }
-	.board-anchor { min-inline-size: 0; scroll-margin-block-start: calc(var(--tap) + 2 * var(--space-2) + var(--space-4)); }
+	.board-anchor { min-inline-size: 0; scroll-margin-block-start: calc(var(--shell-top) + var(--tap) + 2 * var(--space-2) + var(--space-4)); }
 
 	.boards {
 		display: grid;

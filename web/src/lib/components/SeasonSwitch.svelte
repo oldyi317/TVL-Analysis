@@ -20,15 +20,20 @@
 </nav>
 
 <style>
+	/* 預設是賽季面板裡的清單；桌面側欄改成 chip 網格 */
 	nav {
-		display: flex;
-		flex-wrap: wrap;
+		display: grid;
 		gap: var(--space-1);
+	}
+
+	.chip {
+		padding-inline: var(--space-3);
+		font-size: var(--text-md);
+		font-weight: 700;
 	}
 
 	@media (min-width: 64rem) {
 		nav {
-			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(3.75rem, 1fr));
 			column-gap: var(--space-1);
 		}
@@ -39,7 +44,6 @@
 			padding-inline: var(--space-2);
 			white-space: nowrap;
 			font-size: var(--text-sm);
-			font-weight: 700;
 		}
 	}
 </style>

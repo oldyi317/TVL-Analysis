@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
-import { BASE, currentSeason, readJson } from './helpers.js';
+import { expect, test, type Page } from '@playwright/test';
+import { BASE, currentSeason, groupLink, openMoreSheet, readJson, seasonButton, switchGroup } from './helpers.js';
 
 const entries = readJson('records').records;
 const entry = (group: string) => entries.find((e: { group: string }) => e.group === group);
@@ -91,15 +91,13 @@ test('三種紀錄互相切換，切組別停在同一種紀錄', async ({ page 
 	await kinds.getByRole('link', { name: '累計紀錄' }).click();
 	await expect(page).toHaveURL(`${BASE}/records/men/cumulative/`);
 	await expect(page.getByRole('heading', { level: 2, name: '累計紀錄' })).toBeVisible();
-	await page.getByRole('navigation', { name: '組別' }).getByRole('link', { name: '女子組' }).click();
-	await expect(page).toHaveURL(`${BASE}/records/women/cumulative/`);
+	await switchGroup(page, '女子', `${BASE}/records/women/cumulative/`);
 	await expect(kinds.getByRole('link', { name: '累計紀錄' })).toHaveAttribute('aria-current', 'page');
-	await expect(page.getByRole('navigation', { name: '頁面' }).getByRole('link', { name: '歷史紀錄', exact: true }))
+	await expect(page.getByRole('navigation', { name: '主要分頁' }).getByRole('button', { name: '更多' }))
 		.toHaveAttribute('aria-current', 'page');
 	await kinds.getByRole('link', { name: '單場紀錄' }).click();
 	await expect(page).toHaveURL(`${BASE}/records/women/match/`);
-	await page.getByRole('navigation', { name: '組別' }).getByRole('link', { name: '男子組' }).click();
-	await expect(page).toHaveURL(`${BASE}/records/men/match/`);
+	await switchGroup(page, '男子', `${BASE}/records/men/match/`);
 	await page.goto(`${BASE}/records/women/cumulative/`);
 	await kinds.getByRole('link', { name: '單季紀錄' }).click();
 	await expect(page).toHaveURL(`${BASE}/records/women/`);
@@ -130,20 +128,33 @@ test('進行中賽季的單場紀錄標示「進行中」', async ({ page }) => 
 	await expect(page.getByText('進行中').first()).toBeVisible();
 });
 
-test('從導覽列進入，組別切換停在歷史紀錄', async ({ page }) => {
+async function switchToWomenOnRecords(page: Page) {
+	await expect(seasonButton(page)).toHaveCount(0);
+	await switchGroup(page, '女子', `${BASE}/records/women/`);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('女子組 歷史紀錄');
+	await expect(groupLink(page, '女子')).toHaveAttribute('aria-current', 'page');
+	await expect(page.getByText(coverageText(entry('women').coverage))).toBeVisible();
+}
+
+test('桌面寬度從側欄進入歷史紀錄，組別切換停在歷史紀錄', async ({ page }) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
 	await page.goto(`${BASE}/${currentSeason}/men/`);
 	const nav = page.getByRole('navigation', { name: '頁面' });
 	await nav.getByRole('link', { name: '歷史紀錄', exact: true }).click();
 	await expect(page).toHaveURL(`${BASE}/records/men/`);
 	await expect(nav.getByRole('link', { name: '歷史紀錄', exact: true })).toHaveAttribute('aria-current', 'page');
 	await expect(nav.getByRole('link', { name: '首頁', exact: true })).not.toHaveAttribute('aria-current', 'page');
-	await expect(page.getByRole('navigation', { name: '賽季' })).toHaveCount(0);
-	const groups = page.getByRole('navigation', { name: '組別' });
-	await groups.getByRole('link', { name: '女子組' }).click();
-	await expect(page).toHaveURL(`${BASE}/records/women/`);
-	await expect(page.getByRole('heading', { level: 1 })).toHaveText('女子組 歷史紀錄');
-	await expect(groups.getByRole('link', { name: '女子組' })).toHaveAttribute('aria-current', 'page');
-	await expect(page.getByText(coverageText(entry('women').coverage))).toBeVisible();
+	await switchToWomenOnRecords(page);
+});
+
+test('手機寬度從「更多」面板進入歷史紀錄，組別切換停在歷史紀錄', async ({ page }) => {
+	await page.goto(`${BASE}/${currentSeason}/men/`);
+	await openMoreSheet(page);
+	await page.getByRole('dialog', { name: '更多' }).getByRole('link', { name: '歷史紀錄', exact: true }).click();
+	await expect(page).toHaveURL(`${BASE}/records/men/`);
+	await expect(page.getByRole('navigation', { name: '主要分頁' }).getByRole('button', { name: '更多' }))
+		.toHaveAttribute('aria-current', 'page');
+	await switchToWomenOnRecords(page);
 });
 
 test('手機寬度沒有橫向溢位', async ({ page }) => {

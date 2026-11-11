@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { expect, type Page } from '@playwright/test';
 import { KINDS, pickSeason, type Kind } from './pick-season.js';
 
 export const BASE = '/TVL-Analysis';
@@ -20,3 +21,40 @@ export const findSeason = (kind: Kind, group = 'men') => {
 		currentCupId: seasonsData.current_cup_id
 	});
 };
+
+// 進頁後第一個互動可能早於 hydration：點到沒反應就重試
+export async function openMoreSheet(page: Page) {
+	await expect(async () => {
+		await page.getByRole('navigation', { name: '主要分頁' }).getByRole('button', { name: '更多' }).click();
+		await expect(page.getByRole('dialog', { name: '更多' })).toBeVisible({ timeout: 1000 });
+	}).toPass({ timeout: 10_000 });
+}
+
+// 手機頂部列；banner 在桌面是側欄，所以組別連結的字尾「組」可有可無（手機「女子」、桌面「女子組」）
+export const topBar = (page: Page) => page.getByRole('banner');
+export const groupLink = (page: Page, label: '男子' | '女子') =>
+	topBar(page).getByRole('navigation', { name: '組別' }).getByRole('link', { name: new RegExp(`^${label}組?$`) });
+export const seasonButton = (page: Page) => topBar(page).getByRole('button', { name: /切換賽季/ });
+export const seasonSheet = (page: Page) => page.getByRole('dialog', { name: '賽季' });
+
+export async function openSeasonSheet(page: Page) {
+	await expect(async () => {
+		await seasonButton(page).click();
+		await expect(seasonSheet(page)).toBeVisible({ timeout: 1000 });
+	}).toPass({ timeout: 10_000 });
+}
+
+// 在頂部列點組別；進頁後第一個互動可能早於 hydration，URL 沒變就重試
+export async function switchGroup(page: Page, label: '男子' | '女子', url: string) {
+	await expect(async () => {
+		await groupLink(page, label).click();
+		await expect(page).toHaveURL(url, { timeout: 1000 });
+	}).toPass({ timeout: 10_000 });
+}
+
+// 開賽季面板選賽季；選完面板會關閉
+export async function switchSeason(page: Page, season: string, url: string) {
+	await openSeasonSheet(page);
+	await seasonSheet(page).getByRole('link', { name: season, exact: true }).click();
+	await expect(page).toHaveURL(url);
+}

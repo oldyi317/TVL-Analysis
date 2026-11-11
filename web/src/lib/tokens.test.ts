@@ -86,3 +86,37 @@ describe('JS 端色值與 app.css 同步', () => {
 it('負向對照：檢查器會把不達標的組合判紅', () => {
 	expect(contrastRatio('#999999', '#ffffff')).toBeLessThan(4.5);
 });
+
+const darkBlock = css.match(/prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([^}]*)\}/)![1];
+const rootBlock = css.match(/:root\s*\{([^}]*)\}/)![1];
+
+describe('殼層 token', () => {
+	it.each(['top', 'right', 'bottom', 'left'])('--safe-%s 取安全區 inset 並以 0px 為後備', (side) => {
+		expect(rootBlock).toContain(`--safe-${side}: env(safe-area-inset-${side}, 0px);`);
+	});
+	it('--tabbar-h 已定義', () => {
+		expect(rootBlock).toMatch(/--tabbar-h:\s*[\d.]+rem;/);
+	});
+	it('--z-tabbar 高於既有 sticky 元件的 z-index: 1', () => {
+		expect(Number(rootBlock.match(/--z-tabbar:\s*(\d+);/)?.[1])).toBeGreaterThan(1);
+	});
+	it('--scrim 深淺兩邊各自定義為帶透明度的色', () => {
+		expect(rootBlock).toMatch(/--scrim:\s*rgba\([^)]*\);/);
+		expect(darkBlock).toMatch(/--scrim:\s*rgba\([^)]*\);/);
+	});
+});
+
+describe('頂部列 token', () => {
+	it('--topbar-h 已定義，且不小於觸控高 --tap（2.75rem）', () => {
+		expect(Number(rootBlock.match(/--topbar-h:\s*([\d.]+)rem;/)?.[1])).toBeGreaterThanOrEqual(2.75);
+	});
+	it('--z-topbar 高於頁內 sticky 元件的 z-index: 1', () => {
+		expect(Number(rootBlock.match(/--z-topbar:\s*(\d+);/)?.[1])).toBeGreaterThan(1);
+	});
+	it('--shell-top 手機是頂部列加上方安全區', () => {
+		expect(rootBlock).toContain('--shell-top: calc(var(--topbar-h) + var(--safe-top));');
+	});
+	it('--shell-top 在 64rem 以上歸零，桌面的 sticky 元件位置不變', () => {
+		expect(css).toMatch(/@media \(min-width: 64rem\)\s*\{[^@]*:root\s*\{\s*--shell-top:\s*0px;/);
+	});
+});

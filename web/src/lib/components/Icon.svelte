@@ -6,9 +6,11 @@
 		| 'shield'
 		| 'user'
 		| 'chevron-left'
+		| 'chevron-down'
 		| 'arrow-up-right'
 		| 'map-pin'
-		| 'podium';
+		| 'podium'
+		| 'more';
 
 	let { name, size = 20 }: { name: Name; size?: number } = $props();
 </script>
@@ -48,6 +50,8 @@
 		<path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
 	{:else if name === 'chevron-left'}
 		<path d="m15 5-7 7 7 7" />
+	{:else if name === 'chevron-down'}
+		<path d="m5 9 7 7 7-7" />
 	{:else if name === 'arrow-up-right'}
 		<path d="M7 17 17 7" />
 		<path d="M8 7h9v9" />
@@ -59,5 +63,9 @@
 		<path d="M3 20v-8a1 1 0 0 1 1-1h5" />
 		<path d="M21 20v-5a1 1 0 0 0-1-1h-5" />
 		<path d="M2 20h20" />
+	{:else if name === 'more'}
+		<circle cx="5.5" cy="12" r="1.5" />
+		<circle cx="12" cy="12" r="1.5" />
+		<circle cx="18.5" cy="12" r="1.5" />
 	{/if}
 </svg>

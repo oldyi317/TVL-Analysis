@@ -3,10 +3,14 @@ import {
 	BASE,
 	currentSeason as current,
 	findSeason,
+	groupLink,
 	OLD_CUP,
 	OLD_SEASON,
+	openSeasonSheet,
 	readJson,
-	seasonsData
+	seasonSheet,
+	seasonsData,
+	switchGroup
 } from './helpers.js';
 
 type Team = {
@@ -60,7 +64,7 @@ const noOverflow = (page: import('@playwright/test').Page) =>
 test('當季男子組列表：現役隊整列可點', async ({ page }) => {
 	await page.goto(`${BASE}/${current}/men/teams/`);
 	const active = menIn(currentCup).filter((t) => t.is_active);
-	await expect(page.locator('li a')).toHaveCount(active.length);
+	await expect(page.getByRole('main').getByRole('listitem').getByRole('link')).toHaveCount(active.length);
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
@@ -68,8 +72,8 @@ test('2024-25 男子組列表：非現役隊也整列可點', async ({ page }) =
 	await page.goto(`${BASE}/${OLD_SEASON}/men/teams/`);
 	const all = menIn(OLD_CUP);
 	expect(all.some((t) => !t.is_active)).toBe(true);
-	await expect(page.locator('li')).toHaveCount(all.length);
-	await expect(page.locator('li a')).toHaveCount(all.length);
+	await expect(page.getByRole('main').getByRole('listitem')).toHaveCount(all.length);
+	await expect(page.getByRole('main').getByRole('listitem').getByRole('link')).toHaveCount(all.length);
 	expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 });
 
@@ -185,19 +189,15 @@ test('不存在的球隊沒有球隊頁', async ({ page }) => {
 test('球隊頁的組別與賽季切換', async ({ page }) => {
 	const team = menIn(currentCup).find((t) => t.is_active)!;
 	await page.goto(`${BASE}/${current}/men/teams/${team.team_id}/`);
-	await expect(
-		page.getByRole('navigation', { name: '組別' }).getByRole('link', { name: '女子組' })
-	).toHaveAttribute('href', new RegExp(`/${current}/women/teams/$`));
+	await expect(groupLink(page, '女子')).toHaveAttribute('href', new RegExp(`/${current}/women/teams/$`));
 	const expected = team.cup_ids.includes(OLD_CUP)
 		? `/${OLD_SEASON}/men/teams/${team.team_id}/`
 		: `/${OLD_SEASON}/men/teams/`;
-	const href = await page
-		.getByRole('navigation', { name: '賽季' })
-		.getByRole('link', { name: OLD_SEASON })
-		.getAttribute('href');
+	await openSeasonSheet(page);
+	const href = await seasonSheet(page).getByRole('link', { name: OLD_SEASON }).getAttribute('href');
 	expect(href!.endsWith(expected)).toBe(true);
-	await page.getByRole('navigation', { name: '組別' }).getByRole('link', { name: '女子組' }).click();
-	await expect(page).toHaveURL(new RegExp(`/${current}/women/teams/$`));
+	await page.keyboard.press('Escape');
+	await switchGroup(page, '女子', `${BASE}/${current}/women/teams/`);
 	await expect(page.getByRole('heading', { level: 1 })).toContainText('女子組 球隊');
 });
 
