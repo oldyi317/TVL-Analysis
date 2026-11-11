@@ -31,6 +31,8 @@ python -m src.models.train                       # 重訓賽果預測模型 → 
 python -m src.models.predict                     # 未開打賽事的主隊賽前勝率 → match_predictions 表（daily_update 內含）
 ```
 
+npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔案編輯與 npm 分開呼叫；workdir 已是 web 時檔案路徑不再加 `web/` 前綴。讀／改檔前先 `rg --files` 找實際路徑（如 app.css、statLabels.ts）。git 寫入被沙箱拒絕走正式 escalation，不重試相同模式。
+
 ## 地雷（改動前必讀）
 
 - **`schema.sql` 已冪等，不會清空資料**：全部改用 `CREATE TABLE IF NOT EXISTS`，
