@@ -14,7 +14,7 @@ step() { echo; echo "── $1 ──"; read -rp "按 Enter 繼續（Ctrl+C 中�
 
 echo "TVL self-hosted runner 安裝精靈（ephemeral）"
 
-step "步驟 1/5：檢查 gh 登入與 systemd"
+step "步驟 1/6：檢查 gh 登入與 systemd"
 gh auth status
 # 取註冊 token 需要 repo admin（個人 repo 只有 owner 有），用 owner 的 PAT；迴圈每輪都要取，這裡先擋
 [ "$(stat -c '%a' "$TOKEN_FILE" 2>/dev/null)" = "600" ] || { echo "找不到 $TOKEN_FILE 或權限不是 600"; exit 1; }
@@ -24,7 +24,7 @@ gh auth status
 # 檢查 runner 工作環境的 venv 是否存在
 [ -x "$HOME/venvs/tvl/bin/python" ] || { echo "找不到 $HOME/venvs/tvl/bin/python，請先建立 venv 並 pip install -r requirements.txt"; exit 1; }
 
-step "步驟 2/5：下載 actions-runner 到 $RUNNER_DIR（已存在則略過）"
+step "步驟 2/6：下載 actions-runner 到 $RUNNER_DIR（已存在則略過）"
 mkdir -p "$RUNNER_DIR" && cd "$RUNNER_DIR"
 if [ ! -x ./config.sh ]; then
   VER=$(gh api repos/actions/runner/releases/latest --jq '.tag_name' | tr -d v)
@@ -33,7 +33,7 @@ if [ ! -x ./config.sh ]; then
   tar xzf runner.tar.gz && rm runner.tar.gz
 fi
 
-step "步驟 3/5：停掉現有 runner 並移除註冊（svc.sh 舊服務或 ${SERVICE}；沒有則略過，需要 sudo）"
+step "步驟 3/6：停掉現有 runner 並移除註冊（svc.sh 舊服務或 ${SERVICE}；沒有則略過，需要 sudo）"
 sudo systemctl stop "$SERVICE" 2>/dev/null || true
 if [ -f .service ]; then
   sudo ./svc.sh stop || true
@@ -45,7 +45,7 @@ if [ -f .runner ]; then
   ./config.sh remove --token "$TOKEN" || rm -f .runner .credentials .credentials_rsaparams
 fi
 
-step "步驟 4/5：安裝迴圈腳本並以 systemd service（${SERVICE}）開機自啟（需要 sudo）"
+step "步驟 4/6：安裝迴圈腳本並以 systemd service（${SERVICE}）開機自啟（需要 sudo）"
 cp "$SCRIPT_DIR/runner_loop.sh" "$RUNNER_DIR/runner_loop.sh"
 chmod +x "$RUNNER_DIR/runner_loop.sh"
 sudo tee "/etc/systemd/system/${SERVICE}.service" > /dev/null <<EOF
@@ -71,7 +71,10 @@ sudo systemctl enable "$SERVICE"
 sudo systemctl restart "$SERVICE"
 sudo systemctl status "$SERVICE" --no-pager || true
 
-step "步驟 5/5：Windows 端設定（手動）"
+step "步驟 5/6：安裝每日 09:23 本機觸發 timer（user 層級，不需 sudo；GitHub schedule 常晚 4–7 小時）"
+bash "$SCRIPT_DIR/setup_crawl_trigger.sh"
+
+step "步驟 6/6：Windows 端設定（手動）"
 cat <<'EOF'
 在 Windows 設定「登入時自動啟動 WSL」，讓 runner 開機即上線：
 1. 開始功能表搜尋「工作排程器」→ 建立基本工作
