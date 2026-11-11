@@ -27,7 +27,7 @@ web
 - 資料來源：TVL 官網與外部統計系統，每日 GitHub Actions 爬蟲寫入 SQLite 並 commit。
 - 建置時由 Python 匯出器產 JSON，前端只讀 JSON；沒有執行期 API、沒有登入、沒有使用者輸入。
 - 部署在 GitHub Pages 子路徑 `/TVL-Analysis/`，每次 push main 重建。
-- 網址結構 `/<賽季>/<組別>/...`，組別值為 men、women；根路徑導向當季，組別取本機記住的上次選擇（讀不到就男子組）；每頁頂部可切換賽季與組別並停留在同一頁面類型，從單場、球隊、球員頁切換則退回對應列表。
+- 網址結構 `/<賽季>/<組別>/...`，組別值為 men、women；根路徑導向當季，組別取本機記住的上次選擇（讀不到就男子組）；每頁可切換賽季與組別（手機在頂部列、桌面在側欄）並停留在同一頁面類型，從單場、球隊、球員頁切換則退回對應列表。
 - 當季 = seasons.json 的 current_cup_id（匯出器以 cup_id 最大者判定）。
 - 開季初期官網資料未齊、新隊名可能非定稿；球隊身分以 DB 的 teams / team_aliases 為準。
 
@@ -46,10 +46,10 @@ web
 
 ## Brand Commitments
 
-- 站名「TVL 數據」，頁首固定附「非官方・資料整理自聯賽官網」。
+- 站名「TVL 數據」，桌面側欄固定附「非官方・資料整理自聯賽官網」，全站頁尾都有非官方說明。
 - 必須註明非官方：資料整理自官網，非聯賽官方網站。
 - 隊徽可用於全站（球隊頁、球隊列表、賽事卡、戰績表等）；來源 `web/static/logos/`（原圖 `assets/team_logo/`），每支現役隊都要有隊徽（`docs/ops/season-switch.md`）。聯賽官方 logo 不使用。
-- 2026-10-20 使用者釘定的視覺約束：整站替換視覺世界並建立 DESIGN.md，以參考截圖 `web/.impeccable/reference/redesign-2026-10-reference.png`（運動即時比分 dashboard）為釘定的美學參考。釘的是美學（卡片、配色、圓角、圖表風格），不是其資訊架構：手機優先不變，截圖中的桌面 sidebar 不改變手機導覽結構。
+- 2026-10-20 使用者釘定的視覺約束：整站替換視覺世界並建立 DESIGN.md，以參考截圖 `web/.impeccable/reference/redesign-2026-10-reference.png`（運動即時比分 dashboard）為釘定的美學參考。釘的是美學（卡片、配色、圓角、圖表風格），不是其資訊架構：手機優先不變，截圖中的桌面 sidebar 只用在桌面；手機（<64rem）導覽是底部分頁列加頂部列（2026-11-10 起，見 `web/DESIGN.md`）。
 
 ## Evidence on Hand
 
