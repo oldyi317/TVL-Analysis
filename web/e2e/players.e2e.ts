@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 import {
 	BASE,
 	currentSeason,
@@ -8,7 +8,9 @@ import {
 	OLD_SEASON,
 	openMoreSheet,
 	readJson,
-	switchGroup
+	switchGroup,
+	expect,
+	test
 } from './helpers.js';
 
 type Season = {

@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test';
-import { BASE, currentSeason as current, findSeason, seasonsData } from './helpers.js';
+import { BASE, currentSeason as current, findSeason, seasonsData, expect, test } from './helpers.js';
 import { readFileSync } from 'node:fs';
 import { isPlayed } from '../src/lib/match.js';
 

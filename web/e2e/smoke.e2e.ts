@@ -1,14 +1,17 @@
-import { expect, test } from '@playwright/test';
 import {
 	BASE,
 	currentSeason as current,
 	findSeason,
 	groupLink,
+	OLD_CUP,
+	OLD_SEASON,
 	openSeasonSheet,
 	readJson,
 	seasonSheet,
 	seasonsData,
-	switchGroup
+	switchGroup,
+	expect,
+	test
 } from './helpers.js';
 
 // 開季初當季球隊還沒登錄齊，退回最近一個有球隊的賽季
@@ -65,4 +68,40 @@ test('404 頁顯示「找不到這頁」並可回首頁', async ({ page }) => {
 	await page.goto(`${BASE}/404`);
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('找不到這頁');
 	await expect(page.getByRole('link', { name: '回首頁' })).toHaveAttribute('href', `${BASE}/`);
+});
+
+// 每種預渲染頁面各取一頁；詳情頁取資料齊全的舊賽季
+const oldGroup = `${BASE}/${OLD_SEASON}/men`;
+const oldGame: { game_id: number; home_team_id: number } = readJson('matches').matches.find(
+	(m: { cup_id: number; group: string }) => m.cup_id === OLD_CUP && m.group === 'men'
+).matches[0];
+const oldPlayer: { player_id: number } = readJson('players').players.find(
+	(p: { group: string; seasons: { cup_id: number }[] }) =>
+		p.group === 'men' && p.seasons.some((s) => s.cup_id === OLD_CUP)
+);
+const everyPageKind: [string, string][] = [
+	['首頁', `${BASE}/`],
+	['賽季組別首頁', `${oldGroup}/`],
+	['戰績', `${oldGroup}/standings/`],
+	['賽事列表', `${oldGroup}/matches/`],
+	['單場頁', `${oldGroup}/matches/${oldGame.game_id}/`],
+	['球隊列表', `${oldGroup}/teams/`],
+	['球隊頁', `${oldGroup}/teams/${oldGame.home_team_id}/`],
+	['球員列表', `${oldGroup}/players/`],
+	['球員頁', `${oldGroup}/players/${oldPlayer.player_id}/`],
+	['排行榜', `${oldGroup}/leaders/`],
+	['歷史紀錄', `${BASE}/records/men/`],
+	['styleguide', `${BASE}/styleguide/`],
+	['404 頁', `${BASE}/404`],
+	['不存在的網址', `${oldGroup}/teams/999/`]
+];
+
+// 讀一次就斷言、不重試：page.goto 返回時就該已完成 hydration
+test.describe('進頁返回時已完成 hydration', () => {
+	for (const [name, path] of everyPageKind) {
+		test(name, async ({ page }) => {
+			await page.goto(path);
+			expect(await page.locator('html').getAttribute('data-hydrated')).toBe('');
+		});
+	}
 });

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers.js';
 
 const BASE = '/TVL-Analysis';
 const URL = `${BASE}/styleguide/`;
@@ -30,10 +30,8 @@ test.describe('淺色', () => {
 		await page.goto(URL);
 		const button = page.locator('tbody tr.main button').first();
 		await expect(button).toHaveAttribute('aria-expanded', 'false');
-		await expect(async () => {
-			await button.click();
-			await expect(button).toHaveAttribute('aria-expanded', 'true', { timeout: 500 });
-		}).toPass({ timeout: 10_000 });
+		await button.click();
+		await expect(button).toHaveAttribute('aria-expanded', 'true');
 		const detail = page.locator(`#${await button.getAttribute('aria-controls')}`);
 		await expect(detail.getByText('近五場')).toBeVisible();
 	});

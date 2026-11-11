@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { BASE, currentSeason, groupLink, openMoreSheet, readJson, seasonButton, switchGroup } from './helpers.js';
+import { type Page } from '@playwright/test';
+import { BASE, currentSeason, groupLink, openMoreSheet, readJson, seasonButton, switchGroup, expect, test } from './helpers.js';
 
 const entries = readJson('records').records;
 const entry = (group: string) => entries.find((e: { group: string }) => e.group === group);

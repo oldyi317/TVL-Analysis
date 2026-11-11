@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { BASE, currentSeason, findSeason, readJson } from './helpers.js';
+import { type Page } from '@playwright/test';
+import { BASE, currentSeason, findSeason, readJson, expect, test } from './helpers.js';
 
 type Adv = {
 	player_id: number;
@@ -49,10 +49,8 @@ const open = async (page: Page, a: Adv) => {
 	await page.goto(`${BASE}/${current}/${a.group}/players/${a.player_id}/`);
 	const toggle = page.getByRole('button', { name: '進階數據' });
 	await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-	await expect(async () => {
-		if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 });
-	}).toPass({ timeout: 15000 });
+	await toggle.click();
+	await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 };
 
 test('進階數據預設收合，展開後有 PR 值與兩個圖表', async ({ page }) => {
@@ -84,6 +82,7 @@ test('同位置分佈切換指標後圖表會重畫', async ({ page }) => {
 	}).toPass({ timeout: 10000 });
 	await page.getByRole('button', { name: '防守負荷', exact: true }).click();
 	await expect(page.locator('[role="img"]').first()).toHaveAttribute('aria-label', /防守負荷/);
+	// 圖表重畫是非同步的：快照要等到與切換前不同
 	await expect(async () => {
 		expect(await canvas.evaluate((c: HTMLCanvasElement) => c.toDataURL())).not.toBe(before);
 	}).toPass({ timeout: 5000 });

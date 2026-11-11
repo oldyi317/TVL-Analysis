@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test';
-import { BASE, currentSeason as current } from './helpers.js';
+import { BASE, currentSeason as current, expect, test } from './helpers.js';
 
 const URL = `${BASE}/${current}/men/standings/`;
 
@@ -14,10 +13,8 @@ test.describe('手機', () => {
 
 		const button = page.getByRole('button', { name: /詳細數據/ }).first();
 		const detailId = await button.getAttribute('aria-controls');
-		await expect(async () => {
-			await button.click();
-			await expect(button).toHaveAttribute('aria-expanded', 'true', { timeout: 500 });
-		}).toPass({ timeout: 10_000 });
+		await button.click();
+		await expect(button).toHaveAttribute('aria-expanded', 'true');
 		const detail = page.locator(`#${detailId}`);
 		await expect(detail).toBeVisible();
 		await expect(detail).toContainText('近五場');

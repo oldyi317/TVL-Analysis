@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test';
-import { BASE, readJson, seasonsData } from './helpers.js';
+import { BASE, readJson, seasonsData, expect, test } from './helpers.js';
 
 const entries = readJson('leaders').leaders;
 const seasonName = (cup: number) => seasonsData.seasons.find((s: { cup_id: number }) => s.cup_id === cup).name;
@@ -55,10 +54,8 @@ test('男女組長姓名、四王首屏、深淺模式與桌面欄數', async ({
 			expect(leaderHeight).toBeLessThanOrEqual(49);
 			const expand = first.getByRole('button');
 			if (await expand.count()) {
-				await expect(async () => {
-					if ((await expand.getAttribute('aria-expanded')) !== 'true') await expand.click();
-					await expect(expand).toHaveAttribute('aria-expanded', 'true', { timeout: 500 });
-				}).toPass({ timeout: 10_000 });
+				await expand.click();
+				await expect(expand).toHaveAttribute('aria-expanded', 'true');
 			}
 			await expect(first.getByRole('link', { name: longest.name, exact: true })).toBeVisible();
 			expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
@@ -74,11 +71,9 @@ test('鍵盤切分段、chip 與展開，切換不重新載入', async ({ page }
 	let navigations = 0;
 	page.on('framenavigated', (frame) => { if (frame === page.mainFrame()) navigations++; });
 	const rate = page.getByRole('button', { name: '比率榜', exact: true });
-	await expect(async () => {
-		await rate.focus();
-		await page.keyboard.press('Enter');
-		await expect(rate).toHaveAttribute('aria-pressed', 'true', { timeout: 500 });
-	}).toPass({ timeout: 10_000 });
+	await rate.focus();
+	await page.keyboard.press('Enter');
+	await expect(rate).toHaveAttribute('aria-pressed', 'true');
 	await expect(page.locator('#b-total_points')).toHaveCount(0);
 	const nav = page.getByRole('navigation', { name: '比率榜項目' });
 	const rates = entry.boards.filter((b: { kind: string }) => b.kind === 'rate');
@@ -141,11 +136,9 @@ for (const cup of [20, 21, 22]) {
 		expect((await rate.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 		const player = page.locator('#b-total_points tbody a').first();
 		expect((await player.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-		await expect(async () => {
-			await rate.focus();
-			await page.keyboard.press('Enter');
-			await expect(rate).toHaveAttribute('aria-pressed', 'true', { timeout: 500 });
-		}).toPass({ timeout: 10_000 });
+		await rate.focus();
+		await page.keyboard.press('Enter');
+		await expect(rate).toHaveAttribute('aria-pressed', 'true');
 		await expect(page.getByRole('navigation', { name: '比率榜項目' }).getByRole('link')).toHaveCount(7);
 		await expect(page.getByRole('region', { name: '本季四王' })).toHaveCSS('animation-name', 'none');
 	});
@@ -176,10 +169,8 @@ for (const [cup, group] of [[22, 'men'], [22, 'women'], [20, 'men']] as const) {
 		await expect(tabs.first()).toHaveAttribute('aria-pressed', 'true');
 		await expect(frame.getByRole('img', { name: '量率散點：攻擊' })).toBeVisible();
 		const setting = frame.getByRole('button', { name: '舉球', exact: true });
-		await expect(async () => {
-			if ((await setting.getAttribute('aria-pressed')) !== 'true') await setting.click();
-			await expect(setting).toHaveAttribute('aria-pressed', 'true', { timeout: 1000 });
-		}).toPass({ timeout: 15000 });
+		await setting.click();
+		await expect(setting).toHaveAttribute('aria-pressed', 'true');
 		await expect(tabs.first()).toHaveAttribute('aria-pressed', 'false');
 		const points = scope.volume_rates.find((v: { key: string }) => v.key === 'set_excellent_rate').points;
 		if (points.length === 0) {
