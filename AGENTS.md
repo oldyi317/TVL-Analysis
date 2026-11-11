@@ -16,6 +16,7 @@ npm run test:e2e                                 # Playwright smoke（需先 bui
 # Ticket 流程（從 repo 根目錄跑）
 bash scripts/new-worktree.sh <分支> [base]        # 在 ~/work 開 worktree，依賴與資料一併備好
 bash scripts/verify.sh                           # 收工四項依序跑，各自回報
+bash scripts/e2e.sh [--repeat N] [spec…]         # 在自己挑的空 port 跑 e2e（不 build；spec 如 e2e/smoke.e2e.ts；--repeat 連跑 N 輪各自回報）
 
 # 爬蟲（皆從 repo 根目錄以 module 方式執行）
 python -m src.etl.crawler                        # 官網球員名單 → data/raw/
