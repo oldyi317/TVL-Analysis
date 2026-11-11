@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
-import { BASE, currentSeason as current, readJson, seasonsData, topBar } from './helpers.js';
+import { type Page } from '@playwright/test';
+import { BASE, currentSeason as current, readJson, seasonsData, topBar, expect, test } from './helpers.js';
 import { isPlayed } from '../src/lib/match.js';
 
 const cupId: number = seasonsData.current_cup_id;
@@ -26,12 +26,6 @@ test.beforeEach(() => {
 
 const backButton = (page: Page) => topBar(page).getByRole('link', { name: '返回' });
 const brand = (page: Page) => topBar(page).getByRole('link', { name: 'TVL 數據' });
-
-// 進頁後第一個互動可能早於 hydration；等到載入結束再點，才是站內導頁
-async function open(page: Page, url: string) {
-	await page.goto(url);
-	await page.waitForLoadState('networkidle');
-}
 
 test.describe('手機頂部列左側', () => {
 	for (const [name, url] of [
@@ -65,7 +59,7 @@ test.describe('手機頂部列左側', () => {
 
 test.describe('返回鈕去哪裡', () => {
 	test('從賽事列表點進單場頁，返回到賽事列表', async ({ page }) => {
-		await open(page, `${group}/matches/`);
+		await page.goto(`${group}/matches/`);
 		await page.locator(`.card-link[href$="/matches/${game?.game_id}/"]`).click();
 		await expect(page).toHaveURL(gameUrl);
 		await backButton(page).click();
@@ -73,7 +67,7 @@ test.describe('返回鈕去哪裡', () => {
 	});
 
 	test('從球隊頁點進單場頁，返回到那個球隊頁', async ({ page }) => {
-		await open(page, teamUrl);
+		await page.goto(teamUrl);
 		await page.locator(`.card-link[href$="/matches/${game?.game_id}/"]`).click();
 		await expect(page).toHaveURL(gameUrl);
 		await backButton(page).click();
@@ -85,7 +79,7 @@ test.describe('返回鈕去哪裡', () => {
 		['球隊頁到球隊列表', teamUrl, `${group}/teams/`],
 		['球員頁到球員列表', playerUrl, `${group}/players/`]
 	]) {
-		// 沒有站內上一頁時返回鈕走原生 href，hydration 前後點擊都到同一處，不必重試
+		// 沒有站內上一頁時返回鈕走原生 href
 		test(`直接開啟${name}`, async ({ page }) => {
 			await page.goto(url);
 			await backButton(page).click();
@@ -94,7 +88,7 @@ test.describe('返回鈕去哪裡', () => {
 	}
 
 	test('單場頁重新整理後返回到賽事列表的該月份', async ({ page }) => {
-		await open(page, `${group}/matches/`);
+		await page.goto(`${group}/matches/`);
 		await page.locator(`.card-link[href$="/matches/${game?.game_id}/"]`).click();
 		await expect(page).toHaveURL(gameUrl);
 		await page.reload();

@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
-import { BASE, findSeason, seasonsData } from './helpers.js';
+import { BASE, findSeason, seasonsData, expect, test } from './helpers.js';
 import { isPlayed } from '../src/lib/match.js';
 
 type Game = {
@@ -62,10 +61,8 @@ test.describe('手機', () => {
 
 		const button = page.getByRole('button', { name: /詳細數據/ }).first();
 		const detailId = await button.getAttribute('aria-controls');
-		await expect(async () => {
-			await button.click();
-			await expect(button).toHaveAttribute('aria-expanded', 'true', { timeout: 500 });
-		}).toPass({ timeout: 10_000 });
+		await button.click();
+		await expect(button).toHaveAttribute('aria-expanded', 'true');
 		const detail = page.locator(`#${detailId}`);
 		await expect(detail).toBeVisible();
 		for (const text of ['接發', '防守', '舉球']) {

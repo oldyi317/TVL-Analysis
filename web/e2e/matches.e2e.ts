@@ -1,4 +1,3 @@
-import { expect, test } from '@playwright/test';
 import {
 	BASE,
 	currentSeason,
@@ -7,7 +6,9 @@ import {
 	openSeasonSheet,
 	readJson,
 	seasonSheet,
-	seasonsData
+	seasonsData,
+	expect,
+	test
 } from './helpers.js';
 import { isPlayed } from '../src/lib/match.js';
 
@@ -136,10 +137,8 @@ test('未開打賽事頁：賽前對戰比較的蝴蝶長條、以表格檢視�
 	await expect(frame.locator('[role="img"]')).toBeVisible();
 	await expect(frame.getByText(/已賽 \d+ 場/)).toBeVisible();
 	const toggle = frame.getByRole('button', { name: '以表格檢視' });
-	await expect(async () => {
-		if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 });
-	}).toPass({ timeout: 15000 });
+	await toggle.click();
+	await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 	const table = frame.getByRole('table', { name: PREGAME });
 	await expect(table.getByRole('row')).toHaveCount(7);
 	await expect(page.getByText(/^本季(交手 \d+ 場|尚未交手)/)).toBeVisible();

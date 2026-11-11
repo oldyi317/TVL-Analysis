@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 import {
 	BASE,
 	currentSeason as current,
@@ -12,7 +12,9 @@ import {
 	seasonsData,
 	switchGroup,
 	switchSeason,
-	topBar
+	topBar,
+	expect,
+	test
 } from './helpers.js';
 import { isPlayed } from '../src/lib/match.js';
 
@@ -296,10 +298,8 @@ test.describe('手機頂部列讓出的位置', () => {
 	test('從單場頁回賽事列表，月份標題不被頂部列蓋住', async ({ page }) => {
 		const month = anyGame.date.slice(0, 7);
 		await page.goto(`${group}/matches/${anyGame.game_id}/`);
-		await expect(async () => {
-			await topBar(page).getByRole('link', { name: '返回' }).click();
-			await expect(page).toHaveURL(`${group}/matches/#m-${month}`, { timeout: 1000 });
-		}).toPass({ timeout: 10_000 });
+		await topBar(page).getByRole('link', { name: '返回' }).click();
+		await expect(page).toHaveURL(`${group}/matches/#m-${month}`);
 		const heading = page.locator(`#h-${month}`);
 		await expect(heading).toBeInViewport();
 		const nav = (await page.getByRole('navigation', { name: '月份' }).boundingBox())!;

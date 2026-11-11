@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test';
+import { type Locator } from '@playwright/test';
 import {
 	BASE,
 	currentSeason as current,
@@ -10,7 +10,9 @@ import {
 	readJson,
 	seasonSheet,
 	seasonsData,
-	switchGroup
+	switchGroup,
+	expect,
+	test
 } from './helpers.js';
 
 type Team = {
@@ -264,10 +266,8 @@ for (const [label, cup, group] of [
 		await expect(frame.getByText(`已賽 ${team.games} 場`)).toBeVisible();
 		const toggle = frame.getByRole('button', { name: '以表格檢視' });
 		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-		await expect(async () => {
-			if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
-			await expect(toggle).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 });
-		}).toPass({ timeout: 15000 });
+		await toggle.click();
+		await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 		const table = frame.getByRole('table', { name: METRICS_CHART });
 		await expect(table.getByRole('columnheader', { name: '攻擊成功率' })).toBeVisible();
 		await expect(table.getByRole('row')).toHaveCount(scope!.teams.length + 1);
@@ -289,10 +289,8 @@ for (const [label, cup, group] of [
 		await expect(frame.locator('[role="img"]')).toBeVisible();
 		const toggle = frame.getByRole('button', { name: '以表格檢視' });
 		await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-		await expect(async () => {
-			if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
-			await expect(toggle).toHaveAttribute('aria-expanded', 'true', { timeout: 1000 });
-		}).toPass({ timeout: 15000 });
+		await toggle.click();
+		await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 		const table = frame.getByRole('table', { name: SOURCES_CHART });
 		await expect(table.getByRole('columnheader', { name: '對手失誤得分' })).toBeVisible();
 		await expect(table.getByRole('rowheader').first()).toContainText('（本隊）');
@@ -315,10 +313,8 @@ for (const [label, cup, group] of [
 		const attack = frame.getByRole('button', { name: '攻擊成功率' });
 		const blocks = frame.getByRole('button', { name: '每局攔網' });
 		await expect(attack).toHaveAttribute('aria-pressed', 'true');
-		await expect(async () => {
-			if ((await blocks.getAttribute('aria-pressed')) !== 'true') await blocks.click();
-			await expect(blocks).toHaveAttribute('aria-pressed', 'true', { timeout: 1000 });
-		}).toPass({ timeout: 15000 });
+		await blocks.click();
+		await expect(blocks).toHaveAttribute('aria-pressed', 'true');
 		await expect(attack).toHaveAttribute('aria-pressed', 'false');
 		if (team.games > 3) await expect(frame.getByText(/^近 3 場每局攔網/)).toBeVisible();
 		const toggle = frame.getByRole('button', { name: '以表格檢視' });

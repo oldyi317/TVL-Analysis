@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
 	import { asset, resolve } from '$app/paths';
@@ -87,6 +88,11 @@
 
 	$effect(() => {
 		if (group) writeGroup(browserStorage(), group);
+	});
+
+	// e2e 等到這個記號才互動：根 layout 掛載時整頁已 hydrate，SvelteKit 也在同一輪事件迴圈內接手站內連結
+	onMount(() => {
+		document.documentElement.dataset.hydrated = '';
 	});
 </script>
 
