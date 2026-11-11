@@ -94,7 +94,7 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
 
 ### Issue tracker
 
-Issue 記在 GitHub Issues（github.com/oldyi317/TVL-Analysis，以 `gh` CLI 操作）。見 `docs/agents/issue-tracker.md`。
+Issue 記在 GitHub Issues（github.com/oldyi317/TVL-Analysis，以 `gh` CLI 操作）。讀票與 PR 一律加 `--json` 指定欄位：裸跑 `gh issue view`／`gh pr view` 會被 GraphQL projectCards 棄用錯擋下。其餘操作見 `docs/agents/issue-tracker.md`。
 
 ### Triage labels
 
