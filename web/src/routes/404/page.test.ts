@@ -13,7 +13,7 @@ describe('404 頁', () => {
 		expect(body).toMatch(/<a[^>]*href="\/TVL-Analysis\/"[^>]*>回首頁<\/a>/);
 	});
 
-	it('title 維持「…｜TVL 數據」格式', () => {
-		expect(head).toContain('<title>找不到這頁｜TVL 數據</title>');
+	it('title 維持「…｜VStat 企排」格式', () => {
+		expect(head).toContain('<title>找不到這頁｜VStat 企排</title>');
 	});
 });

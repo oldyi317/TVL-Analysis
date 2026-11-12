@@ -3,7 +3,7 @@
 	import SiteHead from '#lib/components/SiteHead.svelte';
 </script>
 
-<SiteHead title="找不到這頁｜TVL 數據" />
+<SiteHead title="找不到這頁｜VStat 企排" />
 
 <h1>找不到這頁</h1>
 <a class="home" href={resolve('/')}>回首頁</a>

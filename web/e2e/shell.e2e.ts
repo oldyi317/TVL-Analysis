@@ -157,7 +157,7 @@ test.describe('手機底部分頁列', () => {
 test.describe('手機頂部列', () => {
 	test('站名連到站台根目錄，往下捲之後仍吸在畫面頂端', async ({ page }) => {
 		await page.goto(`${group}/matches/`);
-		await expect(topBar(page).getByRole('link', { name: 'TVL 數據' })).toHaveAttribute('href', `${BASE}/`);
+		await expect(topBar(page).getByRole('link', { name: 'VStat 企排' })).toHaveAttribute('href', `${BASE}/`);
 		await page.evaluate(() => window.scrollTo(0, 1500));
 		await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(1000);
 		const box = (await topBar(page).boundingBox())!;
@@ -195,7 +195,7 @@ test.describe('手機頂部列', () => {
 
 	test('沒有賽季與組別的頁：頂部列只有站名', async ({ page }) => {
 		await page.goto(`${BASE}/no-such-page/`);
-		await expect(topBar(page).getByRole('link', { name: 'TVL 數據' })).toBeVisible();
+		await expect(topBar(page).getByRole('link', { name: 'VStat 企排' })).toBeVisible();
 		await expect(topBar(page).getByRole('navigation')).toHaveCount(0);
 		await expect(seasonButton(page)).toHaveCount(0);
 	});

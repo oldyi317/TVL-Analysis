@@ -8,7 +8,7 @@
 	let { data }: PageProps = $props();
 </script>
 
-<SiteHead title="{data.season.name} {GROUP_LABEL[data.group]} 戰績｜TVL 數據" />
+<SiteHead title="{data.season.name} {GROUP_LABEL[data.group]} 戰績｜VStat 企排" />
 
 <h1>{data.season.name} {GROUP_LABEL[data.group]} 戰績</h1>
 

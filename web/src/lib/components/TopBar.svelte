@@ -39,7 +39,7 @@
 			<Icon name="chevron-left" size={24} />
 		</a>
 	{:else}
-		<a class="brand" href={resolve('/')}>TVL 數據</a>
+		<a class="brand" href={resolve('/')}>VStat 企排</a>
 	{/if}
 	{#if season && group}
 		<div class="controls">

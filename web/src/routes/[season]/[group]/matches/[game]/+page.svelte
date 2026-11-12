@@ -42,7 +42,7 @@
 	<div class="card table-card"><BoxScoreTable rows={sides.away} label="{match.away.short_name} {suffix}" /></div>
 {/snippet}
 
-<SiteHead title="{match.home.short_name} 對 {match.away.short_name} {match.date}｜{data.season.name} {GROUP_LABEL[data.group]} 賽事｜TVL 數據" />
+<SiteHead title="{match.home.short_name} 對 {match.away.short_name} {match.date}｜{data.season.name} {GROUP_LABEL[data.group]} 賽事｜VStat 企排" />
 
 <a class="back" href={backHref}>
 	<Icon name="chevron-left" size={18} />
