@@ -1,0 +1,58 @@
+# 每週查一次 vstat.tw 的到期日（TWNIC 的 RDAP 公開查詢），剩餘天數少於門檻就開一張 issue 提醒續約（#233）。
+# PChome 後台沒有自動續約，網域過期等於整站與推播訂閱一起失效。
+# 跑在 GitHub 的機器上（查 TWNIC 不必經過筆電上的自架 runner）。
+# schedule 錯開整點，理由同 daily-crawl.yml。
+# 查詢失敗（連不上、非 2xx、回應裡沒有可用的到期日）就讓 workflow 失敗，GitHub 會寄通知給 repo 擁有者。
+name: domain-expiry
+on:
+  schedule:
+    - cron: "37 2 * * 1" # 每週一 10:37（台灣時間）
+  workflow_dispatch:
+    inputs:
+      threshold_days:
+        description: 剩餘天數少於這個數就開 issue（測試時調到大於剩餘天數）
+        type: number
+        default: 90
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - name: 查到期日
+        id: expiry
+        env:
+          THRESHOLD: ${{ inputs.threshold_days || 90 }}
+        run: python -m src.utils.domain_expiry --threshold "$THRESHOLD"
+      - name: 少於門檻就開 issue（同標題的還開著就不重開）
+        if: steps.expiry.outputs.due == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: vstat.tw 網域快到期了，請到 PChome 續約
+          EXPIRES: ${{ steps.expiry.outputs.expires }}
+          DAYS_LEFT: ${{ steps.expiry.outputs.days_left }}
+        run: |
+          open_titles=$(gh issue list --state open --limit 1000 --json title --jq '.[].title')
+          if grep -Fxq "$TITLE" <<<"$open_titles"; then
+            echo "同標題的 issue 還開著，不重開"
+            exit 0
+          fi
+          gh issue create --title "$TITLE" --label ready-for-human --body-file - <<EOF
+          vstat.tw 的到期日是 **$EXPIRES**，剩 **$DAYS_LEFT 天**。
+
+          PChome 後台沒有自動續約。網域過期後整站打不開，已訂閱的推播也會一起失效。
+
+          - [ ] 到 PChome 買網址的後台替 vstat.tw 續約
+          - [ ] 續約後 TWNIC 的公開查詢大約一天才會更新；隔天手動跑一次 domain-expiry workflow，確認到期日已經往後延
+          - [ ] 確認後關掉這張 issue（這張還開著的期間，每週檢查不會再開新的）
+
+          這張 issue 由每週檢查（.github/workflows/domain-expiry.yml）自動開出：$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          EOF
