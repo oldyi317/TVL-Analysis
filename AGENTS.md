@@ -19,20 +19,9 @@ bash scripts/verify.sh                           # 收工四項依序跑，各�
 bash scripts/e2e.sh [--repeat N] [spec…]         # 在自己挑的空 port 跑 e2e（不 build；spec 如 e2e/smoke.e2e.ts；--repeat 連跑 N 輪各自回報）
 python tests/test_vocabulary.py <檔…>              # 對任意檔查避免詞；文案、spec、票的草稿交給使用者或發出去之前先跑
 bash scripts/publish-tickets.sh <目錄>            # 開 spec 與子票、掛 sub-issue 與阻擋邊（目錄格式見腳本開頭；DRY_RUN=1 可演練）
-
-# 爬蟲（皆從 repo 根目錄以 module 方式執行）
-python -m src.etl.crawler                        # 官網球員名單 → data/raw/
-python -m src.etl.match_crawler                  # 官網各局比分 → matches 表
-python -m src.etl.match_stats_writer             # 本季（cup≥22）有比分且無統計的場次 → player_match_stats（官網單場數據，spec #75；先跑 match_crawler）
-python -m src.etl.stats_crawler --rosters --cup-id 20   # 歷史工具：外部統計系統週登錄回填，僅 cup ≤21（ADR 0009；cup 22 起拒絕執行）
-python -m src.etl.stats_crawler --incremental --cup-id 20   # 歷史工具：外部統計系統單場數據回填，僅 cup ≤21（先跑 match_crawler）
-python -m src.etl.season_backfill --cup-id 19 --db <隔離DB> --review-out <清單.json>   # 歷史賽季一次性回填（ADR 0010；只在隔離 DB 跑，不進每日更新）
-python -m src.etl.db_loader                      # roster CSV → players 身分層 + season_rosters 賽季報名名單
-python -m src.etl.db_loader --csv assets/tvl_20_player_list/tvl20_rosters.csv --cup-id 20   # 歷史名單回填（圖檔轉錄 CSV，指定賽季）
-bash scripts/daily_update.sh                     # 每日增量更新（GitHub Actions 排程同款；DRY_RUN=1 可演練）
-python -m src.models.train                       # 重訓賽果預測模型 → match_predictor_v2.pkl
-python -m src.models.predict                     # 未開打賽事的主隊賽前勝率 → match_predictions 表（daily_update 內含）
 ```
+
+跑爬蟲、歷史回填、每日更新、模型重訓或賽前勝率之前，讀 `README.md`「常用指令」：指令、各自的賽季限制與先後順序都在那裡，一律從 repo 根目錄以 module 方式執行。
 
 npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔案編輯與 npm 分開呼叫；workdir 已是 web 時檔案路徑不再加 `web/` 前綴。讀／改檔前先 `rg --files` 找實際路徑（如 app.css、statLabels.ts）。git 寫入被沙箱拒絕走正式 escalation，不重試相同模式。跑 vitest 用 `npm run test:unit` 或 `web/node_modules/.bin/vitest`，不用 npx（沒有本地 node_modules 的 cwd 會靜默改用 `~/.npm/_npx` 快取的別版，`--no` 擋不住）。
 
@@ -48,8 +37,8 @@ npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔�
   `src/models/match_predictor_v2.pkl` 供第三期賽前勝率匯出使用。
   不要把它們加進 `.gitignore`。artifact 需含 `version`/`feature_cols`，
   `tests/test_prediction_artifact.py` 鎖住合約（pages.yml 不跑 pytest；ci.yml 在 PR 上跑，本機也要跑），重訓務必走 `python -m src.models.train`，不要手動 pickle。
-- **行尾一律 LF**：repo 在 WSL 的 `/mnt/d` 上，Windows 工具容易把檔案轉成 CRLF，
-  會製造上萬行假 diff。commit 前用 `git diff --stat -w` 確認沒有純行尾雜訊。
+- **行尾由 `.gitattributes` 強制 LF**：`git status` 顯示有改、`git diff` 卻是空的，
+  是工作檔被 Windows 工具轉成 CRLF；`git add` 會轉回 LF，不會進 commit。
 - **資料來源**：現行只有官網 `tvl.ctvba.org.tw`（名單、比分、cup 22 起的單場數據與週登錄）。
   外部統計系統 `https://statistics.ctvba.org.tw`（新網域，見 `src/utils/constants.py`、ADR 0010）
   只供 cup 21 以前的歷史補抓，已自每日更新停用（ADR 0009）；cup 13–19 的回填只走
@@ -66,18 +55,9 @@ npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔�
   新季列等仍是手動更新，未更新前爬蟲抓不到新季資料。外部統計系統（`EXT_*` 常數、
   `stats_crawler`）已停用，cup 22 起單場數據只走官網 `match_stats_writer`（ADR 0009）。
 
-## 慣例
+## 寫碼規範
 
-- import 一律走 `from src.utils...` 絕對路徑，從 repo 根目錄執行。
-- 共用常數（隊伍對照表、headers、DB 路徑）只放 `src/utils/constants.py` 與
-  `src/utils/db_config.py`，不要在個別檔案裡複製一份。
-- DB 連線用 `src/utils/db_config.get_connection()`（有開 `PRAGMA foreign_keys`），
-  不要裸用 `sqlite3.connect()`。
-- Schema DDL 的唯一來源是 `sql/schema.sql`，爬蟲內不要重寫 CREATE TABLE。
-- UI 文案、註解、commit message 用繁體中文。
-- Python 依賴：只有一份 `requirements.txt`（爬蟲、模型重訓、pytest 全在裡面，裝在自架
-  runner 與本機）；pages.yml 的匯出器只用標準庫、不裝 pip 套件，改匯出器時不要引入第三方套件。前端依賴在
-  `web/package.json`，改動要考慮 pages.yml 的 npm ci。
+在 `CODING_STANDARDS.md`：import、共用常數、DB 連線、schema DDL、文案語言、依賴、縮排、測試與風格。寫 `src/` 的 Python、加依賴之前讀；審查時逐條對。
 
 ## Ticket 實作流程
 
@@ -85,12 +65,13 @@ npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔�
   skill 說「commit 到目前分支」時，指的就是這個分支。
   spec 指定整合分支時，分支與 PR 的 base、`Closes` 寫不寫都以 spec 為準。
 - worktree 用 `bash scripts/new-worktree.sh <分支> [base]` 開在 `~/work/`，在那裡實作與驗證：
-  `/mnt/d` 上 `npm run build` 一次 14 分鐘，`~/work` 整輪驗證約 2 分鐘。
-- 縮排沿用檔案既有風格（web/ 一律 tab），不混用。
-- 測試不寫檔到 repo 外，也不留除錯用截圖；截圖腳本不進 commit。
-- 收工前跑 `bash scripts/verify.sh`，四項全過才算完成：pytest、`npm run check`、
+  `/mnt/d` 上 `npm run build` 一次 14 分鐘，`~/work` 整輪驗證約 3 分鐘。
+- 順序：開發中只跑相關的單檔測試 → 審查 → 修完 → commit → 在乾淨工作樹跑一次
+  `bash scripts/verify.sh` → push。四項全過才算完成：pytest、`npm run check`、
   `npm run test:unit`、`npm run test:e2e`。
 - push 分支後開 PR，PR 內文寫 `Closes #<N>`；合併由使用者做，合併後才關票。
+- 驗收要手動觸發這張票新增的 workflow 時，等合併後在 main 上跑，再把結果補進 PR 內文
+  （新 workflow 檔合併前 `gh workflow run` 回 404）。
 
 ## 資料品質原則
 
@@ -100,7 +81,7 @@ npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔�
 
 ### Issue tracker
 
-Issue 記在 GitHub Issues（github.com/oldyi317/TVL-Analysis，以 `gh` CLI 操作）。讀票與 PR 一律加 `--json` 指定欄位：裸跑 `gh issue view`／`gh pr view` 會被 GraphQL projectCards 棄用錯擋下。其餘操作見 `docs/agents/issue-tracker.md`。
+Issue 記在 GitHub Issues（github.com/oldyi317/TVL-Analysis，以 `gh` CLI 操作）。讀票與 PR 一律加 `--json` 指定欄位：裸跑 `gh issue view`／`gh pr view` 會被 GraphQL projectCards 棄用錯擋下。改 PR 內文、開票、掛 sub-issue 或阻擋邊之前，讀 `docs/agents/issue-tracker.md`（`gh pr edit` 同樣會被擋，替代寫法在那裡）。
 
 ### Triage labels
 

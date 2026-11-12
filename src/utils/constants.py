@@ -139,7 +139,7 @@ EXT_TEAM_SEASON_NAMES: dict[int, dict[tuple[int, str], tuple[str, str]]] = {
     },
 }
 
-# ── 官網全名 → 簡寫對應（依 AGENTS.md 慣例）─────────────────
+# ── 官網全名 → 簡寫對應（依 CODING_STANDARDS.md）─────────────────
 TEAM_NAME_SHORT = {
     "臺北鯨華女子排球隊": "臺北鯨華",
     "新北中國人纖企業女子排球隊": "新北中纖",

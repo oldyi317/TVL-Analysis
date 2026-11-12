@@ -71,7 +71,7 @@
 - [ ] 驗證：有單場數據的場次數應等於外部系統有資料的場次（cup 20：112 場，男 65、女 47）；
       `python -c "from src.utils.db_config import get_connection; c=get_connection(); print(c.execute('SELECT rr.cup_id, count(*) FROM player_match_stats p JOIN roster_registrations rr USING (registration_id) GROUP BY rr.cup_id').fetchall())"`
       看各季單場數據筆數；跑 `python -m src.export.site_data` 後 `web/src/lib/data/box_scores.json` 該季場數一致。其他賽季筆數前後不變（cup 21：單場數據 3807、週登錄 2034）。
-- [ ] commit：程式與資料分兩個 commit，資料 commit 只含 `data/db/tvl_database.db`，訊息寫來源與筆數；commit 前 `git diff --stat -w` 確認無行尾雜訊。
+- [ ] commit：程式與資料分兩個 commit，資料 commit 只含 `data/db/tvl_database.db`，訊息寫來源與筆數。
 
 ## 模型（可延後）
 

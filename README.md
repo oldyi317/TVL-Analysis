@@ -103,7 +103,8 @@ TVL-Analysis/
 │   ├── ops/daily-crawl.md         # daily-crawl 維運：自架 runner、本機觸發 timer、失敗排查
 │   └── design-system.md           # 網站視覺與設計規範
 ├── CONTEXT.md                     # 領域詞彙表（組別、賽季、週登錄、主要位置等命名規範）
-├── AGENTS.md                      # AI Agent 開發慣例與地雷清單
+├── AGENTS.md                      # AI Agent 開發流程與地雷清單
+├── CODING_STANDARDS.md            # 寫碼規範（審查時逐條對）
 └── requirements.txt               # Python 依賴（爬蟲、模型重訓、測試共用）
 ```
 
