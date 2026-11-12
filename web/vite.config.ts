@@ -10,9 +10,11 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter(),
+			adapter: adapter({ fallback: 'shell.html' }),
+			// 原型：自己註冊 service worker（見 src/lib/proto）
+			serviceWorker: { register: false },
 			// GitHub Pages 專案站台的子路徑；dev、preview、正式站一致
-			paths: { base: '/TVL-Analysis', relative: false }
+			paths: { base: (process.env.BASE_PATH ?? '/TVL-Analysis') as `/${string}`, relative: false }
 		})
 	],
 	test: {

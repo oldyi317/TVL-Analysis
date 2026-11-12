@@ -16,3 +16,4 @@ web/src/lib/data/
 
 # 匯出快照基準（scripts/export_snapshot.sh）
 .snapshots/
+prototypes/offline/out/

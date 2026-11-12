@@ -8,6 +8,8 @@
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
 	import TabBar from '#lib/components/TabBar.svelte';
 	import TopBar from '#lib/components/TopBar.svelte';
+	import Proto from '#lib/proto/Proto.svelte';
+	import { saveData } from '#lib/proto/proto.svelte.js';
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
 	import { detailListOf, listHref, nextDepth } from '#lib/nav.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
@@ -90,6 +92,12 @@
 		if (group) writeGroup(browserStorage(), group);
 	});
 
+	// 原型：看過的單場頁／球員頁，請 service worker 把它的 __data.json 存起來
+	$effect(() => {
+		const id = page.route.id;
+		if (id?.endsWith('/matches/[game]') || id?.endsWith('/players/[player]')) saveData(page.url.pathname);
+	});
+
 	// e2e 等到這個記號才互動：根 layout 掛載時整頁已 hydrate，SvelteKit 也在同一輪事件迴圈內接手站內連結
 	onMount(() => {
 		document.documentElement.dataset.hydrated = '';
@@ -111,6 +119,7 @@
 </div>
 
 <TabBar {season} {group} />
+<Proto />
 
 <style>
 	.wrap {
