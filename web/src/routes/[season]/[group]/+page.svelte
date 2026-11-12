@@ -16,7 +16,7 @@
 		`${resolve('/[season]/[group]/matches/[game]', { ...params, game: String(game) })}/`;
 </script>
 
-<SiteHead title="{data.season.name} {GROUP_LABEL[data.group]}｜TVL 數據" />
+<SiteHead title="{data.season.name} {GROUP_LABEL[data.group]}｜VStat 企排" />
 
 <h1>{data.season.name} {GROUP_LABEL[data.group]}</h1>
 

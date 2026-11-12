@@ -114,7 +114,7 @@
 	});
 </script>
 
-<SiteHead title="樣式指南｜TVL 數據" />
+<SiteHead title="樣式指南｜VStat 企排" />
 
 <h1>樣式指南</h1>
 <p class="lead">本頁把設計 token 與元件用真實球隊資料擺出來，供簽核用。球隊是真的；比分、戰績、球員與圖表數字都是示意資料，不是真實結果。</p>

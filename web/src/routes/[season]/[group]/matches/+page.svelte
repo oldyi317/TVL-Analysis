@@ -54,7 +54,7 @@
 		})}/`;
 </script>
 
-<SiteHead title="{data.season.name} {GROUP_LABEL[data.group]} 賽事｜TVL 數據" />
+<SiteHead title="{data.season.name} {GROUP_LABEL[data.group]} 賽事｜VStat 企排" />
 
 <h1>{data.season.name} {GROUP_LABEL[data.group]} 賽事</h1>
 

@@ -37,7 +37,7 @@
 	]);
 </script>
 
-<SiteHead title="{name}｜{data.season.name} {GROUP_LABEL[data.group]} 球員｜TVL 數據" />
+<SiteHead title="{name}｜{data.season.name} {GROUP_LABEL[data.group]} 球員｜VStat 企排" />
 
 <a class="back" href={backHref}>
 	<Icon name="chevron-left" size={16} />

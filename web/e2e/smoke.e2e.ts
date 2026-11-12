@@ -105,3 +105,12 @@ test.describe('進頁返回時已完成 hydration', () => {
 		});
 	}
 });
+
+test('分頁小圖示是可取得的 favicon.png', async ({ page }) => {
+	await page.goto(`${BASE}/`);
+	const href = await page.locator('link[rel="icon"]').getAttribute('href');
+	expect(href).toMatch(/favicon\.png$/);
+	const res = await page.request.get(new URL(href!, page.url()).toString());
+	expect(res.status()).toBe(200);
+	expect(res.headers()['content-type']).toContain('image/png');
+});

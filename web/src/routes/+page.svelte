@@ -14,9 +14,9 @@
 	});
 </script>
 
-<SiteHead title="TVL 數據" />
+<SiteHead title="VStat 企排" />
 
-<h1>TVL 數據</h1>
+<h1>VStat 企排</h1>
 <a class="enter" href={href(DEFAULT_GROUP)}>前往 {currentSeason.name} {GROUP_LABEL[DEFAULT_GROUP]}</a>
 
 <style>

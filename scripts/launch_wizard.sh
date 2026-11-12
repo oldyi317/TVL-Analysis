@@ -215,7 +215,7 @@ print_section() {
   awk -v h="## $1" '$0 == h {on=1; next} /^## / {on=0} on' "$ANNOUNCEMENT"
 }
 
-banner "TVL 數據站正式上線"
+banner "VStat 企排正式上線"
 
 stage "repo About：描述與網址"
 say "描述：$ABOUT"

@@ -25,7 +25,7 @@ test.beforeEach(() => {
 });
 
 const backButton = (page: Page) => topBar(page).getByRole('link', { name: '返回' });
-const brand = (page: Page) => topBar(page).getByRole('link', { name: 'TVL 數據' });
+const brand = (page: Page) => topBar(page).getByRole('link', { name: 'VStat 企排' });
 
 test.describe('手機頂部列左側', () => {
 	for (const [name, url] of [

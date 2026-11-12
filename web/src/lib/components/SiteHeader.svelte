@@ -20,7 +20,7 @@
 
 <header>
 	<div class="top">
-		<a class="brand" href={resolve('/')}>TVL 數據</a>
+		<a class="brand" href={resolve('/')}>VStat 企排</a>
 		<span class="note">非官方・資料整理自聯賽官網</span>
 	</div>
 	{#if season && group}

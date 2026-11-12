@@ -15,7 +15,7 @@
 		`${resolve('/records/[group]/[[kind=recordKind]]', { group: data.group, kind: path || undefined })}/`;
 </script>
 
-<SiteHead title="{GROUP_LABEL[data.group]} {data.kind.label}｜歷史紀錄｜TVL 數據" />
+<SiteHead title="{GROUP_LABEL[data.group]} {data.kind.label}｜歷史紀錄｜VStat 企排" />
 
 <h1>{GROUP_LABEL[data.group]} 歷史紀錄</h1>
 

@@ -44,7 +44,7 @@ const page = (games: number, advanced: PageProps['data']['advanced'] = null) => 
 describe('球員頁 head', () => {
 	it('title 維持原格式，並帶 Open Graph 與絕對網址', () => {
 		const head = renderPage(2).head;
-		const title = `${playerDisplayName(player)}｜${season.name} ${GROUP_LABEL[player.group]} 球員｜TVL 數據`;
+		const title = `${playerDisplayName(player)}｜${season.name} ${GROUP_LABEL[player.group]} 球員｜VStat 企排`;
 		expect(head).toContain(`<title>${title}</title>`);
 		expect(head).toContain(`<meta property="og:title" content="${title}"`);
 		expect(head).toContain(

@@ -1,5 +1,5 @@
 ---
-name: TVL 數據
+name: VStat 企排
 description: 球迷在手機上看的賽後看板：淺灰藍桌面、白色大圓角卡片、靛藍只說「你在哪、能點哪」
 colors:
   bg: "#f3f4f9"
@@ -216,7 +216,7 @@ components:
     size: "1.5rem"
 ---
 
-# Design System: TVL 數據
+# Design System: VStat 企排
 
 ## Overview
 
@@ -353,7 +353,7 @@ components:
 七項固定順序（`nav.ts` 的 `NAV_ITEMS`）：首頁、賽事、戰績、球隊、球員、排行榜、歷史紀錄；地標名稱「頁面」。≥64rem 直排，每項 44px 高、14px 圓角、圖示 20px + 文字、靠左；選中改成靛藍 tint 底 + 靛藍字，並以 `::after` 在 sidebar 右緣畫 3px 寬、上下內縮 8px 的靛藍指示條（絕對定位到 `-24px`，不是 border）。<64rem 隱藏，改由分頁列承擔。
 
 ### 頂部列 TopBar（手機）
-`position: sticky` 貼頂、高 `--shell-top`、`--surface` 底、Card 陰影加 1px `--card-edge` 底線；左右內距 12px 加安全區。左側是站名連結「TVL 數據」（`--text-lg` 800，連到首頁），在單場、球隊、球員三種詳情頁換成返回鈕；右側是組別 SegmentNav（短標、14px）與賽季鈕。賽季鈕是套用 `chip` 的按鈕：靛藍 tint 底、靛藍 700 字、尾端 chevron-down 圖示，點開賽季面板；`aria-label` 為「切換賽季，目前 <賽季>」。歷史紀錄頁不屬於任何賽季，不顯示賽季鈕。`/`、404、styleguide 沒有賽季與組別，頂部列只有站名。
+`position: sticky` 貼頂、高 `--shell-top`、`--surface` 底、Card 陰影加 1px `--card-edge` 底線；左右內距 12px 加安全區。左側是站名連結「VStat 企排」（`--text-lg` 800，連到首頁），在單場、球隊、球員三種詳情頁換成返回鈕；右側是組別 SegmentNav（短標、14px）與賽季鈕。賽季鈕是套用 `chip` 的按鈕：靛藍 tint 底、靛藍 700 字、尾端 chevron-down 圖示，點開賽季面板；`aria-label` 為「切換賽季，目前 <賽季>」。歷史紀錄頁不屬於任何賽季，不顯示賽季鈕。`/`、404、styleguide 沒有賽季與組別，頂部列只有站名。
 
 ### 分頁列 TabBar（手機）
 固定在底部、`--surface` 底、頂緣 1px `--line`；`<nav aria-label="主要分頁">`（桌面側欄仍是「頁面」）。五格等寬，順序固定：首頁、賽事、戰績、球隊、更多；每格 ≥44px、上圖示 + 下文字 14px、附註灰。選中格（`aria-current="page"`）靛藍字 700，頂端畫 32px 寬、4px 高的靛藍藥丸尾（`::before`）。前四格是連結；「更多」是 `button`（`aria-haspopup="dialog"`），點開「更多」底部面板，球員、排行榜、歷史紀錄頁面都算「更多」選中。沒有賽季或組別的頁（`/`、404、styleguide）連到現行賽季與預設組別（男子組），不標目前頁。
