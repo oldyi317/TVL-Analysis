@@ -1,0 +1,15 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "tvl-d1-proto",
+	"main": "src/index.js",
+	"compatibility_date": "2026-11-01",
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "tvl-d1-proto",
+			"database_id": "1b873364-0d43-403b-9022-9d53aa5060f9"
+		}
+	],
+	"triggers": { "crons": ["* * * * *"] },
+	"observability": { "enabled": true }
+}

@@ -1,0 +1,8 @@
+{
+	"name": "tvl-d1-proto",
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"wrangler": "^4.159.0"
+	}
+}

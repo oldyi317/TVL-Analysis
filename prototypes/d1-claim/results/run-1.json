@@ -1,0 +1,161 @@
+{
+  "base": "https://tvl-d1-proto.tvl-push-proto.workers.dev",
+  "started_at": "2026-11-12T02:29:55.696Z",
+  "sequential": {
+    "n": 300,
+    "stale_count": 0,
+    "stale": [],
+    "colos": {
+      "LAX": 300
+    },
+    "served_by_region": {
+      "APAC": 300
+    },
+    "served_by_primary": {
+      "true": 300
+    }
+  },
+  "claim_hit": {
+    "results": [],
+    "changes": 1,
+    "rows_written": 1,
+    "changed_db": true,
+    "served_by_region": "APAC",
+    "served_by_primary": true
+  },
+  "claim_miss": {
+    "results": [],
+    "changes": 0,
+    "rows_written": 0,
+    "changed_db": false,
+    "served_by_region": "APAC",
+    "served_by_primary": true
+  },
+  "returning_hit": {
+    "results": [
+      {
+        "next_offset": 30
+      }
+    ],
+    "changes": 1,
+    "rows_written": 1,
+    "changed_db": true,
+    "served_by_region": "APAC",
+    "served_by_primary": true
+  },
+  "returning_miss": {
+    "results": [],
+    "changes": 0,
+    "rows_written": 0,
+    "changed_db": false,
+    "served_by_region": "APAC",
+    "served_by_primary": true
+  },
+  "batch_hit": [
+    {
+      "results": [],
+      "changes": 1,
+      "rows_written": 1,
+      "changed_db": true,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    },
+    {
+      "results": [
+        {
+          "next_offset": 45
+        }
+      ],
+      "changes": 0,
+      "rows_written": 0,
+      "changed_db": false,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    }
+  ],
+  "batch_miss": [
+    {
+      "results": [],
+      "changes": 0,
+      "rows_written": 0,
+      "changed_db": false,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    },
+    {
+      "results": [
+        {
+          "next_offset": 45
+        }
+      ],
+      "changes": 0,
+      "rows_written": 0,
+      "changed_db": false,
+      "served_by_region": "APAC",
+      "served_by_primary": true
+    }
+  ],
+  "insert_first": {
+    "results": [],
+    "changes": 1,
+    "rows_written": 2,
+    "changed_db": true,
+    "served_by_region": "APAC",
+    "served_by_primary": true
+  },
+  "insert_again": {
+    "results": [],
+    "changes": 0,
+    "rows_written": 0,
+    "changed_db": false,
+    "served_by_region": "APAC",
+    "served_by_primary": true
+  },
+  "insert_returning_first": {
+    "results": [
+      {
+        "key": "b"
+      }
+    ],
+    "changes": 1,
+    "rows_written": 2,
+    "changed_db": true,
+    "served_by_region": "APAC",
+    "served_by_primary": true
+  },
+  "insert_returning_again": {
+    "results": [],
+    "changes": 0,
+    "rows_written": 0,
+    "changed_db": false,
+    "served_by_region": "APAC",
+    "served_by_primary": true
+  },
+  "insert_strict_duplicate": {
+    "status": 500,
+    "error": "Error: D1_ERROR: UNIQUE constraint failed: sent.key: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_PRIMARYKEY)",
+    "cause": "Error: UNIQUE constraint failed: sent.key: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_PRIMARYKEY)"
+  },
+  "race_claim": {
+    "rounds": 20,
+    "parallel": 50,
+    "winners_per_round": {
+      "1": 20
+    },
+    "errors": 0,
+    "colos": {
+      "LAX": 1000
+    },
+    "final_offset": 300,
+    "expected_offset": 300
+  },
+  "race_insert": {
+    "rounds": 20,
+    "parallel": 50,
+    "winners_per_round": {
+      "1": 20
+    },
+    "errors": 0
+  },
+  "finished_at": "2026-11-12T02:32:34.503Z"
+}
