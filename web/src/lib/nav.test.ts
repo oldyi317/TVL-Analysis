@@ -59,22 +59,22 @@ describe('detailListOf', () => {
 });
 
 describe('listHref', () => {
-	const base = '/TVL-Analysis/2025-26/men/';
+	const base = '/2025-26/men/';
 
 	it('單場頁到賽事列表的該月份錨點', () => {
-		expect(listHref('matches', base, '2025-12-07')).toBe('/TVL-Analysis/2025-26/men/matches/#m-2025-12');
+		expect(listHref('matches', base, '2025-12-07')).toBe('/2025-26/men/matches/#m-2025-12');
 	});
 
 	it('賽事列表沒有日期時不帶錨點', () => {
-		expect(listHref('matches', base)).toBe('/TVL-Analysis/2025-26/men/matches/');
+		expect(listHref('matches', base)).toBe('/2025-26/men/matches/');
 	});
 
 	it('球隊頁到球隊列表', () => {
-		expect(listHref('teams', base)).toBe('/TVL-Analysis/2025-26/men/teams/');
+		expect(listHref('teams', base)).toBe('/2025-26/men/teams/');
 	});
 
 	it('球員頁到球員列表', () => {
-		expect(listHref('players', base)).toBe('/TVL-Analysis/2025-26/men/players/');
+		expect(listHref('players', base)).toBe('/2025-26/men/players/');
 	});
 });
 

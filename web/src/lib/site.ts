@@ -24,7 +24,7 @@ import type {
 	TeamsData
 } from '#lib/data/types.js';
 
-export const SITE_URL = 'https://oldyi317.github.io/TVL-Analysis';
+export const SITE_URL = 'https://vstat.tw';
 export const SITE_DESCRIPTION =
 	'台灣企業排球聯賽（TVL）球迷自製數據站：賽事比分、球隊與球員數據、賽前勝率';
 

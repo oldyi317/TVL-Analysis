@@ -11,8 +11,8 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			adapter: adapter(),
-			// GitHub Pages 專案站台的子路徑；dev、preview、正式站一致
-			paths: { base: '/TVL-Analysis', relative: false }
+			// 站台在網域根目錄（正式網址 https://vstat.tw）；dev、preview、正式站一致
+			paths: { base: '', relative: false }
 		})
 	],
 	test: {

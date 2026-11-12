@@ -203,7 +203,7 @@ run_wizard() {
 TOTAL_STAGES=5
 
 REPO="oldyi317/TVL-Analysis"
-SITE_URL="https://oldyi317.github.io/TVL-Analysis/"
+SITE_URL="https://vstat.tw/"
 ABOUT="台灣企業排球聯賽球迷自製數據站"
 ANNOUNCEMENT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/docs/ops/launch-announcement.md"
 

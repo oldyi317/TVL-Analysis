@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from './helpers.js';
 
-const BASE = '/TVL-Analysis';
+const BASE = '';
 const URL = `${BASE}/styleguide/`;
 const teamNames: string[] = JSON.parse(readFileSync('src/lib/data/teams.json', 'utf8')).teams.map(
 	(t: { name: string }) => t.name

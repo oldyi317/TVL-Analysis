@@ -21,7 +21,7 @@ export const test = base.extend({
 	}
 });
 
-export const BASE = '/TVL-Analysis';
+export const BASE = '';
 export const OLD_CUP = 20;
 export const OLD_SEASON = '2024-25';
 export const readJson = (name: string) =>

@@ -11,7 +11,7 @@ const season = seasons.find((s) => s.cup_id === stats.cup_id)!;
 
 // SiteHead 從 $app/state 讀 page.url，SSR 下靠 __request__ context 供應
 const context = new Map([
-	['__request__', { page: { url: new URL('http://localhost/TVL-Analysis/22/men/players/1/') } }]
+	['__request__', { page: { url: new URL('http://localhost/22/men/players/1/') } }]
 ]);
 
 const advancedEntry = (over: { below_threshold?: boolean; team_sets?: number; blocks_per_set?: number | null } = {}) =>
@@ -48,7 +48,7 @@ describe('球員頁 head', () => {
 		expect(head).toContain(`<title>${title}</title>`);
 		expect(head).toContain(`<meta property="og:title" content="${title}"`);
 		expect(head).toContain(
-			'<meta property="og:url" content="https://oldyi317.github.io/TVL-Analysis/22/men/players/1/"'
+			'<meta property="og:url" content="https://vstat.tw/22/men/players/1/"'
 		);
 	});
 });

@@ -1,7 +1,7 @@
 # 設計規範（web/ 靜態站）
 
 > 對應 issue #6。token 的唯一來源是 `web/src/app.css`；本檔說明依據與使用規則。
-> 樣式指南頁：`/TVL-Analysis/styleguide/`（用真實球隊資料渲染，簽核用）。
+> 樣式指南頁：`/styleguide/`（用真實球隊資料渲染，簽核用）。
 
 ## 一、要解決的事
 
