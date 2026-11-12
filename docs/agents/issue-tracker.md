@@ -47,6 +47,19 @@ GitHub shares one number space across issues and PRs, so a bare `#42` may be eit
 
 Create a GitHub issue.
 
+A spec with child tickets (or a set of children under an existing parent): write the drafts into one directory and run `bash scripts/publish-tickets.sh <dir>`. It creates the issues, replaces `{{SPEC}}` / `{{<id>}}` placeholders with real numbers, links each child as a sub-issue, adds the blocking edges, and reads the result back. The directory layout is in the script header; `DRY_RUN=1` prints what it would do.
+
+Before publishing, run `python tests/test_vocabulary.py <draft files>` so the drafts carry no avoided glossary terms.
+
+The two calls the script wraps, for one-off use:
+
+- **Sub-issue**: `gh api --method POST repos/oldyi317/TVL-Analysis/issues/<parent>/sub_issues -F sub_issue_id=<child-db-id>`
+- **Blocking edge**: `gh api --method POST repos/oldyi317/TVL-Analysis/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-db-id>`
+
+Both take the numeric **database id** (`gh api repos/oldyi317/TVL-Analysis/issues/<n> --jq .id`), not the `#number`.
+
+A ticket is unblocked only when its blockers are **closed**. Check that each ticket can close without an action that belongs to a ticket it blocks (a PR that is prepared in one ticket and merged in the next must not write `Closes`), and that every value handed across tickets names who produces it, who commits it, and who reads it.
+
 ## When a skill says "fetch the relevant ticket"
 
 Run `gh issue view <number> --repo oldyi317/TVL-Analysis --json number,title,body,labels,comments`.

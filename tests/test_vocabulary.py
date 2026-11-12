@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,17 +49,35 @@ def find_hits(line, formal, avoid):
     return hits
 
 
+def scan_text(label, text, formal, avoid):
+    results = []
+    for no, line in enumerate(text.splitlines(), 1):
+        if not CJK.search(line) or line.rstrip().endswith(RAW_MARK) or line.rstrip().endswith(RAW_MARK + " -->"):
+            continue
+        for word in find_hits(line, formal, avoid):
+            results.append((label, no, word, line.strip()))
+    return results
+
+
 def scan():
     formal, avoid = parse_glossary()
     results = []
     for path in sorted(source_files()):
-        text = path.read_text(encoding="utf-8")
-        for no, line in enumerate(text.splitlines(), 1):
-            if not CJK.search(line) or line.rstrip().endswith(RAW_MARK) or line.rstrip().endswith(RAW_MARK + " -->"):
-                continue
-            for word in find_hits(line, formal, avoid):
-                results.append((path.relative_to(ROOT).as_posix(), no, word, line.strip()))
+        results += scan_text(path.relative_to(ROOT).as_posix(), path.read_text(encoding="utf-8"), formal, avoid)
     return results
+
+
+def main(argv):
+    if not argv:
+        print("用法：python tests/test_vocabulary.py <檔案>…（文案、spec、票的草稿）", file=sys.stderr)
+        return 2
+    formal, avoid = parse_glossary()
+    results = []
+    for arg in argv:
+        results += scan_text(arg, Path(arg).read_text(encoding="utf-8"), formal, avoid)
+    for f, n, w, t in results:
+        print(f"{f}:{n}\t{w}\t{t}")
+    return 1 if results else 0
 
 
 def test_glossary_parsed():
@@ -74,3 +93,27 @@ def test_no_avoided_terms():
         )
     detail = "\n".join(f"{f}:{n}\t{w}\t{t}" for f, n, w, t in results)
     assert not results, f"命中 {len(results)} 條避免詞：\n{detail}"
+
+
+def test_scan_text_reports_avoided_term_with_line_number():
+    formal, avoid = parse_glossary()
+    word = next(iter(avoid))
+    hits = scan_text("草稿", f"{formal[0]}\n這一行用了{word}\n", formal, avoid)
+    assert ("草稿", 2, word, f"這一行用了{word}") in hits
+    assert all(no == 2 for _, no, _, _ in hits)
+
+
+def test_main_exit_code_follows_hits(tmp_path, capsys):
+    formal, avoid = parse_glossary()
+    word = next(iter(avoid))
+    clean = tmp_path / "clean.md"
+    clean.write_text(f"{formal[0]}\n", encoding="utf-8")
+    dirty = tmp_path / "dirty.md"
+    dirty.write_text(f"這一行用了{word}\n", encoding="utf-8")
+    assert main([str(clean)]) == 0
+    assert main([str(clean), str(dirty)]) == 1
+    assert f"{dirty}:1\t{word}" in capsys.readouterr().out
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
