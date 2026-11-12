@@ -78,6 +78,7 @@ TVL-Analysis/
 │       ├── match_status.py        # 賽事完賽／未開打判定條件
 │       ├── seasons.py             # 賽季查詢輔助函式
 │       ├── teams.py               # 隊名別名解析與球隊身分查詢
+│       ├── domain_expiry.py       # 查 vstat.tw 的網域到期日（每週檢查用）
 │       └── logger.py              # 日誌設定
 ├── web/                           # SvelteKit 靜態站（含 schema/ JSON Schema 與 ECharts 圖表元件）
 ├── sql/
@@ -92,7 +93,8 @@ TVL-Analysis/
 ├── .github/workflows/
 │   ├── daily-crawl.yml            # 每日排程爬蟲（自架 runner）
 │   ├── pages.yml                  # 靜態站建置與 GitHub Pages 部署（雲端 runner）
-│   └── ci.yml                     # PR 測試守門（pytest、svelte-check、Vitest）
+│   ├── ci.yml                     # PR 測試守門（pytest、svelte-check、Vitest）
+│   └── domain-expiry.yml          # 每週檢查網域到期日，快到期就開 issue（雲端 runner）
 ├── data/db/tvl_database.db        # SQLite 資料庫（進 git）
 ├── tests/                         # Python 單元與合約測試（pytest）
 ├── docs/
@@ -148,7 +150,7 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
 
 ## 每日自動更新與部署（GitHub Actions）
 
-專案透過三個 GitHub Actions workflow 協作（見 `.github/workflows/`）：
+專案透過四個 GitHub Actions workflow 協作（見 `.github/workflows/`）：
 
 1. **每日增量爬蟲（`daily-crawl.yml`）**：
    - 觸發：runner 所在的 WSL 以 user 層級 systemd timer 每日台灣時間 09:23 用 `gh workflow run` 觸發（`scripts/setup_crawl_trigger.sh` 安裝；09:23 未開機就在開機後補跑一次；觸發失敗每 2 分鐘重試，最多 5 次）。workflow 內的 `01:23 UTC` 排程只當備援，GitHub 實際常晚 4–7 小時才觸發；亦可手動 `workflow_dispatch`。
@@ -161,6 +163,10 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
    - 不安裝 `requirements.txt`，直接以 Python 3.14 標準庫執行匯出器（`src.export.site_data`）從 repo 內的 `.db` 產出 JSON，接著在 `web/` 下安裝前端依賴並建置靜態站（含 Ajv JSON Schema 驗證與型別產生），最後將 `web/build` 部署至 GitHub Pages。
 3. **PR 持續整合檢查（`ci.yml`）**：
    - 於 Pull Request 時在雲端 runner 執行 Python 測試（pytest）以及前端 JSON 匯出、型別檢查與單元測試。
+4. **網域到期的每週檢查（`domain-expiry.yml`）**：
+   - 每週一在雲端 runner 執行 `python -m src.utils.domain_expiry`，向 TWNIC 的公開查詢取 `vstat.tw` 的到期日。
+   - 剩餘天數少於 90 天就開一張 `ready-for-human` 的 issue 提醒續約（PChome 後台沒有自動續約）；同標題的 issue 還開著就不重開。查詢失敗會讓 workflow 失敗。
+   - 手動 `workflow_dispatch` 可用 `threshold_days` 覆寫門檻。
 
 ## 賽果預測模型簡述
 
