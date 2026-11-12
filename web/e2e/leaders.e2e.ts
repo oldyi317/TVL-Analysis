@@ -36,12 +36,13 @@ test('缺單場數據時沒有四王卡或項目 chip', async ({ page }) => {
 	await expect(page.getByRole('navigation', { name: '計數榜項目' })).toHaveCount(0);
 });
 
-test('男女組長姓名、四王首屏、深淺模式與桌面欄數', async ({ page }) => {
-	for (const group of ['men', 'women']) {
-		const data = entries.filter((e: { group: string }) => e.group === group)
-			.sort((a: { cup_id: number }, b: { cup_id: number }) => b.cup_id - a.cup_id)[0];
-		const longest = data.boards[0].rows.reduce((a: { name: string }, b: { name: string }) => a.name.length >= b.name.length ? a : b);
-		for (const width of [390, 768, 1440]) {
+// 每個組別與寬度各自一個測試：六次整頁載入擠在同一個測試裡，整套並行時會把 30 秒用完（#257）
+for (const group of ['men', 'women']) {
+	const data = entries.filter((e: { group: string }) => e.group === group)
+		.sort((a: { cup_id: number }, b: { cup_id: number }) => b.cup_id - a.cup_id)[0];
+	const longest = data.boards[0].rows.reduce((a: { name: string }, b: { name: string }) => a.name.length >= b.name.length ? a : b);
+	for (const width of [390, 768, 1440]) {
+		test(`${group === 'men' ? '男' : '女'}子組寬 ${width}px：長姓名、四王首屏、深淺模式與欄數`, async ({ page }) => {
 			await page.setViewportSize({ width, height: 900 });
 			await page.emulateMedia({ colorScheme: width === 768 ? 'dark' : 'light' });
 			await page.goto(`${BASE}/${seasonName(data.cup_id)}/${group}/leaders/`);
@@ -61,10 +62,9 @@ test('男女組長姓名、四王首屏、深淺模式與桌面欄數', async ({
 			expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 			const columns = await page.locator('.boards').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
 			expect(columns).toBe(width < 640 ? 1 : width < 1024 ? 2 : 3);
-			await page.evaluate(() => window.scrollTo(0, 0));
-		}
+		});
 	}
-});
+}
 
 test('鍵盤切分段、chip 與展開，切換不重新載入', async ({ page }) => {
 	await page.goto(url);
