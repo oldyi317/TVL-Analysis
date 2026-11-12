@@ -18,7 +18,7 @@
 	let { children }: LayoutProps = $props();
 
 	// 切換賽季或組別：只替換路徑中該片段的第一次出現，停留在同一頁面類型。
-	// base 是固定的 /TVL-Analysis，賽季與組別是 base 之後的前兩段，不會與其他片段撞名。
+	// 站台在網域根目錄（base 是空字串），賽季與組別是路徑的前兩段，不會與其他片段撞名。
 	// 單場賽事只屬於一個賽季與組別，從詳情頁切換就退回該組別的賽事列表。
 	// 球隊頁、球員頁同理：切組別退回列表，切賽季只在目標賽季也有這支球隊／這位球員時保留。
 	function switchHref(param: 'season' | 'group', value: string): string | undefined {

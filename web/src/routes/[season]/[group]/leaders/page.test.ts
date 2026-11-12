@@ -11,7 +11,7 @@ const season = seasons[0];
 const team = seasonTeam(teams.find((t) => t.group === 'men')!, season.cup_id);
 
 const context = new Map([
-	['__request__', { page: { url: new URL('http://localhost/TVL-Analysis/22/men/leaders/') } }]
+	['__request__', { page: { url: new URL('http://localhost/22/men/leaders/') } }]
 ]);
 
 function row(rank: number, id: number, position: string | null = 'OH'): LeaderRowView {
@@ -42,7 +42,7 @@ describe('排行榜頁有單場數據', () => {
 		expect(html).toMatch(/<h2[^>]*>總得分<\/h2>/);
 		expect(html).toContain('名次');
 		expect(ranks(html)).toEqual(['1', '1', '3']);
-		expect(html).toMatch(/<a[^>]*href="\/TVL-Analysis\/[^"]+\/men\/players\/1\/"[^>]*>[\s\S]*?球員1號[\s\S]*?<\/a>/);
+		expect(html).toMatch(/<a[^>]*href="\/[^"/]+\/men\/players\/1\/"[^>]*>[\s\S]*?球員1號[\s\S]*?<\/a>/);
 	});
 
 	it('前 10 名截斷並附展開鈕；第 10 名並列全部顯示', () => {

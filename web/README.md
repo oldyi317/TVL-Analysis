@@ -1,6 +1,6 @@
 # web/
 
-VStat 企排靜態站（SvelteKit + adapter-static，部署於 GitHub Pages `/TVL-Analysis/`）。
+VStat 企排靜態站（SvelteKit + adapter-static，部署於 GitHub Pages，正式網址 `https://vstat.tw`）。
 本機開發三步（匯出、dev server、建置）見 repo 根目錄 `README.md` 的「本機跑網站」。
 
 - `web/schema/`：JSON schema，匯出器與前端共用的唯一來源
