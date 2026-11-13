@@ -15,6 +15,7 @@ failed=()
 case $repo in
 	/mnt/*) echo "注意：這個 checkout 在 Windows 檔案系統上，build 要十幾分鐘。用 scripts/new-worktree.sh 開在 ~/work 會快很多。" ;;
 esac
+bash "$repo/scripts/busy-warning.sh"
 
 # step <名稱> <目錄> <命令…>：跑一項、記耗時與結果
 step() {
