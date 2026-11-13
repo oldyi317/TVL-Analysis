@@ -15,7 +15,7 @@ npm run test:e2e                                 # Playwright smoke（需先 bui
 
 # Ticket 流程（從 repo 根目錄跑）
 bash scripts/new-worktree.sh <分支> [base]        # 在 ~/work 開 worktree，依賴與資料一併備好
-bash scripts/verify.sh                           # 收工四項依序跑，各自回報
+bash scripts/verify.sh                           # 收工四項各自回報（pytest 與網站那一串同時跑，網站那一串依序跑）
 bash scripts/e2e.sh [--repeat N] [spec…]         # 在自己挑的空 port 跑 e2e（不 build；spec 如 e2e/smoke.e2e.ts；--repeat 連跑 N 輪各自回報）
 python tests/test_vocabulary.py <檔…>              # 對任意檔查避免詞；文案、spec、票的草稿交給使用者或發出去之前先跑
 bash scripts/publish-tickets.sh <目錄>            # 開 spec 與子票、掛 sub-issue 與阻擋邊（目錄格式見腳本開頭；DRY_RUN=1 可演練）
