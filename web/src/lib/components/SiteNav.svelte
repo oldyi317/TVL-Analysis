@@ -7,7 +7,7 @@
 
 	let { season, group }: { season: string; group: Group } = $props();
 
-	const base = $derived(`${resolve('/[season]/[group]', { season, group })}/`);
+	const base = $derived(`${resolve('/[season]/[group]', { season: encodeURIComponent(season), group })}/`);
 	const recordsBase = $derived(`${resolve('/records/[group]/[[kind=recordKind]]', { group })}/`);
 	const section = $derived(sectionOf(page.route.id));
 </script>
