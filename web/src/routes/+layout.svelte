@@ -98,6 +98,8 @@
 
 <svelte:head>
 	<link rel="icon" type="image/png" href={asset('favicon.png')} />
+	<link rel="manifest" href={resolve('/manifest.webmanifest')} />
+	<link rel="apple-touch-icon" href={asset('icons/apple-touch-icon.png')} />
 </svelte:head>
 
 <TopBar {season} {group} records={onRecords} {back} hrefFor={switchHref} />
