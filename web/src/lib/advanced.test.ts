@@ -19,6 +19,7 @@ import {
 	distributionMetricKeys,
 	distributionNote,
 	distributionSummary,
+	escapeHtml,
 	headlineStats,
 	inPrPool,
 	noPrReason,
@@ -293,6 +294,13 @@ describe('trendOption', () => {
 		expect(f([{ dataIndex: 2 }])).toBe('2026-01-17<br/>攻擊成功率：100%（得分 1／1）');
 		expect(f([{ dataIndex: 1 }])).toBe('2026-01-10<br/>攻擊成功率：—<br/>此場另有黃金決勝局，未計入');
 		expect(build('points').tooltip.formatter([{ dataIndex: 0 }])).toBe('2026-01-03<br/>得分：8');
+	});
+});
+
+describe('escapeHtml', () => {
+	it('轉義 HTML 特殊字元，一般姓名與隊名原樣保留', () => {
+		expect(escapeHtml(`<img src=x onerror="alert('&')">`)).toBe('&lt;img src=x onerror=&quot;alert(&#39;&amp;&#39;)&quot;&gt;');
+		expect(escapeHtml('臺北鳳凰（2）Lin 12')).toBe('臺北鳳凰（2）Lin 12');
 	});
 });
 

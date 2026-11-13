@@ -9,7 +9,7 @@
 
 	let { season, group }: { season?: string; group?: Group } = $props();
 
-	const base = $derived(`${resolve('/[season]/[group]', { season: season ?? currentSeason.name, group: group ?? DEFAULT_GROUP })}/`);
+	const base = $derived(`${resolve('/[season]/[group]', { season: encodeURIComponent(season ?? currentSeason.name), group: group ?? DEFAULT_GROUP })}/`);
 	const recordsBase = $derived(`${resolve('/records/[group]/[[kind=recordKind]]', { group: group ?? DEFAULT_GROUP })}/`);
 	const href = (section: Section) => hrefOf(section, base, recordsBase);
 

@@ -15,6 +15,10 @@
   → `run.sh` 接一個 job → job 結束 runner 自動註銷 → 回到開頭」。每輪先清掉 `_work` 與殘留的本機註冊檔；但 job 仍以同一個使用者執行，`$HOME`（venv、gh 登入）不會重置。
   取 token、註冊失敗，或 `run.sh` 不到 60 秒就結束（它對 listener 異常也回 0）時退避重試（30 秒起倍增，上限 15 分鐘）。
   service 的 PATH 固定為 `/usr/local/bin:/usr/bin:/bin`，job 也繼承這個 PATH；daily_update 的 python 走 venv 絕對路徑，不受影響。workflow 的 `runs-on: [self-hosted, tvl]` 不變。
+- job 守門：公開 repo 的 fork PR 能改 workflow，把 job 指到 `tvl` label。迴圈以 `ACTIONS_RUNNER_HOOK_JOB_STARTED` 掛上
+  `~/.config/tvl-runner/runner_job_gate.sh`（`setup_runner.sh` 步驟 4 從 `scripts/runner_job_gate.sh` 安裝），在 job 任何步驟之前執行：
+  只放行本 repo 的 `schedule` 與 `workflow_dispatch`，其餘事件直接砍掉 `Runner.Worker`，job 以失敗收場，迴圈隨後退避重試。
+  找不到守門腳本時迴圈不取 token、不註冊。守門要重跑 `setup_runner.sh` 才生效；之後要讓其他事件的 workflow 跑在這台 runner，得先改守門腳本。
 - 改了 `runner_loop.sh` 要重跑 `setup_runner.sh`，service 跑的是 runner 目錄裡的副本；重跑會停掉 service，正在跑的 job 會被中斷，挑沒有 daily-crawl 在跑的時候做。
 - 查狀態：`systemctl status tvl-runner`、`journalctl -u tvl-runner -f`；GitHub 端
   `gh api repos/oldyi317/TVL-Analysis/actions/runners --jq '.runners[] | {id, name, status}'`，每跑完一個 job，`id` 會換成新的。

@@ -99,6 +99,13 @@ describe('量率散點', () => {
 		expect(tip).toBe(`球員1（${view.points[0].team}）<br/>攻擊次數：40<br/>攻擊成功率：60%`);
 	});
 
+	it('提示裡的球員與隊名轉義成文字，不當成 HTML', () => {
+		const name = '<img src=x onerror=alert(1)>';
+		const option = volumeRateOption({ ...view, points: [{ ...view.points[0], name, team: '<b>隊</b>' }] }) as any;
+		const tip = option.tooltip.formatter({ data: option.series[0].data[0] });
+		expect(tip).toBe('&lt;img src=x onerror=alert(1)&gt;（&lt;b&gt;隊&lt;/b&gt;）<br/>攻擊次數：40<br/>攻擊成功率：60%');
+	});
+
 	it('沒有球員達門檻時不產生圖', () => {
 		expect(volumeRateOption({ ...view, points: [], median_count: null, median_rate: null })).toBeNull();
 	});

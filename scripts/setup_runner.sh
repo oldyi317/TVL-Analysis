@@ -45,9 +45,10 @@ if [ -f .runner ]; then
   ./config.sh remove --token "$TOKEN" || rm -f .runner .credentials .credentials_rsaparams
 fi
 
-step "步驟 4/6：安裝迴圈腳本並以 systemd service（${SERVICE}）開機自啟（需要 sudo）"
+step "步驟 4/6：安裝迴圈與 job 守門腳本並以 systemd service（${SERVICE}）開機自啟（需要 sudo）"
 cp "$SCRIPT_DIR/runner_loop.sh" "$RUNNER_DIR/runner_loop.sh"
 chmod +x "$RUNNER_DIR/runner_loop.sh"
+install -m 700 "$SCRIPT_DIR/runner_job_gate.sh" "$HOME/.config/tvl-runner/runner_job_gate.sh"
 sudo tee "/etc/systemd/system/${SERVICE}.service" > /dev/null <<EOF
 [Unit]
 Description=TVL ephemeral GitHub Actions runner loop

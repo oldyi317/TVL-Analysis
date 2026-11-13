@@ -82,7 +82,7 @@
 		const detailSeason = page.params.season;
 		if (!section || !detailSeason || !group) return undefined;
 		const date = section === 'matches' ? (page.data as MatchPageData).match.date : undefined;
-		const href = listHref(section, `${resolve('/[season]/[group]', { season: detailSeason, group })}/`, date);
+		const href = listHref(section, `${resolve('/[season]/[group]', { season: encodeURIComponent(detailSeason), group })}/`, date);
 		return { href, canGoBack: depth > 0 };
 	});
 
