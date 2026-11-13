@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# 收工四項依序跑：pytest、npm run check、npm run test:unit、e2e（先 build，再跑 scripts/e2e.sh）。
+# 收工四項：pytest、npm run check、npm run test:unit、e2e（先 build，再跑 scripts/e2e.sh）。
+# pytest 在背景與網站那一串同時跑；網站那一串依序跑（check、unit、build 啟動時都會重寫 gen 與 svelte-kit sync 的產生檔，不能並行）。
 # 每一項都會跑完並各自回報，任何一項失敗就以非零結束；輸出寫到 log，失敗才印末段。
 #
 # 用法：bash scripts/verify.sh
@@ -30,7 +31,9 @@ step() {
 }
 
 step export "$repo" "$python" -m src.export.site_data
-step pytest "$repo" env OMP_NUM_THREADS="${OMP_NUM_THREADS:-2}" "$python" -m pytest -q
+# 背景的 step 改不到這裡的 failed：結果行先寫進檔案，網站那一串跑完再印
+step pytest "$repo" env OMP_NUM_THREADS="${OMP_NUM_THREADS:-2}" "$python" -m pytest -q > "$logs/pytest.result" &
+pytest_pid=$!
 step check "$repo/web" npm run check
 step unit "$repo/web" npm run test:unit
 if step build "$repo/web" npm run build; then
@@ -40,6 +43,8 @@ else
 	echo "✗ e2e      略過（build 失敗）"
 	failed+=(e2e)
 fi
+wait "$pytest_pid" || failed+=(pytest)
+cat "$logs/pytest.result"
 
 echo
 if [ ${#failed[@]} -gt 0 ]; then
