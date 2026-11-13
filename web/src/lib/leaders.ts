@@ -1,5 +1,6 @@
 import leadersJson from '#lib/data/leaders.json';
 import type { GroupLeaders, LeaderBoard, LeaderRow, LeadersData, VolumeRate, VolumeRatePoint } from '#lib/data/types.js';
+import { escapeHtml } from '#lib/advanced.js';
 import { teamPalette } from '#lib/color.js';
 import { teamOf, teams as allTeams, type Group, type SeasonTeam } from '#lib/site.js';
 import { STAT_LABELS } from '#lib/statLabels.js';
@@ -91,7 +92,7 @@ export function volumeRateOption(v: VolumeRateView): object | null {
 		tooltip: {
 			trigger: 'item',
 			formatter: ({ data: d }: { data: VolumeRateDatum }) =>
-				`${d.name}（${d.team}）<br/>${v.countLabel}：${d.value[0]}<br/>${v.rateLabel}：${d.value[1]}%`
+				`${escapeHtml(d.name)}（${escapeHtml(d.team)}）<br/>${v.countLabel}：${d.value[0]}<br/>${v.rateLabel}：${d.value[1]}%`
 		},
 		xAxis: { type: 'value', name: v.countLabel, nameLocation: 'middle', nameGap: 28, scale: true },
 		yAxis: { type: 'value', name: `${v.rateLabel}（%）`, nameTextStyle: { align: 'left' }, scale: true },

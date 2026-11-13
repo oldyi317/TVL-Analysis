@@ -1,5 +1,5 @@
 import type { TeamAdvanced, TeamAdvancedData, TeamGameMetric, TeamMetrics, TeamTrendGame } from '#lib/data/types.js';
-import { formatMetricValue, trendLineOption } from '#lib/advanced.js';
+import { escapeHtml, formatMetricValue, trendLineOption } from '#lib/advanced.js';
 import { teamPalette } from '#lib/color.js';
 import type { Group } from '#lib/site.js';
 import { STAT_LABELS } from '#lib/statLabels.js';
@@ -85,7 +85,7 @@ export function metricsDotOption(c: TeamComparison, teamName: (id: number) => st
 	return {
 		legend: { show: false },
 		grid: { top: 8, bottom: 8 },
-		tooltip: { trigger: 'item', formatter: (p: { data: DotPoint }) => `${p.data.name}<br/>${p.data.detail}` },
+		tooltip: { trigger: 'item', formatter: (p: { data: DotPoint }) => `${escapeHtml(p.data.name)}<br/>${p.data.detail}` },
 		xAxis: {
 			type: 'value',
 			min: 0,
@@ -168,7 +168,7 @@ export function sourcesBarOption(c: TeamComparison, teamName: (id: number) => st
 	const teams = sourceTeams(c);
 	const tooltipText = (t: TeamAdvanced) =>
 		[
-			teamName(t.team_id),
+			escapeHtml(teamName(t.team_id)),
 			...SCORE_SOURCES.map(
 				({ key, label }) => `${label}：${t.points[key]} 分（${percent(share(t, key))}）`
 			),
@@ -281,7 +281,7 @@ function pregameBars(m: PregameComparison, side: 'home' | 'away'): PregameBar[] 
 export function pregameBarOption(m: PregameComparison, names: Pair<string>, colors: Pair<string>): object {
 	const sides = (['home', 'away'] as const).map((side) => ({ side, bars: pregameBars(m, side) }));
 	const tooltipText = (row: number) =>
-		[metricLabel(TEAM_METRIC_KEYS[row]), ...sides.map(({ side, bars }) => `${names[side]}：${bars[row].actual}`)].join(
+		[metricLabel(TEAM_METRIC_KEYS[row]), ...sides.map(({ side, bars }) => `${escapeHtml(names[side])}：${bars[row].actual}`)].join(
 			'<br/>'
 		);
 	return {

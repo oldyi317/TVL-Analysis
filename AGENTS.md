@@ -15,8 +15,9 @@ npm run test:e2e                                 # Playwright smoke（需先 bui
 
 # Ticket 流程（從 repo 根目錄跑）
 bash scripts/new-worktree.sh <分支> [base]        # 在 ~/work 開 worktree，依賴與資料一併備好
-bash scripts/verify.sh                           # 收工四項依序跑，各自回報
-bash scripts/e2e.sh [--repeat N] [spec…]         # 在自己挑的空 port 跑 e2e（不 build；spec 如 e2e/smoke.e2e.ts；--repeat 連跑 N 輪各自回報）
+bash scripts/verify.sh                           # 收工四項各自回報（pytest 與網站那一串同時跑，網站那一串依序跑）
+bash scripts/e2e.sh [--repeat N | --profile] [spec…]  # 在自己挑的空 port 跑 e2e（不 build；spec 如 e2e/smoke.e2e.ts；--repeat 連跑 N 輪各自回報；--profile 印 worker 數、逐檔耗時與最慢的測試）
+bash scripts/ci-timings.sh [N]                   # 最近 N 次成功 CI 的 web job、e2e 步驟與測試本身耗時及範圍；比較 CI 前後先看範圍
 python tests/test_vocabulary.py <檔…>              # 對任意檔查避免詞；文案、spec、票的草稿交給使用者或發出去之前先跑
 bash scripts/publish-tickets.sh <目錄>            # 開 spec 與子票、掛 sub-issue 與阻擋邊（目錄格式見腳本開頭；DRY_RUN=1 可演練）
 ```
@@ -69,7 +70,7 @@ npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔�
 - 順序：開發中只跑相關的單檔測試 → 審查 → 修完 → commit → 在乾淨工作樹跑一次
   `bash scripts/verify.sh` → push。四項全過才算完成：pytest、`npm run check`、
   `npm run test:unit`、`npm run test:e2e`。
-- push 分支後開 PR，PR 內文寫 `Closes #<N>`；合併由使用者做，合併後才關票。
+- push 分支後開 PR，內文照 `/pr` 的格式（Summary／Evidence／Merge Danger）並寫 `Closes #<N>`；合併由使用者做，合併後才關票。
 - 驗收要手動觸發這張票新增的 workflow 時，等合併後在 main 上跑，再把結果補進 PR 內文
   （新 workflow 檔合併前 `gh workflow run` 回 404）。
 

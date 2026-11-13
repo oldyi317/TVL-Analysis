@@ -377,6 +377,11 @@ export function trendOption(log: GameLogEntry[], metric: TrendMetric): object {
 	return trendLineOption(trendPoints(log, metric), metric);
 }
 
+const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+// ECharts 以 innerHTML 顯示 tooltip，球員、隊名等資料字串要先轉義；不用 echarts 的 format.encodeHTML，靜態匯入會讓 Chart.svelte 的延遲載入失效
+export const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+
 // 球員與球隊逐場趨勢共用的折線圖
 export function trendLineOption(points: TrendPoint[], metric: TrendMetric): object {
 	const def: TrendDef = TREND_DEFS[metric];
@@ -388,7 +393,7 @@ export function trendLineOption(points: TrendPoint[], metric: TrendMetric): obje
 			formatter: (params: { dataIndex: number }[]) => {
 				const { value, detail, heading, golden } = points[params[0].dataIndex];
 				const shown = value === null ? '—' : `${value}${unit}${detail ? `（${detail}）` : ''}`;
-				const lines = [heading, `${def.label}：${shown}`];
+				const lines = [escapeHtml(heading), `${def.label}：${shown}`];
 				if (golden) lines.push('此場另有黃金決勝局，未計入');
 				return lines.join('<br/>');
 			}

@@ -165,6 +165,12 @@ describe('metricsDotOption', () => {
 		const blocks = o.series[0].data.find((p) => p.value[1] === 5 && p.name === '屏東台電')!;
 		expect(o.tooltip.formatter({ data: blocks })).toBe('屏東台電<br/>每局攔網：50（並列第 1 / 2）');
 	});
+
+	it('tooltip 的隊名轉義成文字', () => {
+		const c = teamComparison(data([withAttack(4, 45, 1)]), 21, 'men', 4)!;
+		const o = metricsDotOption(c, () => '<img src=x onerror=alert(1)>') as DotOption;
+		expect(o.tooltip.formatter({ data: attackRow(o)[0] })).toBe('&lt;img src=x onerror=alert(1)&gt;<br/>攻擊成功率：45%（第 1 / 1）');
+	});
 });
 
 describe('metricsTable', () => {
@@ -272,6 +278,11 @@ describe('sourcesBarOption', () => {
 		expect(text).toContain('對手失誤得分：50 分（50%）');
 		expect(text.endsWith('對手失誤得分是推算值：比分總分 − 技術得分')).toBe(true);
 	});
+
+	it('tooltip 的隊名轉義成文字', () => {
+		const o = sourcesBarOption(comparison([byError(4, 50)]), () => '<img src=x onerror=alert(1)>') as BarOption;
+		expect(o.tooltip.formatter([{ dataIndex: 0 }]).startsWith('&lt;img src=x onerror=alert(1)&gt;<br/>')).toBe(true);
+	});
 });
 
 describe('sourcesTable', () => {
@@ -374,6 +385,11 @@ describe('pregameBarOption', () => {
 		expect(text).toContain('鳳凰：40%');
 		expect(option().tooltip.formatter([{ dataIndex: 5 }])).toContain('台電：—');
 	});
+
+	it('tooltip 的隊名轉義成文字', () => {
+		const o = pregameBarOption(m, { home: '<img src=x onerror=alert(1)>', away: '鳳凰' }, { home: '#c00000', away: '#0050a0' }) as any;
+		expect(o.tooltip.formatter([{ dataIndex: 0 }])).toBe('攻擊成功率<br/>&lt;img src=x onerror=alert(1)&gt;：50%<br/>鳳凰：40%');
+	});
 });
 
 describe('pregameTable', () => {
@@ -466,6 +482,11 @@ describe('球隊逐場趨勢', () => {
 		const blocks = teamTrendOption(season, 'blocks_per_set', teamName) as O;
 		expect(blocks.yAxis.max).toBeUndefined();
 		expect(blocks.tooltip.formatter([{ dataIndex: 4 }])).toContain('每局攔網：1（攔網 4／4 局）');
+	});
+
+	it('提示框的對手隊名轉義成文字', () => {
+		const o = teamTrendOption(season, 'attack_success_rate', () => '<img src=x onerror=alert(1)>') as O;
+		expect(o.tooltip.formatter([{ dataIndex: 1 }])).toBe('2026-01-10 對 &lt;img src=x onerror=alert(1)&gt;<br/>攻擊成功率：25%（得分 5／20）');
 	});
 
 	it('結論是近 3 場加總後再除，與本季整體的差距', () => {

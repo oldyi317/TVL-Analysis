@@ -7,6 +7,8 @@ REPO="oldyi317/TVL-Analysis"
 RUNNER_DIR="${RUNNER_DIR:-$HOME/actions-runner}"
 # oldyi317 的 fine-grained PAT（只限本 repo、Administration 讀寫）；個人 repo 的 collaborator 拿不到 admin，取不了註冊 token
 TOKEN_FILE="${RUNNER_TOKEN_FILE:-$HOME/.config/tvl-runner/token}"
+# job 開始前的守門腳本（setup_runner.sh 安裝）：只放行本 repo 的 schedule 與 workflow_dispatch；找不到就不註冊
+JOB_GATE="${RUNNER_JOB_GATE:-$HOME/.config/tvl-runner/runner_job_gate.sh}"
 BACKOFF_START=30
 BACKOFF_MAX=900
 # run.sh 對 listener 異常（驗證失敗、session 衝突等）也回 0，跑不到這麼久就當作失敗
@@ -18,6 +20,7 @@ run_once() {
     # 上一輪異常中斷可能留下本機設定（config.sh 會拒絕重複註冊）與上個 job 的工作目錄
     rm -f .runner .credentials .credentials_rsaparams
     rm -rf _work
+    [ -r "$JOB_GATE" ] || { echo "找不到 job 守門腳本 $JOB_GATE，請重跑 setup_runner.sh"; return 1; }
     local token
     [ -r "$TOKEN_FILE" ] || { echo "找不到 PAT 檔 $TOKEN_FILE"; return 1; }
     # 每輪重讀，PAT 換新不用重啟；只給 gh，不進 job 環境
@@ -26,7 +29,7 @@ run_once() {
     ./config.sh --unattended --ephemeral --replace --url "https://github.com/${REPO}" \
         --token "$token" --name tvl-wsl --labels tvl || { echo "註冊失敗"; return 1; }
     local started=$SECONDS
-    ./run.sh || { echo "run.sh 異常結束"; return 1; }
+    ACTIONS_RUNNER_HOOK_JOB_STARTED="$JOB_GATE" ./run.sh || { echo "run.sh 異常結束"; return 1; }
     (( SECONDS - started >= MIN_JOB_SECONDS )) || { echo "run.sh 在 ${MIN_JOB_SECONDS} 秒內結束，視為異常"; return 1; }
 }
 
