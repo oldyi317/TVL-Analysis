@@ -12,7 +12,10 @@ export const connection = $state<{ offline: boolean; status: 'off' | 'preparing'
 // 新版的檔案抓完、停在等待狀態，等使用者按更新條
 export const update = $state({ ready: false });
 
-const supported = () => !dev && 'serviceWorker' in navigator;
+// 建置時 VITE_SW_REMOVE=1 是自我移除版（docs/ops/service-worker.md）：頁面不註冊、不使用 service worker，否則會把它裝回去
+const removing = import.meta.env.VITE_SW_REMOVE === '1';
+
+const supported = () => !removing && !dev && 'serviceWorker' in navigator;
 
 // 還沒被接手時看過的頁，接手後補存
 const pending = new Set<string>();
@@ -130,7 +133,8 @@ export function startServiceWorker() {
 		if (reopen && update.ready) applyUpdate();
 		void checkForUpdate(reopen);
 	});
-	if (!supported()) return;
+	// 這裡直接看常數，自我移除版的產物才不會留下註冊的程式（scripts/verify-sw-removal.sh 會檢查）
+	if (removing || !supported()) return;
 	connection.status = 'preparing';
 	controlled = navigator.serviceWorker.controller !== null;
 	navigator.serviceWorker.addEventListener('controllerchange', () => {

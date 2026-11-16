@@ -101,6 +101,7 @@ TVL-Analysis/
 │   ├── adr/                       # 架構決策紀錄（ADR 0001–0009）
 │   ├── ops/season-switch.md       # 換季操作檢查表
 │   ├── ops/daily-crawl.md         # daily-crawl 維運：自架 runner、本機觸發 timer、失敗排查
+│   ├── ops/service-worker.md      # service worker 維運：換版機制、自我移除版的部署、退回與演練
 │   └── design-system.md           # 網站視覺與設計規範
 ├── CONTEXT.md                     # 領域詞彙表（組別、賽季、週登錄、主要位置等命名規範）
 ├── AGENTS.md                      # AI Agent 開發流程與地雷清單

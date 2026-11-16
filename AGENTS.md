@@ -17,6 +17,7 @@ npm run test:e2e                                 # Playwright smoke（需先 bui
 bash scripts/new-worktree.sh <分支> [base]        # 在 ~/work 開 worktree，依賴與資料一併備好
 bash scripts/verify.sh                           # 收工四項各自回報（pytest 與網站那一串同時跑，網站那一串依序跑）
 bash scripts/e2e.sh [--repeat N | --profile] [spec…]  # 在自己挑的空 port 跑 e2e（不 build；spec 如 e2e/smoke.e2e.ts；--repeat 連跑 N 輪各自回報；--profile 印 worker 數、逐檔耗時與最慢的測試）
+bash scripts/verify-sw-removal.sh                # 自我移除版的檢查（建置兩次再用瀏覽器實測，不在 verify.sh 裡）；改了 service worker 的註冊、換版或 cache 之後跑
 bash scripts/ci-timings.sh [N]                   # 最近 N 次成功 CI 的 web job、e2e 步驟與測試本身耗時及範圍；比較 CI 前後先看範圍
 python tests/test_vocabulary.py <檔…>              # 對任意檔查避免詞；文案、spec、票的草稿交給使用者或發出去之前先跑
 bash scripts/publish-tickets.sh <目錄>            # 開 spec 與子票、掛 sub-issue 與阻擋邊（目錄格式見腳本開頭；DRY_RUN=1 可演練）
@@ -51,6 +52,8 @@ npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔�
   姓名比對、查無就動態新增。比對到人但查無登錄時補一筆 `source='backfill'`
   登錄（背號/位置先取自 `season_rosters`，查無才 NULL），下游計算仍須對缺值防禦。
 - **daily-crawl 失敗或排程異常先讀 `docs/ops/daily-crawl.md`**：runner 在使用者筆電 WSL，先查 runner 在線再查程式。
+- **要撤掉 service worker、訪客卡在舊版，或要回答更新多久到使用者手上，先讀 `docs/ops/service-worker.md`**：裝進訪客瀏覽器的
+  service worker 靠 revert 撤不掉，要部署自我移除版（建置時設 `VITE_SW_REMOVE=1`）。
 - **換季前必跑 `docs/ops/season-switch.md` checklist**：cup_id 已進
   roster_registrations 的 UNIQUE（Phase 3），跨季同名週次不再互相覆寫；`seasons`
   新季列等仍是手動更新，未更新前爬蟲抓不到新季資料。外部統計系統（`EXT_*` 常數、

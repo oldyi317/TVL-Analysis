@@ -90,3 +90,14 @@ export function precachedAssets(paths: string[]): string[] {
 		(path) => !path.startsWith('icons/') && !path.startsWith('.') && !SKIPPED.has(path)
 	);
 }
+
+// 自我移除版用：清掉這個 origin 的全部 cache 再註銷；cache 列不出來或刪不掉也照樣註銷
+export async function uninstall(
+	store: Pick<CacheStorage, 'keys' | 'delete'>,
+	registration: Pick<ServiceWorkerRegistration, 'unregister'>
+): Promise<void> {
+	try {
+		await Promise.allSettled((await store.keys()).map((name) => store.delete(name)));
+	} catch {}
+	await registration.unregister();
+}

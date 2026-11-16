@@ -55,6 +55,13 @@ export async function loadAndWaitControlled(page: Page, url: string) {
 	await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
 }
 
+// headless 不會真的變 hidden：覆寫 visibilityState 再送事件
+export const setVisibility = (page: Page, value: 'hidden' | 'visible') =>
+	page.evaluate((state) => {
+		Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+		document.dispatchEvent(new Event('visibilitychange'));
+	}, value);
+
 export async function openMoreSheet(page: Page) {
 	await page.getByRole('navigation', { name: '主要分頁' }).getByRole('button', { name: '更多' }).click();
 	await expect(page.getByRole('dialog', { name: '更多' })).toBeVisible();

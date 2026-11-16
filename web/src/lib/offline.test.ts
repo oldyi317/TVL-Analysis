@@ -7,7 +7,8 @@ import {
 	dataUrlOf,
 	precachedAssets,
 	predownload,
-	seasonPagePaths
+	seasonPagePaths,
+	uninstall
 } from './offline.js';
 
 const MARKER = '/__offline/predownload.json';
@@ -188,5 +189,50 @@ describe('countsAsReopen', () => {
 
 	it('瀏覽器分頁離開再久也不算', () => {
 		expect(countsAsReopen(false, 24 * 60 * 60 * 1000)).toBe(false);
+	});
+});
+
+describe('uninstall', () => {
+	function fakeCaches(names: string[], opts: { failKeys?: boolean; failDelete?: string } = {}) {
+		const log: string[] = [];
+		const store = {
+			keys: async () => {
+				if (opts.failKeys) throw new Error('keys');
+				return names;
+			},
+			delete: async (name: string) => {
+				if (name === opts.failDelete) throw new Error('delete');
+				log.push(`delete ${name}`);
+				return true;
+			}
+		};
+		const registration = {
+			unregister: async () => {
+				log.push('unregister');
+				return true;
+			}
+		};
+		return { store, registration, log };
+	}
+
+	it('刪掉全部 cache（不挑名稱），全部刪完才註銷', async () => {
+		const f = fakeCaches(['precache-v1', 'offline-data', 'other']);
+		await uninstall(f.store, f.registration);
+		expect(f.log.slice(0, 3).sort()).toEqual(['delete offline-data', 'delete other', 'delete precache-v1']);
+		expect(f.log[3]).toBe('unregister');
+		expect(f.log).toHaveLength(4);
+	});
+
+	it('某個 cache 刪除失敗：其餘照刪，照樣註銷', async () => {
+		const f = fakeCaches(['a', 'b', 'c'], { failDelete: 'b' });
+		await uninstall(f.store, f.registration);
+		expect(f.log.slice(0, 2).sort()).toEqual(['delete a', 'delete c']);
+		expect(f.log[2]).toBe('unregister');
+	});
+
+	it('列不出 cache 時也照樣註銷', async () => {
+		const f = fakeCaches([], { failKeys: true });
+		await uninstall(f.store, f.registration);
+		expect(f.log).toEqual(['unregister']);
 	});
 });
