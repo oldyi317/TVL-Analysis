@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+	AWAY_LIMIT_MS,
 	PREDOWNLOAD_CONCURRENCY,
+	countsAsReopen,
 	dataKey,
 	dataUrlOf,
 	precachedAssets,
@@ -174,5 +176,17 @@ describe('precachedAssets', () => {
 
 	it('空清單回空清單', () => {
 		expect(precachedAssets([])).toEqual([]);
+	});
+});
+
+describe('countsAsReopen', () => {
+	it('獨立視窗離開剛好 30 分鐘不算重新開啟，多 1 毫秒才算', () => {
+		expect(AWAY_LIMIT_MS).toBe(30 * 60 * 1000);
+		expect(countsAsReopen(true, 1_800_000)).toBe(false);
+		expect(countsAsReopen(true, 1_800_001)).toBe(true);
+	});
+
+	it('瀏覽器分頁離開再久也不算', () => {
+		expect(countsAsReopen(false, 24 * 60 * 60 * 1000)).toBe(false);
 	});
 });

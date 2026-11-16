@@ -9,6 +9,7 @@
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
 	import TabBar from '#lib/components/TabBar.svelte';
 	import TopBar from '#lib/components/TopBar.svelte';
+	import UpdateBar from '#lib/components/UpdateBar.svelte';
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
 	import { detailListOf, listHref, nextDepth } from '#lib/nav.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
@@ -115,6 +116,7 @@
 <div class="wrap">
 	<main>
 		<OfflineBar />
+		<UpdateBar />
 		{@render children()}
 	</main>
 	<SiteFooter />

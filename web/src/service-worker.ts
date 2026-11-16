@@ -98,6 +98,8 @@ sw.addEventListener('message', (event) => {
 	const message = event.data as WorkerMessage | null;
 	if (message?.type === 'save') return event.waitUntil(save(message.path));
 	if (message?.type === 'sync') event.waitUntil(sync(message.paths, event.ports[0]));
+	// install 不 skipWaiting：新版停在等待，等使用者按更新條（或獨立視窗離開太久）才接手
+	if (message?.type === 'activate') event.waitUntil(sw.skipWaiting());
 });
 
 // 只接受字串、且在 scope 範圍內的路徑

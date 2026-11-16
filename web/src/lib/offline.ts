@@ -12,8 +12,18 @@ export const DATA_CACHE = 'data';
 // 預先下載的並行上限
 export const PREDOWNLOAD_CONCURRENCY = 6;
 
-// 頁面送給 service worker 的訊息：save 存一頁的資料檔；sync 確認預存還在，paths 不是 null 就預先下載（附 MessageChannel 的 port，回 { ready }）
-export type WorkerMessage = { type: 'save'; path: string } | { type: 'sync'; paths: string[] | null };
+// 頁面送給 service worker 的訊息：save 存一頁的資料檔；sync 確認預存還在，paths 不是 null 就預先下載（附 MessageChannel 的 port，回 { ready }）；activate 讓等待中的新版接手
+export type WorkerMessage =
+	| { type: 'save'; path: string }
+	| { type: 'sync'; paths: string[] | null }
+	| { type: 'activate' };
+
+export const AWAY_LIMIT_MS = 30 * 60 * 1000;
+
+// 獨立視窗離開超過上限，視同重新開啟；瀏覽器分頁不管離開多久都不算
+export function countsAsReopen(standalone: boolean, awayMs: number): boolean {
+	return standalone && awayMs > AWAY_LIMIT_MS;
+}
 
 export function dataUrlOf(pagePath: string): string {
 	return `${pagePath.endsWith('/') ? pagePath : `${pagePath}/`}__data.json`;
