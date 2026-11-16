@@ -1,0 +1,19 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "tvl-push",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-11-01",
+	"observability": { "enabled": true },
+	"vars": {
+		"ALLOWED_ORIGIN": "https://vstat.tw"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "tvl-push",
+			// 佔位值：本機模式與單元測試可用，遠端 D1 建好後由 #251 換成真的識別碼
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "migrations"
+		}
+	]
+}
