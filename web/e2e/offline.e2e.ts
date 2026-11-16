@@ -1,6 +1,15 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { type Page } from '@playwright/test';
-import { BASE, OLD_SEASON, currentSeason, expect, findSeason, readJson, test } from './helpers.js';
+import {
+	BASE,
+	OLD_SEASON,
+	currentSeason,
+	expect,
+	findSeason,
+	openMoreSheet,
+	readJson,
+	test
+} from './helpers.js';
 
 test.use({ serviceWorkers: 'allow' });
 
@@ -168,4 +177,230 @@ test('離線開根路徑會轉到當季首頁', async ({ page, context }) => {
 	expect(await response!.text()).toBe(shellHtml);
 	await expect(page).toHaveURL(`${BASE}/${currentSeason}/men/`);
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${currentSeason} 男子組`);
+});
+
+// ---- 看過就存、預先下載、離線狀態顯示（#238） ----
+
+const updatedMonthDay = new Intl.DateTimeFormat('en-US', {
+	timeZone: 'Asia/Taipei',
+	month: 'numeric',
+	day: 'numeric'
+}).format(new Date(readJson('site').generated_at));
+const READY = `可離線使用，資料更新至 ${updatedMonthDay}`;
+const PREPARING = '離線資料準備中';
+const BAR = `離線中，資料更新至 ${updatedMonthDay}`;
+
+// 從建置產物列出某賽季的單場頁與球員頁路徑（與預先下載的對象同一批）
+function detailPaths(season: string, kind?: 'matches' | 'players') {
+	return ['men', 'women'].flatMap((group) =>
+		(kind ? [kind] : (['matches', 'players'] as const)).flatMap((k) => {
+			const dir = `build/${season}/${group}/${k}`;
+			if (!existsSync(dir)) return [];
+			return readdirSync(dir)
+				.filter((id) => existsSync(`${dir}/${id}/__data.json`))
+				.map((id) => `${BASE}/${season}/${group}/${k}/${id}/`);
+		})
+	);
+}
+
+const cachedData = (page: Page) =>
+	page.evaluate(async () => (await (await caches.open('data')).keys()).map((r) => new URL(r.url).pathname));
+
+const hasData = (page: Page, path: string) => async () => (await cachedData(page)).includes(`${path}__data.json`);
+
+// 假裝是以獨立視窗開啟：只改 display-mode: standalone 的查詢，其他照原本
+async function asStandalone(page: Page) {
+	await page.addInitScript(() => {
+		const original = window.matchMedia.bind(window);
+		window.matchMedia = (query) => original(query.includes('display-mode: standalone') ? 'all' : query);
+	});
+}
+
+async function waitStatus(page: Page, text: string, timeout = 80_000) {
+	await expect(page.getByText(text, { exact: true })).toBeVisible({ timeout });
+}
+
+async function openDetailOffline(page: Page, path: string, kind: 'matches' | 'players') {
+	const response = await page.goto(path);
+	expect(response!.fromServiceWorker()).toBe(true);
+	const h1 = page.getByRole('heading', { level: 1 });
+	await expect(h1).not.toHaveText(MISS);
+	if (kind === 'matches') await expect(h1).toContainText('對');
+	else await expect(h1).toHaveText(/\S/);
+	await noKitErrorPage(page);
+}
+
+for (const season of [currentSeason, OLD_SEASON]) {
+	test(`看過就存（整頁載入）：${season} 的單場頁與球員頁離線再開得起來`, async ({ page, context }) => {
+		const match = detailPaths(season, 'matches')[0];
+		const player = detailPaths(season, 'players')[0];
+		test.skip(!match || !player, `${season} 沒有單場頁或球員頁`);
+		await loadAndWaitControlled(page, `${BASE}/${season}/men/`);
+		await page.goto(match);
+		await page.goto(player);
+		await expect.poll(hasData(page, match)).toBe(true);
+		await expect.poll(hasData(page, player)).toBe(true);
+		await context.setOffline(true);
+		await openDetailOffline(page, match, 'matches');
+		await openDetailOffline(page, player, 'players');
+	});
+}
+
+test('看過就存（站內導覽）：由列表點進單場頁與球員頁，離線再開得起來', async ({ page, context }) => {
+	test.skip(!playedSeason || !playerSeason, '沒有已完賽場次或球員');
+	await loadAndWaitControlled(page, `${BASE}/${playedSeason}/men/matches/`);
+	const card = page.locator('.card-link').first();
+	const matchPath = (await card.getAttribute('href'))!;
+	await card.click();
+	await expect(page).toHaveURL(matchPath);
+	await page.goto(`${BASE}/${playerSeason!.season}/men/players/`);
+	const link = page.locator('a[href*="/players/"]:not([href$="/players/"])').first();
+	const playerPath = (await link.getAttribute('href'))!;
+	await link.click();
+	await expect(page).toHaveURL(playerPath);
+	await expect.poll(hasData(page, matchPath)).toBe(true);
+	await expect.poll(hasData(page, playerPath)).toBe(true);
+	await context.setOffline(true);
+	await openDetailOffline(page, matchPath, 'matches');
+	await openDetailOffline(page, playerPath, 'players');
+});
+
+test.describe('桌面寬度也會存看過的頁', () => {
+	test.use({ viewport: { width: 1280, height: 800 } });
+
+	test('單場頁與球員頁離線再開得起來', async ({ page, context }) => {
+		const match = detailPaths(currentSeason, 'matches')[0];
+		const player = detailPaths(currentSeason, 'players')[0];
+		await loadAndWaitControlled(page, `${BASE}/${currentSeason}/men/`);
+		await page.goto(match);
+		await page.goto(player);
+		await expect.poll(hasData(page, match)).toBe(true);
+		await expect.poll(hasData(page, player)).toBe(true);
+		await context.setOffline(true);
+		await openDetailOffline(page, match, 'matches');
+		await openDetailOffline(page, player, 'players');
+	});
+});
+
+test('第一次進站直接落在單場頁：service worker 接手後補存，離線重開同一頁看得到資料', async ({ page, context }) => {
+	const match = detailPaths(currentSeason, 'matches')[0];
+	await loadAndWaitControlled(page, match);
+	await expect.poll(hasData(page, match)).toBe(true);
+	await context.setOffline(true);
+	await page.reload();
+	await expect(page.getByRole('heading', { level: 1 })).toContainText('對');
+	await expect(page.getByRole('heading', { level: 1 })).not.toHaveText(MISS);
+});
+
+test('獨立視窗：當季預先下載完成後，離線時沒看過的單場頁與球員頁都開得起來', async ({ page, context }) => {
+	test.slow();
+	await asStandalone(page);
+	await loadAndWaitControlled(page, `${BASE}/${currentSeason}/men/`);
+	await openMoreSheet(page);
+	await waitStatus(page, READY);
+	const expected = detailPaths(currentSeason);
+	expect(expected.length).toBeGreaterThan(0);
+	const cached = await cachedData(page);
+	for (const path of expected) expect(cached).toContain(`${path}__data.json`);
+	await page.keyboard.press('Escape');
+	await context.setOffline(true);
+	await openDetailOffline(page, detailPaths(currentSeason, 'matches').at(-1)!, 'matches');
+	await openDetailOffline(page, detailPaths(currentSeason, 'players').at(-1)!, 'players');
+});
+
+test('下載中顯示「離線資料準備中」，下載完變成可離線使用', async ({ page, context }) => {
+	test.slow();
+	let release!: () => void;
+	const gate = new Promise<void>((resolve) => (release = resolve));
+	await context.route('**/__data.json', async (route) => {
+		await gate;
+		await route.continue().catch(() => {});
+	});
+	await asStandalone(page);
+	await loadAndWaitControlled(page, `${BASE}/${currentSeason}/men/`);
+	await openMoreSheet(page);
+	await waitStatus(page, PREPARING);
+	await expect(page.getByText(READY, { exact: true })).toHaveCount(0);
+	release();
+	await waitStatus(page, READY);
+});
+
+test('瀏覽器分頁不預先下載：沒看過的當季單場頁離線時顯示說明頁', async ({ page, context }) => {
+	await loadAndWaitControlled(page, `${BASE}/${currentSeason}/men/`);
+	await openMoreSheet(page);
+	await waitStatus(page, READY);
+	const unseen = detailPaths(currentSeason, 'matches')[0];
+	expect(await cachedData(page)).not.toContain(`${unseen}__data.json`);
+	await page.keyboard.press('Escape');
+	await context.setOffline(true);
+	await page.goto(unseen);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText(MISS);
+});
+
+test('離線資料被清掉：下次連網開啟自動重抓，沒有任何通知', async ({ page, context }) => {
+	// 預存加當季下載要跑兩輪；整套並行又機器忙時超過預設的 30 秒
+	test.slow();
+	await asStandalone(page);
+	await loadAndWaitControlled(page, `${BASE}/${currentSeason}/men/`);
+	await openMoreSheet(page);
+	await waitStatus(page, READY);
+	await page.keyboard.press('Escape');
+	await page.evaluate(async () => {
+		for (const key of await caches.keys()) await caches.delete(key);
+	});
+	await page.reload();
+	await expect(page.getByRole('alert')).toHaveCount(0);
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+	await openMoreSheet(page);
+	await waitStatus(page, READY);
+	await page.keyboard.press('Escape');
+	await context.setOffline(true);
+	await openDetailOffline(page, detailPaths(currentSeason, 'matches').at(-1)!, 'matches');
+	const list = await page.goto(`${BASE}/${currentSeason}/men/standings/`);
+	expect(list!.fromServiceWorker()).toBe(true);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${currentSeason} 男子組 戰績`);
+	await expect(page.getByRole('alert')).toHaveCount(0);
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+// iPhone 的獨立視窗從背景回來不會重新載入，回到前景就是下一次「開啟」
+test('獨立視窗回到前景：離線資料在背景時被清掉，回來就重抓', async ({ page }) => {
+	test.slow();
+	await asStandalone(page);
+	await loadAndWaitControlled(page, `${BASE}/${currentSeason}/men/`);
+	await openMoreSheet(page);
+	await waitStatus(page, READY);
+	await page.evaluate(() => caches.delete('data'));
+	expect(await cachedData(page)).toEqual([]);
+	await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+	// 清掉後狀態行還留著就緒的字，所以先等資料檔真的抓齊，再看狀態行
+	const expected = detailPaths(currentSeason).map((path) => `${path}__data.json`);
+	const missing = async () => {
+		const cached = await cachedData(page);
+		return expected.filter((url) => !cached.includes(url)).length;
+	};
+	await expect.poll(missing, { timeout: 80_000 }).toBe(0);
+	await waitStatus(page, READY);
+});
+
+test('離線狀態細條：線上沒有、頁尾照舊；離線出現「離線中，資料更新至 M/D」且日期同頁尾', async ({ page, context }) => {
+	await loadAndWaitControlled(page, `${BASE}/${currentSeason}/men/`);
+	await expect(page.getByText(/^離線中/)).toHaveCount(0);
+	const footer = page.getByText(/^資料更新時間/);
+	await expect(footer).toBeVisible();
+	const [, month, day] = (await page.locator('footer time').textContent())!.match(/-(\d+)-(\d+) /)!;
+	await context.setOffline(true);
+	await expect(page.getByText(BAR, { exact: true })).toBeVisible();
+	expect(BAR).toBe(`離線中，資料更新至 ${Number(month)}/${Number(day)}`);
+	await expect(footer).toBeVisible();
+});
+
+test('離線判斷不只看 navigator.onLine：探測失敗、站內導覽後細條出現', async ({ page, context }) => {
+	await loadAndWaitControlled(page, `${BASE}/${currentSeason}/men/`);
+	await expect(page.getByText(/^離線中/)).toHaveCount(0);
+	await context.route('**/_app/version.json', (route) => route.abort());
+	await page.getByRole('navigation', { name: '主要分頁' }).getByRole('link', { name: '戰績' }).click();
+	await expect(page).toHaveURL(`${BASE}/${currentSeason}/men/standings/`);
+	await expect(page.getByText(BAR, { exact: true })).toBeVisible();
+	expect(await page.evaluate(() => navigator.onLine)).toBe(true);
 });

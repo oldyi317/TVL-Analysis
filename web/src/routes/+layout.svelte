@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
 	import { asset, resolve } from '$app/paths';
+	import OfflineBar from '#lib/components/OfflineBar.svelte';
 	import SiteFooter from '#lib/components/SiteFooter.svelte';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
 	import TabBar from '#lib/components/TabBar.svelte';
@@ -11,7 +12,7 @@
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
 	import { detailListOf, listHref, nextDepth } from '#lib/nav.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
-	import { registerServiceWorker } from '#lib/serviceWorker.js';
+	import { checkConnection, rememberPage, startServiceWorker } from '#lib/serviceWorker.svelte.js';
 	import { currentSeason, findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
 	import type { LayoutProps } from './$types';
 	import type { PageData as MatchPageData } from './[season]/[group]/matches/[game]/$types';
@@ -76,6 +77,10 @@
 	let depth = $state(0);
 	afterNavigate((nav) => {
 		depth = nextDepth(depth, nav.type, 'delta' in nav ? nav.delta : 0);
+		// 單場頁與球員頁的資料是獨立的資料檔，要存；球隊頁的資料打包在程式檔裡，已預存
+		const detail = detailListOf(page.route.id);
+		if (detail === 'matches' || detail === 'players') rememberPage(page.url.pathname, nav.type);
+		void checkConnection();
 	});
 
 	const back = $derived.by(() => {
@@ -94,7 +99,7 @@
 	// e2e 等到這個記號才互動：根 layout 掛載時整頁已 hydrate，SvelteKit 也在同一輪事件迴圈內接手站內連結
 	onMount(() => {
 		document.documentElement.dataset.hydrated = '';
-		registerServiceWorker();
+		startServiceWorker();
 	});
 </script>
 
@@ -109,6 +114,7 @@
 
 <div class="wrap">
 	<main>
+		<OfflineBar />
 		{@render children()}
 	</main>
 	<SiteFooter />

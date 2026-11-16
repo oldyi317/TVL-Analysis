@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { formatTaipeiMinute } from './datetime.js';
+import { formatTaipeiMinute, formatTaipeiMonthDay } from './datetime.js';
+
+describe('formatTaipeiMonthDay', () => {
+	it('月日不補零', () => {
+		expect(formatTaipeiMonthDay('2026-11-09T10:00:00+08:00')).toBe('11/9');
+		expect(formatTaipeiMonthDay('2026-03-04T05:06:07+08:00')).toBe('3/4');
+	});
+
+	it('跨日：UTC 16:00 以後在台北是隔天', () => {
+		expect(formatTaipeiMonthDay('2026-11-08T15:59:00Z')).toBe('11/8');
+		expect(formatTaipeiMonthDay('2026-11-08T16:00:00Z')).toBe('11/9');
+		expect(formatTaipeiMonthDay('2026-12-31T16:30:00Z')).toBe('1/1');
+	});
+});
 
 describe('formatTaipeiMinute', () => {
 	it('台北偏移的字串照原值顯示到分', () => {
