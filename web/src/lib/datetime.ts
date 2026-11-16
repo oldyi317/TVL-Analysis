@@ -8,9 +8,16 @@ const taipeiParts = new Intl.DateTimeFormat('en-US', {
 	hourCycle: 'h23'
 });
 
+function taipeiPartsOf(iso: string): Record<string, string> {
+	return Object.fromEntries(taipeiParts.formatToParts(new Date(iso)).map((p) => [p.type, p.value]));
+}
+
+export function formatTaipeiMonthDay(iso: string): string {
+	const parts = taipeiPartsOf(iso);
+	return `${Number(parts.month)}/${Number(parts.day)}`;
+}
+
 export function formatTaipeiMinute(iso: string): string {
-	const parts = Object.fromEntries(
-		taipeiParts.formatToParts(new Date(iso)).map((p) => [p.type, p.value])
-	);
+	const parts = taipeiPartsOf(iso);
 	return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }

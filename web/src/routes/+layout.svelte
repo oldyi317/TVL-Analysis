@@ -4,13 +4,17 @@
 	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
 	import { asset, resolve } from '$app/paths';
+	import OfflineBar from '#lib/components/OfflineBar.svelte';
 	import SiteFooter from '#lib/components/SiteFooter.svelte';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
 	import TabBar from '#lib/components/TabBar.svelte';
 	import TopBar from '#lib/components/TopBar.svelte';
+	import UpdateBar from '#lib/components/UpdateBar.svelte';
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
-	import { detailListOf, listHref, nextDepth } from '#lib/nav.js';
+	import { startInstall } from '#lib/installPrompt.svelte.js';
+	import { detailListOf, listHref, NOTIFICATIONS_TITLE, nextDepth } from '#lib/nav.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
+	import { checkConnection, rememberPage, startServiceWorker } from '#lib/serviceWorker.svelte.js';
 	import { currentSeason, findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
 	import type { LayoutProps } from './$types';
 	import type { PageData as MatchPageData } from './[season]/[group]/matches/[game]/$types';
@@ -71,13 +75,21 @@
 	const onRecords = $derived(page.route.id?.startsWith('/records/') ?? false);
 	const season = $derived(page.params.season ?? (onRecords ? currentSeason.name : undefined));
 
+	// 這一頁不含賽季與組別：頂部列只有返回鈕與頁名，桌面側欄只留導覽
+	const onNotifications = $derived(page.route.id === '/notifications');
+
 	// 站內瀏覽深度只留在記憶體：進站歸零，重新整理後也歸零
 	let depth = $state(0);
 	afterNavigate((nav) => {
 		depth = nextDepth(depth, nav.type, 'delta' in nav ? nav.delta : 0);
+		// 單場頁與球員頁的資料是獨立的資料檔，要存；球隊頁的資料打包在程式檔裡，已預存
+		const detail = detailListOf(page.route.id);
+		if (detail === 'matches' || detail === 'players') rememberPage(page.url.pathname, nav.type);
+		void checkConnection();
 	});
 
 	const back = $derived.by(() => {
+		if (onNotifications) return { href: resolve('/'), canGoBack: depth > 0 };
 		const section = detailListOf(page.route.id);
 		const detailSeason = page.params.season;
 		if (!section || !detailSeason || !group) return undefined;
@@ -93,18 +105,24 @@
 	// e2e 等到這個記號才互動：根 layout 掛載時整頁已 hydrate，SvelteKit 也在同一輪事件迴圈內接手站內連結
 	onMount(() => {
 		document.documentElement.dataset.hydrated = '';
+		startServiceWorker();
+		startInstall();
 	});
 </script>
 
 <svelte:head>
 	<link rel="icon" type="image/png" href={asset('favicon.png')} />
+	<link rel="manifest" href={resolve('/manifest.webmanifest')} />
+	<link rel="apple-touch-icon" href={asset('icons/apple-touch-icon.png')} />
 </svelte:head>
 
-<TopBar {season} {group} records={onRecords} {back} hrefFor={switchHref} />
-<SiteHeader {season} {group} records={onRecords} hrefFor={switchHref} />
+<TopBar {season} {group} records={onRecords} {back} title={onNotifications ? NOTIFICATIONS_TITLE : undefined} hrefFor={switchHref} />
+<SiteHeader {season} {group} records={onRecords} navOnly={onNotifications} hrefFor={switchHref} />
 
 <div class="wrap">
 	<main>
+		<OfflineBar />
+		<UpdateBar />
 		{@render children()}
 	</main>
 	<SiteFooter />

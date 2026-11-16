@@ -2,7 +2,12 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { DEFAULT_GROUP } from '#lib/groupMemory.js';
+	import { inPhoneBrowserTab } from '#lib/installGuide.js';
+	import { installPrompt } from '#lib/installPrompt.svelte.js';
 	import { hrefOf, MORE_SECTIONS, NAV_ITEMS, sectionOf, tabOf, type Section } from '#lib/nav.js';
+	import siteJson from '#lib/data/site.json';
+	import { formatTaipeiMonthDay } from '#lib/datetime.js';
+	import { connection } from '#lib/serviceWorker.svelte.js';
 	import { currentSeason, type Group } from '#lib/site.js';
 	import BottomSheet from './BottomSheet.svelte';
 	import Icon from './Icon.svelte';
@@ -12,11 +17,14 @@
 	const base = $derived(`${resolve('/[season]/[group]', { season: encodeURIComponent(season ?? currentSeason.name), group: group ?? DEFAULT_GROUP })}/`);
 	const recordsBase = $derived(`${resolve('/records/[group]/[[kind=recordKind]]', { group: group ?? DEFAULT_GROUP })}/`);
 	const href = (section: Section) => hrefOf(section, base, recordsBase);
+	const installHref = `${resolve('/notifications')}/`;
 
 	const tab = $derived(tabOf(page.route.id));
 	const section = $derived(sectionOf(page.route.id));
 	const tabItems = NAV_ITEMS.filter((item) => !MORE_SECTIONS.includes(item.section));
 	const moreItems = NAV_ITEMS.filter((item) => MORE_SECTIONS.includes(item.section));
+
+	const updatedAt = formatTaipeiMonthDay(siteJson.generated_at);
 
 	let sheet: BottomSheet;
 </script>
@@ -49,7 +57,20 @@
 				</a>
 			</li>
 		{/each}
+		{#if installPrompt.guide && inPhoneBrowserTab(installPrompt.guide)}
+			<li>
+				<a href={installHref} aria-current={section === 'notifications' ? 'page' : undefined}>
+					<Icon name="add-square" />
+					<span>加到主畫面</span>
+				</a>
+			</li>
+		{/if}
 	</ul>
+	{#if connection.status === 'ready'}
+		<p class="offline-status">可離線使用，資料更新至 {updatedAt}</p>
+	{:else if connection.status === 'preparing'}
+		<p class="offline-status">離線資料準備中</p>
+	{/if}
 </BottomSheet>
 
 <style>
@@ -112,6 +133,13 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
+	}
+
+	.offline-status {
+		margin: var(--space-3) 0 0;
+		padding-inline: var(--space-3);
+		color: var(--text-muted);
+		font-size: var(--text-sm);
 	}
 
 	li a {

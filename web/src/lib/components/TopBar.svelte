@@ -11,12 +11,14 @@
 		group,
 		records = false,
 		back,
+		title,
 		hrefFor
 	}: {
 		season?: string;
 		group?: Group;
 		records?: boolean;
 		back?: { href: string; canGoBack: boolean };
+		title?: string;
 		hrefFor: (param: 'season' | 'group', value: string) => string | undefined;
 	} = $props();
 
@@ -38,6 +40,9 @@
 		>
 			<Icon name="chevron-left" size={24} />
 		</a>
+		{#if title}
+			<span class="title">{title}</span>
+		{/if}
 	{:else}
 		<a class="brand" href={resolve('/')}>VStat 企排</a>
 	{/if}
@@ -105,6 +110,13 @@
 
 	.back:active {
 		background: var(--accent-tint);
+	}
+
+	.title {
+		margin-inline-end: auto;
+		font-size: var(--text-lg);
+		font-weight: 700;
+		white-space: nowrap;
 	}
 
 	.controls {

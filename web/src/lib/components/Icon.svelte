@@ -10,7 +10,8 @@
 		| 'arrow-up-right'
 		| 'map-pin'
 		| 'podium'
-		| 'more';
+		| 'more'
+		| 'add-square';
 
 	let { name, size = 20 }: { name: Name; size?: number } = $props();
 </script>
@@ -67,5 +68,9 @@
 		<circle cx="5.5" cy="12" r="1.5" />
 		<circle cx="12" cy="12" r="1.5" />
 		<circle cx="18.5" cy="12" r="1.5" />
+	{:else if name === 'add-square'}
+		<rect x="4" y="4" width="16" height="16" rx="4" />
+		<path d="M12 8.5v7" />
+		<path d="M8.5 12h7" />
 	{/if}
 </svg>

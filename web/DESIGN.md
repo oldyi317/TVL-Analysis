@@ -89,6 +89,7 @@ typography:
     lineHeight: 1
     fontFeature: "tabular-nums"
 rounded:
+  sm: "0.5rem"
   md: "0.875rem"
   lg: "1.25rem"
   full: "999px"
@@ -194,6 +195,18 @@ components:
     typography: "{typography.body}"
     rounded: "{rounded.md}"
     padding: "{spacing.3} {spacing.4}"
+  offline-bar:
+    backgroundColor: "{colors.warn-tint}"
+    textColor: "{colors.warn-ink}"
+    rounded: "{rounded.sm}"
+    padding: "{spacing.2} {spacing.3}"
+  update-bar:
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.on-accent}"
+    rounded: "{rounded.full}"
+    height: "2.75rem"
+  update-bar-hover:
+    backgroundColor: "{colors.accent-strong}"
   empty-state:
     backgroundColor: "{colors.surface-2}"
     textColor: "{colors.text-muted}"
@@ -329,9 +342,9 @@ components:
 
 ## Shapes
 
-圓角三級加圓形：卡片 20px（`--radius-lg`）、內嵌面板與桌面導覽項 14px（`--radius-md`）、chip／標籤／分段控制／PR 條 999px（`--radius-full`），隊徽、名次圓點、背號圓點、甜甜圈是正圓。ECharts tooltip 12px、長條頂端 `[6, 6, 0, 0]`。`--radius-sm: 0.5rem` 定義了但目前沒有元件使用。
+圓角三級加圓形：卡片 20px（`--radius-lg`）、內嵌面板與桌面導覽項 14px（`--radius-md`）、chip／標籤／分段控制／PR 條 999px（`--radius-full`），隊徽、名次圓點、背號圓點、甜甜圈是正圓。ECharts tooltip 12px、長條頂端 `[6, 6, 0, 0]`。`--radius-sm: 0.5rem` 只有離線細條使用（styleguide 頁的色票框不算）。
 
-邊線極少：淺色模式卡片無邊線，表格只有列線（1px `--line`），有隊徽的圓標 1px 內描邊，深色模式卡片 1px 邊線。沒有彩色左邊條、沒有外框按鈕。Icon 全部是手寫 inline SVG：24 viewBox、`fill="none"`、`stroke="currentColor"`、stroke-width 1.75、round cap／join，預設 20px，集中在 `Icon.svelte`（home、calendar、trophy、shield、user、podium、chevron-left、chevron-down、arrow-up-right、map-pin、more）；podium 是三階頒獎台，給導覽「排行榜」。
+邊線極少：淺色模式卡片無邊線，表格只有列線（1px `--line`），有隊徽的圓標 1px 內描邊，深色模式卡片 1px 邊線。沒有彩色左邊條、沒有外框按鈕。Icon 全部是手寫 inline SVG：24 viewBox、`fill="none"`、`stroke="currentColor"`、stroke-width 1.75、round cap／join，預設 20px，集中在 `Icon.svelte`（home、calendar、trophy、shield、user、podium、chevron-left、chevron-down、arrow-up-right、map-pin、more、add-square）；podium 是三階頒獎台，給導覽「排行榜」；add-square 是圓角方框內畫十字（rect 16px、rx 4），給「更多」面板的「加到主畫面」。
 
 ## Components
 
@@ -353,16 +366,25 @@ components:
 七項固定順序（`nav.ts` 的 `NAV_ITEMS`）：首頁、賽事、戰績、球隊、球員、排行榜、歷史紀錄；地標名稱「頁面」。≥64rem 直排，每項 44px 高、14px 圓角、圖示 20px + 文字、靠左；選中改成靛藍 tint 底 + 靛藍字，並以 `::after` 在 sidebar 右緣畫 3px 寬、上下內縮 8px 的靛藍指示條（絕對定位到 `-24px`，不是 border）。<64rem 隱藏，改由分頁列承擔。
 
 ### 頂部列 TopBar（手機）
-`position: sticky` 貼頂、高 `--shell-top`、`--surface` 底、Card 陰影加 1px `--card-edge` 底線；左右內距 12px 加安全區。左側是站名連結「VStat 企排」（`--text-lg` 800，連到首頁），在單場、球隊、球員三種詳情頁換成返回鈕；右側是組別 SegmentNav（短標、14px）與賽季鈕。賽季鈕是套用 `chip` 的按鈕：靛藍 tint 底、靛藍 700 字、尾端 chevron-down 圖示，點開賽季面板；`aria-label` 為「切換賽季，目前 <賽季>」。歷史紀錄頁不屬於任何賽季，不顯示賽季鈕。`/`、404、styleguide 沒有賽季與組別，頂部列只有站名。
+`position: sticky` 貼頂、高 `--shell-top`、`--surface` 底、Card 陰影加 1px `--card-edge` 底線；左右內距 12px 加安全區。左側是站名連結「VStat 企排」（`--text-lg` 800，連到首頁），在單場、球隊、球員三種詳情頁換成返回鈕（安裝引導頁也換成返回鈕，並在其右側加頁名，見「安裝引導頁」）；右側是組別 SegmentNav（短標、14px）與賽季鈕。賽季鈕是套用 `chip` 的按鈕：靛藍 tint 底、靛藍 700 字、尾端 chevron-down 圖示，點開賽季面板；`aria-label` 為「切換賽季，目前 <賽季>」。歷史紀錄頁不屬於任何賽季，不顯示賽季鈕。`/`、404、styleguide 沒有賽季與組別，頂部列只有站名；安裝引導頁同樣沒有賽季與組別，頂部列只有返回鈕與頁名。
 
 ### 分頁列 TabBar（手機）
-固定在底部、`--surface` 底、頂緣 1px `--line`；`<nav aria-label="主要分頁">`（桌面側欄仍是「頁面」）。五格等寬，順序固定：首頁、賽事、戰績、球隊、更多；每格 ≥44px、上圖示 + 下文字 14px、附註灰。選中格（`aria-current="page"`）靛藍字 700，頂端畫 32px 寬、4px 高的靛藍藥丸尾（`::before`）。前四格是連結；「更多」是 `button`（`aria-haspopup="dialog"`），點開「更多」底部面板，球員、排行榜、歷史紀錄頁面都算「更多」選中。沒有賽季或組別的頁（`/`、404、styleguide）連到現行賽季與預設組別（男子組），不標目前頁。
+固定在底部、`--surface` 底、頂緣 1px `--line`；`<nav aria-label="主要分頁">`（桌面側欄仍是「頁面」）。五格等寬，順序固定：首頁、賽事、戰績、球隊、更多；每格 ≥44px、上圖示 + 下文字 14px、附註灰。選中格（`aria-current="page"`）靛藍字 700，頂端畫 32px 寬、4px 高的靛藍藥丸尾（`::before`）。前四格是連結；「更多」是 `button`（`aria-haspopup="dialog"`），點開「更多」底部面板，球員、排行榜、歷史紀錄與安裝引導頁都算「更多」選中。沒有賽季或組別的頁（`/`、404、styleguide）連到現行賽季與預設組別（男子組），不標目前頁。
 
 ### 底部面板 BottomSheet（「更多」與賽季共用）
-原生 `<dialog>`，用 `showModal()` 開啟，Esc 關閉；遮罩由 dialog 本身撐滿視窗當背景（`--scrim`），`::backdrop` 設為透明——iOS 17.4 前 `::backdrop` 不繼承自訂屬性。內容是貼底的面板：`--surface` 底、上兩角 20px、Pop 陰影、最高 80dvh 可捲，內距 12px／16px，底部與左右加安全區。點遮罩或面板內任一連結即關閉，關閉後把焦點還給觸發鈕（Safari 點按鈕不會讓按鈕取得焦點，不靠瀏覽器還原）。「更多」面板（`aria-label="更多"`）放三項直排連結：球員、排行榜、歷史紀錄，每項 44px 高、14px 圓角、圖示 + 文字 16px 700，目前項靛藍 tint 底。賽季面板（`aria-label="賽季"`）是 SeasonSwitch 的直排清單：每季一顆 `chip`，700、16px、選中靛藍底白字。
+原生 `<dialog>`，用 `showModal()` 開啟，Esc 關閉；遮罩由 dialog 本身撐滿視窗當背景（`--scrim`），`::backdrop` 設為透明——iOS 17.4 前 `::backdrop` 不繼承自訂屬性。內容是貼底的面板：`--surface` 底、上兩角 20px、Pop 陰影、最高 80dvh 可捲，內距 12px／16px，底部與左右加安全區。點遮罩或面板內任一連結即關閉，關閉後把焦點還給觸發鈕（Safari 點按鈕不會讓按鈕取得焦點，不靠瀏覽器還原）。「更多」面板（`aria-label="更多"`）放直排連結：球員、排行榜、歷史紀錄，加上只在手機瀏覽器分頁內才有的「加到主畫面」（add-square 圖示，連到安裝引導頁；獨立視窗與桌面瀏覽器不出現），每項 44px 高、14px 圓角、圖示 + 文字 16px 700，目前項靛藍 tint 底。連結清單下方依離線資料狀態放一行 14px 附註灰說明（上緣間距 12px、左右內距 12px）：備好時「可離線使用，資料更新至 M/D」，準備中「離線資料準備中」，其他狀態不顯示這一行。賽季面板（`aria-label="賽季"`）是 SeasonSwitch 的直排清單：每季一顆 `chip`，700、16px、選中靛藍底白字。
 
 ### 返回鈕（手機）
-只出現在單場、球隊、球員頁（`nav.ts` 的 `detailListOf` 判定），取代頂部列的站名；44px 圓形、24px chevron-left 圖示，`aria-label="返回"`，按下底色 `accent-tint`。它是 `<a href=上一層列表>`（賽事列表、球隊列表、球員列表；單場頁帶日期時落在該月份錨點，由 `listHref` 組出），所以重新整理或直接開啟深層頁時回到上一層列表。站內導覽深度（`nextDepth`，只存記憶體、重新整理歸零）>0 時，左鍵單擊攔下改呼叫 `history.back()`，回到使用者真正來的頁；帶修飾鍵或非左鍵不攔，保留開新分頁。內文原本的「賽事列表」「球隊列表」「球員列表」返回連結在 <64rem 隱藏、≥64rem 保留。
+出現在單場、球隊、球員頁（`nav.ts` 的 `detailListOf` 判定）與安裝引導頁，取代頂部列的站名；44px 圓形、24px chevron-left 圖示，`aria-label="返回"`，按下底色 `accent-tint`。它是 `<a href=上一層列表>`（賽事列表、球隊列表、球員列表；單場頁帶日期時落在該月份錨點，由 `listHref` 組出；安裝引導頁連到首頁 `/`），所以重新整理或直接開啟深層頁時回到上一層列表。站內導覽深度（`nextDepth`，只存記憶體、重新整理歸零）>0 時，左鍵單擊攔下改呼叫 `history.back()`，回到使用者真正來的頁；帶修飾鍵或非左鍵不攔，保留開新分頁。內文原本的「賽事列表」「球隊列表」「球員列表」返回連結在 <64rem 隱藏、≥64rem 保留。
+
+### 安裝引導頁（`/notifications/`）
+頁名是 `nav.ts` 的 `NOTIFICATIONS_TITLE`「加到主畫面」。<64rem 頁面的 h1 視覺上隱藏（該頁自己的 `position: absolute`、1px、`clip-path` 樣式，`app.css` 沒有共用 class），只留給輔助科技，頁名改由頂部列顯示：返回鈕（見「返回鈕」）右側接 `--text-lg` 700 的頁名，不顯示組別與賽季控制。≥64rem 顯示 h1，桌面 sidebar 只留七項導覽，不含組別與賽季。內文是一般段落與有序清單（段落間距 12px、清單左內距 32px），依 `installGuide.ts` 判定的環境顯示不同說明：iOS Safari 是「點分享鈕、選『加入主畫面』、點『加入』」三步；iOS 其他瀏覽器與 Android 其他瀏覽器分別請改用 Safari、Chrome 開啟；Android Chrome 在可安裝時顯示 `class="chip install"` 的「安裝 VStat 企排」鈕（`accent` 底、`on-accent` 字，hover `accent-strong`），否則請從 Chrome 選單加入；獨立視窗顯示「已經從主畫面開啟 VStat 企排，不用再加一次。」；桌面瀏覽器請改用手機瀏覽器開啟。
+
+### 離線細條 OfflineBar
+放在 `<main>` 最上面（`+layout.svelte`），只在離線時渲染一個 `<p role="status">`，線上時不輸出任何元素；不吸頂，跟著頁面捲走。`warn-tint` 底、`warn-ink` 字、14px 700、`--radius-sm` 圓角、內距 8px／12px、下方間距 16px，文字「離線中，資料更新至 M/D」（日期取 `site.json` 的 `generated_at`，台北時區）。
+
+### 更新條 UpdateBar
+`position: fixed`、`--z-tabbar` 層級，水平置中。<64rem 貼在分頁列正上方（`--tabbar-h` + `--safe-bottom` + 4px）；≥64rem 離視窗底 24px，從 sidebar 右緣起算在內容欄置中。外層 `<div role="status">` 常駐在 DOM 裡讓輔助技術報讀，`pointer-events: none` 不攔截點擊；有新版時才出現一顆套用全域 `.chip` 的按鈕「有新資料，點此更新」，`pointer-events: auto`，`accent` 底、`on-accent` 字、Pop 陰影，hover 換 `accent-strong`。
 
 ### 標籤 Tag
 藥丸形、14px 700、`padding: 2px 10px`、`nowrap`。預設 `surface-2`／附註灰（階段、週次、黃金決勝局）；`tag-win` 警示黃（賽事卡「勝」）、`tag-glory` 同樣使用 `warn-tint`／`warn-ink`（排行榜四個王的稱號）；`tag-pending` 靛藍 tint／靛藍（「未開打」）；戰績表近五場 `.w`／`.l` 用 `win-tint`／`win`、`loss-tint`／`loss`，內距改 `0 8px`。
