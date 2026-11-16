@@ -46,6 +46,9 @@
 - [ ] 到 Actions 頁確認 daily-crawl workflow 未因 60 天不活動被自動停用（被停用則按 Re-enable；GitHub 停用前會寄警告信）。
 - [ ] 手動 `workflow_dispatch` 觸發一次 daily-crawl 驗證整條管道，
       確認新季第一批資料正確落庫（cup_id 應為新季編號）。
+- [ ] 推播賽事檔：換季後跑 `python -m src.export.site_data`，確認 `web/static/push/matches.json` 的 `cup_id` 是新賽季，
+      且 `matches` 有新賽季的場次（匯出器取 `seasons` 最後一列，不需改程式；`seasons` 還沒插新季列時檔案仍是舊季）。
+      這份檔不進 git，線上那份由 `pages.yml` 建置時產出，網址是 `https://vstat.tw/push/matches.json`。
 
 ## 歷史賽季回填
 

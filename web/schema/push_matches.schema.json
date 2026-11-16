@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "push_matches.schema.json",
+  "title": "PushMatches",
+  "description": "推播賽事檔（當季場次精簡版），供發送服務讀取；由 src.export.site_data 產出到 web/static/push/，網站端不讀",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "generated_at", "cup_id", "links", "matches"],
+  "properties": {
+    "version": { "const": 1 },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "\\+08:00$"
+    },
+    "cup_id": { "type": "integer" },
+    "links": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["men", "women", "both"],
+      "properties": {
+        "men": { "type": "string", "pattern": "^/[^#]*/$", "description": "男子組當季賽事頁路徑，如 /2026-27/men/matches/" },
+        "women": { "type": "string", "pattern": "^/[^#]*/$", "description": "女子組當季賽事頁路徑，如 /2026-27/women/matches/" },
+        "both": { "type": "string", "pattern": "^/[^#]*/$", "description": "兩組合併的賽事頁路徑 /matches/" }
+      }
+    },
+    "matches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "group", "game_id", "date", "start_time", "home", "away",
+          "home_sets_won", "away_sets_won", "home_win_prob"
+        ],
+        "properties": {
+          "group": { "type": "string", "enum": ["men", "women"] },
+          "game_id": { "type": "integer" },
+          "date": { "type": "string", "format": "date" },
+          "start_time": { "type": ["string", "null"], "description": "開賽時間 HH:MM；官網未提供則 null" },
+          "home": { "type": "string", "description": "主隊當季簡稱" },
+          "away": { "type": "string", "description": "客隊當季簡稱" },
+          "home_sets_won": { "type": ["integer", "null"], "minimum": 0 },
+          "away_sets_won": { "type": ["integer", "null"], "minimum": 0 },
+          "home_win_prob": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "賽前主隊勝率；無預測則 null" }
+        }
+      }
+    }
+  }
+}
