@@ -18,6 +18,7 @@ from src.utils.match_status import HAS_RESULT_WHERE
 from src.utils.teams import UnknownTeamError, resolve_team
 
 DEFAULT_OUT_DIR = PROJECT_ROOT / "web" / "src" / "lib" / "data"
+DEFAULT_PUSH_DIR = PROJECT_ROOT / "web" / "static" / "push"
 TAIPEI = ZoneInfo("Asia/Taipei")
 GROUP_BY_GENDER = {"M": "men", "F": "women"}
 GROUP_ORDER = list(GROUP_BY_GENDER.values())
@@ -658,22 +659,63 @@ def _team_advanced_payload(conn: sqlite3.Connection, games: dict[tuple[int, str]
     return {"team_advanced": team_advanced}
 
 
+def _generated_at() -> str:
+    return datetime.now(TAIPEI).replace(microsecond=0).isoformat()
+
+
 def _site_payload() -> dict:
-    return {"generated_at": datetime.now(TAIPEI).replace(microsecond=0).isoformat()}
+    return {"generated_at": _generated_at()}
+
+
+def _push_matches_payload(conn: sqlite3.Connection, seasons: dict, matches: dict) -> dict:
+    cup_id = seasons["current_cup_id"]
+    season = next(s["name"] for s in seasons["seasons"] if s["cup_id"] == cup_id)
+    season_names = _season_names_by_team(conn)
+    shorts = _team_shorts(conn)
+    entries = []
+    for gender, group in GROUP_BY_GENDER.items():
+        block = next(b for b in matches["matches"] if b["cup_id"] == cup_id and b["group"] == group)
+        entries += [
+            {
+                "group": group,
+                "game_id": m["game_id"],
+                "date": m["date"],
+                "start_time": m["start_time"],
+                "home": _season_short(season_names, shorts, m["home_team_id"], gender, cup_id),
+                "away": _season_short(season_names, shorts, m["away_team_id"], gender, cup_id),
+                "home_sets_won": m["home_sets_won"],
+                "away_sets_won": m["away_sets_won"],
+                "home_win_prob": m["home_win_prob"],
+            }
+            for m in block["matches"]
+        ]
+    return {
+        "version": 1,
+        "generated_at": _generated_at(),
+        "cup_id": cup_id,
+        "links": {
+            "men": f"/{season}/men/matches/",
+            "women": f"/{season}/women/matches/",
+            "both": "/matches/",
+        },
+        "matches": entries,
+    }
 
 
 def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def export_site_data(db_path: Path, out_dir: Path) -> None:
+def export_site_data(db_path: Path, out_dir: Path, push_dir: Path | None = None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     conn = get_connection(db_path=db_path)
     try:
-        _write_json(out_dir / "seasons.json", _seasons_payload(conn))
+        seasons = _seasons_payload(conn)
+        _write_json(out_dir / "seasons.json", seasons)
         _write_json(out_dir / "teams.json", _teams_payload(conn))
         _write_json(out_dir / "standings.json", _standings_payload(conn))
-        _write_json(out_dir / "matches.json", _matches_payload(conn))
+        matches = _matches_payload(conn)
+        _write_json(out_dir / "matches.json", matches)
         _write_json(out_dir / "players.json", _players_payload(conn))
         games = _box_score_games(conn)
         _write_json(out_dir / "player_advanced.json", _player_advanced_payload(conn, games))
@@ -683,11 +725,14 @@ def export_site_data(db_path: Path, out_dir: Path) -> None:
         _write_json(out_dir / "records.json", _records_payload(conn))
         _write_json(out_dir / "team_advanced.json", _team_advanced_payload(conn, games))
         _write_json(out_dir / "site.json", _site_payload())
+        if push_dir is not None:
+            push_dir.mkdir(parents=True, exist_ok=True)
+            _write_json(push_dir / "matches.json", _push_matches_payload(conn, seasons, matches))
     finally:
         conn.close()
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING)
-    export_site_data(DB_PATH, DEFAULT_OUT_DIR)
-    print(f"已匯出到 {DEFAULT_OUT_DIR}")
+    export_site_data(DB_PATH, DEFAULT_OUT_DIR, DEFAULT_PUSH_DIR)
+    print(f"已匯出到 {DEFAULT_OUT_DIR}，推播賽事檔寫到 {DEFAULT_PUSH_DIR}")
