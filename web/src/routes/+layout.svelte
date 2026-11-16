@@ -11,6 +11,7 @@
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
 	import { detailListOf, listHref, nextDepth } from '#lib/nav.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
+	import { registerServiceWorker } from '#lib/serviceWorker.js';
 	import { currentSeason, findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
 	import type { LayoutProps } from './$types';
 	import type { PageData as MatchPageData } from './[season]/[group]/matches/[game]/$types';
@@ -93,6 +94,7 @@
 	// e2e 等到這個記號才互動：根 layout 掛載時整頁已 hydrate，SvelteKit 也在同一輪事件迴圈內接手站內連結
 	onMount(() => {
 		document.documentElement.dataset.hydrated = '';
+		registerServiceWorker();
 	});
 </script>
 

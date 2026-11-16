@@ -10,7 +10,8 @@ export default defineConfig({
 	// 同一檔的測試也分給不同 worker，不讓最大的檔（leaders）拖成整輪最長的一條；每個測試各有自己的瀏覽器 context，不共用狀態
 	fullyParallel: true,
 	reporter: [['list'], ['./e2e/skip-reporter.ts']],
-	use: { ...devices['Pixel 7'], baseURL: `http://localhost:${port}` },
+	// 既有測試不註冊 service worker（每個測試都是新 context，否則各要安裝並預存一次；page.route 也攔不到）；offline.e2e.ts 自己打開
+	use: { ...devices['Pixel 7'], baseURL: `http://localhost:${port}`, serviceWorkers: 'block' },
 	// 先 npm run build 再跑測試（test:e2e 已串好）；/mnt/d 上 node 啟動很慢，等待放寬到 3 分鐘
 	webServer: {
 		command: `npm run preview -- --port ${port} --strictPort`,
