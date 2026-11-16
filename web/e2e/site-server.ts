@@ -13,16 +13,17 @@ const TYPES: Record<string, string> = {
 	'.webmanifest': 'application/manifest+json'
 };
 
-const ROOT = 'build';
+const BUILD = 'build';
 const SCRIPT = '/service-worker.js';
 
 // 供應 build/ 的測試用靜態伺服器：瀏覽器抓 service-worker.js 主腳本的請求 Playwright 的路由碰不到，
 // 所以「部署新版」只能由伺服器換腳本；所有回應帶 max-age=600，與 GitHub Pages 一致
 export async function startSite(base: string, version: string) {
-	const original = readFileSync(join(ROOT, SCRIPT), 'utf8');
+	const original = readFileSync(join(BUILD, SCRIPT), 'utf8');
 	const next = `${version}-next`;
 	const upgraded = original.replaceAll(version, next);
 	let deployed = false;
+	let root = BUILD;
 	const scriptRequests: IncomingHttpHeaders[] = [];
 	const holds = new Map<string, { gate: Promise<void>; arrive: () => void }>();
 
@@ -40,10 +41,11 @@ export async function startSite(base: string, version: string) {
 		}
 		if (path === SCRIPT) {
 			scriptRequests.push(req.headers);
+			if (root !== BUILD) return send(200, TYPES['.js'], readFileSync(join(root, SCRIPT)));
 			return send(200, TYPES['.js'], deployed ? upgraded : original);
 		}
-		const file = normalize(join(ROOT, path.endsWith('/') ? `${path}index.html` : path));
-		if (!file.startsWith(`${ROOT}/`)) return send(404, 'text/plain', 'not found');
+		const file = normalize(join(root, path.endsWith('/') ? `${path}index.html` : path));
+		if (!file.startsWith(`${root}/`)) return send(404, 'text/plain', 'not found');
 		try {
 			send(200, TYPES[extname(file)] ?? 'application/octet-stream', readFileSync(file));
 		} catch {
@@ -57,7 +59,11 @@ export async function startSite(base: string, version: string) {
 		origin,
 		next,
 		scriptRequests,
-		deploy: () => void (deployed = true),
+		// 給目錄就改從那個目錄供應所有請求（含 service-worker.js），例如自我移除版的建置
+		deploy(dir?: string) {
+			deployed = true;
+			if (dir) root = dir;
+		},
 		// 路徑以 suffix 結尾的請求會被扣住，直到 release
 		hold(suffix: string) {
 			let arrive!: () => void;

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { type Page } from '@playwright/test';
-import { BASE, asStandalone, currentSeason, expect, loadAndWaitControlled, test as base } from './helpers.js';
+import { BASE, asStandalone, currentSeason, expect, loadAndWaitControlled, setVisibility, test as base } from './helpers.js';
 import { startSite, type Site } from './site-server.js';
 
 const { version } = JSON.parse(readFileSync('build/_app/version.json', 'utf8'));
@@ -124,13 +124,6 @@ test('兩個分頁：在一個分頁按更新條，另一個分頁也重載到�
 	expect(other.url()).toBe(otherUrl);
 	await expect(updateBar(other)).toHaveCount(0);
 });
-
-// headless 不會真的變 hidden：覆寫 visibilityState 再送事件
-const setVisibility = (page: Page, value: 'hidden' | 'visible') =>
-	page.evaluate((state) => {
-		Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
-		document.dispatchEvent(new Event('visibilitychange'));
-	}, value);
 
 async function leaveAndReturn(page: Page, away: string) {
 	await setVisibility(page, 'hidden');

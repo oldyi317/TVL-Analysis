@@ -9,6 +9,7 @@ import {
 	dataUrlOf,
 	precachedAssets,
 	predownload,
+	uninstall,
 	type WorkerMessage
 } from '#lib/offline.js';
 
@@ -19,21 +20,35 @@ const PRECACHE = `precache-${version}`;
 const MARKER = '__offline/predownload.json';
 let running: Promise<boolean> | undefined;
 
-sw.addEventListener('install', (event) => {
-	event.waitUntil(precache());
-});
+// 建置時 VITE_SW_REMOVE=1：同一個網址換成自我移除版，裝置退回純網站（打包時另一邊的分支整段拿掉）
+const removing = import.meta.env.VITE_SW_REMOVE === '1';
 
-sw.addEventListener('activate', (event) => {
-	event.waitUntil(dropOldPrecaches().then(() => sw.clients.claim()));
-});
+if (removing) {
+	// 不等舊版放手；不掛 fetch，還被它掛著的分頁所有請求直接走網路
+	sw.addEventListener('install', (event) => {
+		event.waitUntil(sw.skipWaiting());
+	});
 
-sw.addEventListener('fetch', (event) => {
-	const { request } = event;
-	if (request.method !== 'GET' || !request.url.startsWith(sw.registration.scope)) return;
-	if (request.mode === 'navigate') return event.respondWith(page(request));
-	if (new URL(request.url).pathname.endsWith('/__data.json')) return event.respondWith(data(event));
-	event.respondWith(precached(request));
-});
+	sw.addEventListener('activate', (event) => {
+		event.waitUntil(uninstall(caches, sw.registration));
+	});
+} else {
+	sw.addEventListener('install', (event) => {
+		event.waitUntil(precache());
+	});
+
+	sw.addEventListener('activate', (event) => {
+		event.waitUntil(dropOldPrecaches().then(() => sw.clients.claim()));
+	});
+
+	sw.addEventListener('fetch', (event) => {
+		const { request } = event;
+		if (request.method !== 'GET' || !request.url.startsWith(sw.registration.scope)) return;
+		if (request.mode === 'navigate') return event.respondWith(page(request));
+		if (new URL(request.url).pathname.endsWith('/__data.json')) return event.respondWith(data(event));
+		event.respondWith(precached(request));
+	});
+}
 
 async function precache() {
 	const cache = await caches.open(PRECACHE);
@@ -94,13 +109,15 @@ async function saveData(url: string, res: Response) {
 	await (await caches.open(DATA_CACHE)).put(dataKey(url), res);
 }
 
-sw.addEventListener('message', (event) => {
-	const message = event.data as WorkerMessage | null;
-	if (message?.type === 'save') return event.waitUntil(save(message.path));
-	if (message?.type === 'sync') event.waitUntil(sync(message.paths, event.ports[0]));
-	// install 不 skipWaiting：新版停在等待，等使用者按更新條（或獨立視窗離開太久）才接手
-	if (message?.type === 'activate') event.waitUntil(sw.skipWaiting());
-});
+if (!removing) {
+	sw.addEventListener('message', (event) => {
+		const message = event.data as WorkerMessage | null;
+		if (message?.type === 'save') return event.waitUntil(save(message.path));
+		if (message?.type === 'sync') event.waitUntil(sync(message.paths, event.ports[0]));
+		// install 不 skipWaiting：新版停在等待，等使用者按更新條（或獨立視窗離開太久）才接手
+		if (message?.type === 'activate') event.waitUntil(sw.skipWaiting());
+	});
+}
 
 // 只接受字串、且在 scope 範圍內的路徑
 function dataUrls(paths: unknown[]): string[] {
