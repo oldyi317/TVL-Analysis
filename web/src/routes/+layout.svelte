@@ -11,7 +11,8 @@
 	import TopBar from '#lib/components/TopBar.svelte';
 	import UpdateBar from '#lib/components/UpdateBar.svelte';
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
-	import { detailListOf, listHref, nextDepth } from '#lib/nav.js';
+	import { startInstall } from '#lib/installPrompt.svelte.js';
+	import { detailListOf, listHref, NOTIFICATIONS_TITLE, nextDepth } from '#lib/nav.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
 	import { checkConnection, rememberPage, startServiceWorker } from '#lib/serviceWorker.svelte.js';
 	import { currentSeason, findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
@@ -74,6 +75,9 @@
 	const onRecords = $derived(page.route.id?.startsWith('/records/') ?? false);
 	const season = $derived(page.params.season ?? (onRecords ? currentSeason.name : undefined));
 
+	// 這一頁不含賽季與組別：頂部列只有返回鈕與頁名，桌面側欄只留導覽
+	const onNotifications = $derived(page.route.id === '/notifications');
+
 	// 站內瀏覽深度只留在記憶體：進站歸零，重新整理後也歸零
 	let depth = $state(0);
 	afterNavigate((nav) => {
@@ -85,6 +89,7 @@
 	});
 
 	const back = $derived.by(() => {
+		if (onNotifications) return { href: resolve('/'), canGoBack: depth > 0 };
 		const section = detailListOf(page.route.id);
 		const detailSeason = page.params.season;
 		if (!section || !detailSeason || !group) return undefined;
@@ -101,6 +106,7 @@
 	onMount(() => {
 		document.documentElement.dataset.hydrated = '';
 		startServiceWorker();
+		startInstall();
 	});
 </script>
 
@@ -110,8 +116,8 @@
 	<link rel="apple-touch-icon" href={asset('icons/apple-touch-icon.png')} />
 </svelte:head>
 
-<TopBar {season} {group} records={onRecords} {back} hrefFor={switchHref} />
-<SiteHeader {season} {group} records={onRecords} hrefFor={switchHref} />
+<TopBar {season} {group} records={onRecords} {back} title={onNotifications ? NOTIFICATIONS_TITLE : undefined} hrefFor={switchHref} />
+<SiteHeader {season} {group} records={onRecords} navOnly={onNotifications} hrefFor={switchHref} />
 
 <div class="wrap">
 	<main>

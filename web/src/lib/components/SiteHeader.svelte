@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { GROUPS, GROUP_LABEL, type Group } from '#lib/site.js';
+	import { DEFAULT_GROUP } from '#lib/groupMemory.js';
+	import { currentSeason, GROUPS, GROUP_LABEL, type Group } from '#lib/site.js';
 	import SegmentNav from './SegmentNav.svelte';
 	import SeasonSwitch from './SeasonSwitch.svelte';
 	import SiteNav from './SiteNav.svelte';
@@ -9,11 +10,13 @@
 		season,
 		group,
 		records = false,
+		navOnly = false,
 		hrefFor
 	}: {
 		season?: string;
 		group?: Group;
 		records?: boolean;
+		navOnly?: boolean;
 		hrefFor: (param: 'season' | 'group', value: string) => string | undefined;
 	} = $props();
 </script>
@@ -34,6 +37,9 @@
 			{/if}
 			<SiteNav {season} {group} />
 		</div>
+	{:else if navOnly}
+		<!-- 不含賽季與組別的頁只留導覽，連結基準比照手機分頁列：現行賽季與預設組別 -->
+		<SiteNav season={currentSeason.name} group={DEFAULT_GROUP} />
 	{/if}
 </header>
 

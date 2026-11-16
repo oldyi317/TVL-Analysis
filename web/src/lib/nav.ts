@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'svelte';
 import type Icon from '#lib/components/Icon.svelte';
 
-export type MoreSection = 'players' | 'leaders' | 'records';
+export type MoreSection = 'players' | 'leaders' | 'records' | 'notifications';
 export type Section = 'home' | 'matches' | 'standings' | 'teams' | MoreSection;
 export type Tab = Exclude<Section, MoreSection> | 'more';
 
@@ -15,7 +15,10 @@ export const NAV_ITEMS: { section: Section; label: string; icon: ComponentProps<
 	{ section: 'records', label: '歷史紀錄', icon: 'trophy' }
 ];
 
-export const MORE_SECTIONS: readonly Section[] = ['players', 'leaders', 'records'];
+export const MORE_SECTIONS: readonly Section[] = ['players', 'leaders', 'records', 'notifications'];
+
+// 網址 /notifications/ 的頁名；第 4 期改成「通知」時只動這裡（「更多」面板那一列的字另寫在 TabBar）
+export const NOTIFICATIONS_TITLE = '加到主畫面';
 
 function isMore(section: Section): section is MoreSection {
 	return MORE_SECTIONS.includes(section);
@@ -24,6 +27,7 @@ function isMore(section: Section): section is MoreSection {
 export function sectionOf(routeId: string | null): Section | null {
 	if (!routeId) return null;
 	if (routeId.startsWith('/records/')) return 'records';
+	if (routeId === '/notifications') return 'notifications';
 	const match = routeId.match(/^\/\[season\]\/\[group\](?:\/([^/]+))?/);
 	if (!match) return null;
 	const segment = match[1];

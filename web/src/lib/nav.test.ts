@@ -12,7 +12,8 @@ describe('sectionOf', () => {
 		['/[season]/[group]/players', 'players'],
 		['/[season]/[group]/players/[player]', 'players'],
 		['/[season]/[group]/leaders', 'leaders'],
-		['/records/[group]/[[kind=recordKind]]', 'records']
+		['/records/[group]/[[kind=recordKind]]', 'records'],
+		['/notifications', 'notifications']
 	])('%s 屬於 %s', (routeId, section) => {
 		expect(sectionOf(routeId)).toBe(section);
 	});
@@ -30,7 +31,8 @@ describe('tabOf', () => {
 		['/[season]/[group]/teams/[team]', 'teams'],
 		['/[season]/[group]/players/[player]', 'more'],
 		['/[season]/[group]/leaders', 'more'],
-		['/records/[group]/[[kind=recordKind]]', 'more']
+		['/records/[group]/[[kind=recordKind]]', 'more'],
+		['/notifications', 'more']
 	])('%s 對應分頁 %s', (routeId, tab) => {
 		expect(tabOf(routeId)).toBe(tab);
 	});
