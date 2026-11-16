@@ -1,6 +1,6 @@
 import { dev } from '$app/env';
 import { resolve } from '$app/paths';
-import { seasonPagePaths, type WorkerMessage } from '#lib/offline.js';
+import { countsAsReopen, seasonPagePaths, type WorkerMessage } from '#lib/offline.js';
 import { currentSeason, matchEntries, playerEntries } from '#lib/site.js';
 
 // off：dev、不支援 service worker 或註冊失敗；preparing：還沒被接手，或離線資料還沒備好；ready：備好了
@@ -8,6 +8,9 @@ export const connection = $state<{ offline: boolean; status: 'off' | 'preparing'
 	offline: false,
 	status: 'off'
 });
+
+// 新版的檔案抓完、停在等待狀態，等使用者按更新條
+export const update = $state({ ready: false });
 
 const supported = () => !dev && 'serviceWorker' in navigator;
 
@@ -37,6 +40,42 @@ function sync() {
 	};
 	const message: WorkerMessage = { type: 'sync', paths };
 	controller.postMessage(message, [port2]);
+}
+
+let registration: ServiceWorkerRegistration | undefined;
+// 這一頁一開始就有 controller（或已被接手過）：之後 controller 再變就是換版，不是第一次安裝
+let controlled = false;
+
+export function applyUpdate(worker = registration?.waiting) {
+	worker?.postMessage({ type: 'activate' } satisfies WorkerMessage);
+}
+
+// 離開前的時間；只放記憶體，頁面被系統回收的話重新開啟本來就是全新載入
+let hiddenAt: number | undefined;
+// 最近一輪檢查視同重新開啟：新版一抓完就直接換
+let reopening = false;
+let latestUpdateCheck = 0;
+
+// 沒有 controller 時是第一次安裝，不算換版
+function onInstalled(worker: ServiceWorker | null) {
+	if (!navigator.serviceWorker.controller) return;
+	if (reopening) return applyUpdate(worker);
+	update.ready = true;
+}
+
+function watch(worker: ServiceWorker | null) {
+	worker?.addEventListener('statechange', () => {
+		if (worker.state === 'installed') onInstalled(worker);
+	});
+}
+
+// registration.update() 不受 HTTP 快取影響（註冊時 updateViaCache: 'none'）；離線等失敗就算了。
+// reopen 只對這一輪檢查有效：這一輪沒找到新版就收回，之後才出現的新版（例如別的分頁發的檢查找到的）照常只跳更新條
+async function checkForUpdate(reopen = false) {
+	const id = ++latestUpdateCheck;
+	reopening = reopen;
+	await registration?.update().catch(() => {});
+	if (id === latestUpdateCheck && !registration?.installing) reopening = false;
 }
 
 function onControlled() {
@@ -79,16 +118,36 @@ export function startServiceWorker() {
 	});
 	// iPhone 的獨立視窗從背景回來不會重新載入：回到前景就是下一次開啟，離線資料在背景時被清掉或上一輪沒抓完都在這時補
 	document.addEventListener('visibilitychange', () => {
-		if (document.visibilityState !== 'visible') return;
+		if (document.visibilityState !== 'visible') {
+			hiddenAt = Date.now();
+			return;
+		}
 		void checkConnection();
-		if (supported()) sync();
+		if (!supported()) return;
+		sync();
+		const reopen = countsAsReopen(isStandalone(), hiddenAt === undefined ? 0 : Date.now() - hiddenAt);
+		hiddenAt = undefined;
+		if (reopen && update.ready) applyUpdate();
+		void checkForUpdate(reopen);
 	});
 	if (!supported()) return;
 	connection.status = 'preparing';
-	navigator.serviceWorker.addEventListener('controllerchange', onControlled);
+	controlled = navigator.serviceWorker.controller !== null;
+	navigator.serviceWorker.addEventListener('controllerchange', () => {
+		if (controlled) return location.reload();
+		controlled = true;
+		onControlled();
+	});
 	const scope = resolve('/');
-	navigator.serviceWorker.register(`${scope}service-worker.js`, { scope, type: 'module' }).then(
-		() => sync(),
+	navigator.serviceWorker.register(`${scope}service-worker.js`, { scope, type: 'module', updateViaCache: 'none' }).then(
+		(reg) => {
+			registration = reg;
+			reg.addEventListener('updatefound', () => watch(reg.installing));
+			watch(reg.installing);
+			if (reg.waiting) onInstalled(reg.waiting);
+			void checkForUpdate();
+			sync();
+		},
 		() => {
 			connection.status = 'off';
 		}

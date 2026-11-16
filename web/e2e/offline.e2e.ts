@@ -3,9 +3,11 @@ import { type Page } from '@playwright/test';
 import {
 	BASE,
 	OLD_SEASON,
+	asStandalone,
 	currentSeason,
 	expect,
 	findSeason,
+	loadAndWaitControlled,
 	openMoreSheet,
 	readJson,
 	test
@@ -18,12 +20,6 @@ const { version } = JSON.parse(readFileSync('build/_app/version.json', 'utf8'));
 const MISS = '這一頁離線時看不到，連上網路後再試';
 const playedSeason = findSeason('played')?.season;
 const playerSeason = findSeason('players');
-
-// 線上載入一頁，等 service worker 預存完、啟用並接手
-async function loadAndWaitControlled(page: Page, url: string) {
-	await page.goto(url);
-	await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
-}
 
 const noKitErrorPage = (page: Page) => expect(page.getByText('Internal Error')).toHaveCount(0);
 
@@ -207,14 +203,6 @@ const cachedData = (page: Page) =>
 	page.evaluate(async () => (await (await caches.open('data')).keys()).map((r) => new URL(r.url).pathname));
 
 const hasData = (page: Page, path: string) => async () => (await cachedData(page)).includes(`${path}__data.json`);
-
-// 假裝是以獨立視窗開啟：只改 display-mode: standalone 的查詢，其他照原本
-async function asStandalone(page: Page) {
-	await page.addInitScript(() => {
-		const original = window.matchMedia.bind(window);
-		window.matchMedia = (query) => original(query.includes('display-mode: standalone') ? 'all' : query);
-	});
-}
 
 async function waitStatus(page: Page, text: string, timeout = 80_000) {
 	await expect(page.getByText(text, { exact: true })).toBeVisible({ timeout });

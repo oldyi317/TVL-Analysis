@@ -41,6 +41,20 @@ export const findSeason = (kind: Kind, group = 'men') => {
 	});
 };
 
+// 假裝是以獨立視窗開啟：只改 display-mode: standalone 的查詢，其他照原本；要在載入頁面之前呼叫
+export async function asStandalone(page: Page) {
+	await page.addInitScript(() => {
+		const original = window.matchMedia.bind(window);
+		window.matchMedia = (query) => original(query.includes('display-mode: standalone') ? 'all' : query);
+	});
+}
+
+// 線上載入一頁，等 service worker 預存完、啟用並接手
+export async function loadAndWaitControlled(page: Page, url: string) {
+	await page.goto(url);
+	await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+}
+
 export async function openMoreSheet(page: Page) {
 	await page.getByRole('navigation', { name: '主要分頁' }).getByRole('button', { name: '更多' }).click();
 	await expect(page.getByRole('dialog', { name: '更多' })).toBeVisible();
