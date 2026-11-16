@@ -3,6 +3,9 @@
 	import { resolve } from '$app/paths';
 	import { DEFAULT_GROUP } from '#lib/groupMemory.js';
 	import { hrefOf, MORE_SECTIONS, NAV_ITEMS, sectionOf, tabOf, type Section } from '#lib/nav.js';
+	import siteJson from '#lib/data/site.json';
+	import { formatTaipeiMonthDay } from '#lib/datetime.js';
+	import { connection } from '#lib/serviceWorker.svelte.js';
 	import { currentSeason, type Group } from '#lib/site.js';
 	import BottomSheet from './BottomSheet.svelte';
 	import Icon from './Icon.svelte';
@@ -17,6 +20,8 @@
 	const section = $derived(sectionOf(page.route.id));
 	const tabItems = NAV_ITEMS.filter((item) => !MORE_SECTIONS.includes(item.section));
 	const moreItems = NAV_ITEMS.filter((item) => MORE_SECTIONS.includes(item.section));
+
+	const updatedAt = formatTaipeiMonthDay(siteJson.generated_at);
 
 	let sheet: BottomSheet;
 </script>
@@ -50,6 +55,11 @@
 			</li>
 		{/each}
 	</ul>
+	{#if connection.status === 'ready'}
+		<p class="offline-status">可離線使用，資料更新至 {updatedAt}</p>
+	{:else if connection.status === 'preparing'}
+		<p class="offline-status">離線資料準備中</p>
+	{/if}
 </BottomSheet>
 
 <style>
@@ -112,6 +122,13 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
+	}
+
+	.offline-status {
+		margin: var(--space-3) 0 0;
+		padding-inline: var(--space-3);
+		color: var(--text-muted);
+		font-size: var(--text-sm);
 	}
 
 	li a {
