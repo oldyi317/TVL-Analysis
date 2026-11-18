@@ -12,6 +12,7 @@ import {
 	uninstall,
 	type WorkerMessage
 } from '#lib/offline.js';
+import { openPush, showPush } from '#lib/pushFallback.js';
 
 // 整頁載入（啟動、重新整理）時向網路要頁面，等這麼久還沒拿到就改用存好的空殼頁
 const NAVIGATION_TIMEOUT_MS = 3000;
@@ -47,6 +48,15 @@ if (removing) {
 		if (request.mode === 'navigate') return event.respondWith(page(request));
 		if (new URL(request.url).pathname.endsWith('/__data.json')) return event.respondWith(data(event));
 		event.respondWith(precached(request));
+	});
+
+	sw.addEventListener('push', (event) => {
+		event.waitUntil(showPush(sw.registration, event.data));
+	});
+
+	sw.addEventListener('notificationclick', (event) => {
+		event.notification.close();
+		event.waitUntil(openPush(sw.clients, event.notification.data, sw.registration.scope));
 	});
 }
 

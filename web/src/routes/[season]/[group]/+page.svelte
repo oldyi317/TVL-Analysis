@@ -3,6 +3,7 @@
 	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import MatchLink from '#lib/components/MatchLink.svelte';
+	import PushPrompt from '#lib/components/PushPrompt.svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import StandingsTable from '#lib/components/StandingsTable.svelte';
 	import { stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
@@ -19,6 +20,8 @@
 <SiteHead title="{data.season.name} {GROUP_LABEL[data.group]}｜VStat 企排" />
 
 <h1>{data.season.name} {GROUP_LABEL[data.group]}</h1>
+
+<PushPrompt />
 
 <div class="home" class:empty-latest={!data.latest}>
 	<section class="latest" aria-labelledby="h-latest">
