@@ -17,7 +17,7 @@
 	const base = $derived(`${resolve('/[season]/[group]', { season: encodeURIComponent(season ?? currentSeason.name), group: group ?? DEFAULT_GROUP })}/`);
 	const recordsBase = $derived(`${resolve('/records/[group]/[[kind=recordKind]]', { group: group ?? DEFAULT_GROUP })}/`);
 	const href = (section: Section) => hrefOf(section, base, recordsBase);
-	const installHref = `${resolve('/notifications')}/`;
+	const notificationsHref = `${resolve('/notifications')}/`;
 
 	const tab = $derived(tabOf(page.route.id));
 	const section = $derived(sectionOf(page.route.id));
@@ -57,9 +57,15 @@
 				</a>
 			</li>
 		{/each}
+		<li>
+			<a href={notificationsHref} aria-current={section === 'notifications' ? 'page' : undefined}>
+				<Icon name="bell" />
+				<span>通知</span>
+			</a>
+		</li>
 		{#if installPrompt.guide && inPhoneBrowserTab(installPrompt.guide)}
 			<li>
-				<a href={installHref} aria-current={section === 'notifications' ? 'page' : undefined}>
+				<a href={notificationsHref}>
 					<Icon name="add-square" />
 					<span>加到主畫面</span>
 				</a>

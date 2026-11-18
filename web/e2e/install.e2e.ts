@@ -3,8 +3,12 @@ import { UA } from '../src/lib/installGuide.fixtures.js';
 import { BASE, asStandalone, currentSeason as current, openMoreSheet, seasonButton, topBar, groupLink, expect, test } from './helpers.js';
 
 const URL_PATH = `${BASE}/notifications/`;
-const NAME = '加到主畫面';
+const NAME = '通知';
+const INSTALL_ROW = '加到主畫面';
 const INSTALL = '安裝 VStat 企排';
+
+// 這兩種引導只在瀏覽器不支援推播時出現；e2e 的 Chromium 支援，所以拿掉 PushManager
+const withoutPush = (page: Page) => page.addInitScript(() => void delete (window as { PushManager?: unknown }).PushManager);
 
 const installButton = (page: Page) => page.getByRole('button', { name: INSTALL });
 const steps = (page: Page) => page.locator('main ol > li');
@@ -55,7 +59,7 @@ test.describe('頂部列與分頁列', () => {
 		const list = `${BASE}/${current}/men/matches/`;
 		await page.goto(list);
 		await openMoreSheet(page);
-		await sheet(page).getByRole('link', { name: NAME }).click();
+		await sheet(page).getByRole('link', { name: INSTALL_ROW }).click();
 		await expect(page).toHaveURL(URL_PATH);
 		await topBar(page).getByRole('link', { name: '返回' }).click();
 		await expect(page).toHaveURL(list);
@@ -71,7 +75,8 @@ test.describe('頂部列與分頁列', () => {
 test.describe('桌面', () => {
 	test.use({ viewport: { width: 1440, height: 900 }, userAgent: UA.desktopChrome, isMobile: false, hasTouch: false });
 
-	test('h1 看得到；側欄有導覽、沒有目前頁、沒有組別與賽季切換；只有桌面那一句', async ({ page }) => {
+	test('不支援推播時：h1 看得到；側欄有導覽、沒有目前頁、沒有組別與賽季切換；只有桌面那一句', async ({ page }) => {
+		await withoutPush(page);
 		await page.goto(URL_PATH);
 		await expect(page.getByRole('heading', { level: 1, name: NAME })).toBeVisible();
 		const side = page.getByRole('banner');
@@ -84,6 +89,12 @@ test.describe('桌面', () => {
 		await expect(page.getByText('用手機瀏覽器開啟本站，就能把 VStat 企排加到主畫面。')).toBeVisible();
 		await expect(steps(page)).toHaveCount(0);
 		await expect(installButton(page)).toHaveCount(0);
+	});
+
+	test('支援推播時沒有桌面那一句', async ({ page }) => {
+		await page.goto(URL_PATH);
+		await expect(page.getByRole('switch')).toHaveCount(2);
+		await expect(page.getByText('用手機瀏覽器開啟本站')).toHaveCount(0);
 	});
 
 	test('桌面 Chrome 自己的安裝事件不擋', async ({ page }) => {
@@ -167,8 +178,9 @@ test.describe('Android Chrome', () => {
 });
 
 test.describe('獨立視窗', () => {
-	test('顯示獨立視窗那一句，沒有步驟與安裝鈕', async ({ page }) => {
+	test('不支援推播時顯示獨立視窗那一句，沒有步驟與安裝鈕', async ({ page }) => {
 		await asStandalone(page);
+		await withoutPush(page);
 		await page.goto(URL_PATH);
 		await expect(page.getByText('已經從主畫面開啟 VStat 企排，不用再加一次。')).toBeVisible();
 		await expect(steps(page)).toHaveCount(0);
@@ -177,23 +189,24 @@ test.describe('獨立視窗', () => {
 });
 
 test.describe('「更多」面板', () => {
-	test('瀏覽器分頁內多一列「加到主畫面」', async ({ page }) => {
+	test('瀏覽器分頁內通知之後多一列「加到主畫面」', async ({ page }) => {
 		await page.goto(`${BASE}/${current}/men/`);
 		await openMoreSheet(page);
-		await expect(sheet(page).getByRole('link')).toHaveText(['球員', '排行榜', '歷史紀錄', NAME]);
-		await expect(sheet(page).getByRole('link', { name: NAME })).toHaveAttribute('href', URL_PATH);
+		await expect(sheet(page).getByRole('link')).toHaveText(['球員', '排行榜', '歷史紀錄', NAME, INSTALL_ROW]);
+		await expect(sheet(page).getByRole('link', { name: INSTALL_ROW })).toHaveAttribute('href', URL_PATH);
 	});
 
-	test('獨立視窗內沒有這一列', async ({ page }) => {
+	test('獨立視窗內沒有「加到主畫面」那一列，通知還在', async ({ page }) => {
 		await asStandalone(page);
 		await page.goto(`${BASE}/${current}/men/`);
 		await openMoreSheet(page);
-		await expect(sheet(page).getByRole('link')).toHaveText(['球員', '排行榜', '歷史紀錄']);
+		await expect(sheet(page).getByRole('link')).toHaveText(['球員', '排行榜', '歷史紀錄', NAME]);
 	});
 
-	test('在這一頁時，這一列是目前所在', async ({ page }) => {
+	test('在這一頁時，「通知」那一列是目前所在，「加到主畫面」那一列不是', async ({ page }) => {
 		await page.goto(URL_PATH);
 		await openMoreSheet(page);
 		await expect(sheet(page).getByRole('link', { name: NAME })).toHaveAttribute('aria-current', 'page');
+		await expect(sheet(page).getByRole('link', { name: INSTALL_ROW })).not.toHaveAttribute('aria-current');
 	});
 });

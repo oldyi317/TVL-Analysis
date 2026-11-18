@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NAV_ITEMS, detailListOf, listHref, nextDepth, sectionOf, tabOf } from '#lib/nav.js';
+import { NAV_ITEMS, NOTIFICATIONS_TITLE, detailListOf, listHref, nextDepth, sectionOf, tabOf } from '#lib/nav.js';
 
 describe('sectionOf', () => {
 	it.each([
@@ -103,5 +103,11 @@ describe('nextDepth', () => {
 describe('NAV_ITEMS', () => {
 	it('七項依序為首頁、賽事、戰績、球隊、球員、排行榜、歷史紀錄', () => {
 		expect(NAV_ITEMS.map((i) => i.label)).toEqual(['首頁', '賽事', '戰績', '球隊', '球員', '排行榜', '歷史紀錄']);
+	});
+});
+
+describe('NOTIFICATIONS_TITLE', () => {
+	it('頁名是「通知」', () => {
+		expect(NOTIFICATIONS_TITLE).toBe('通知');
 	});
 });

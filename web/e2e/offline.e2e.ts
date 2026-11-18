@@ -81,7 +81,7 @@ const listPages = [
 	{ name: '排行榜', path: `/${currentSeason}/men/leaders/`, h1: `${currentSeason} 男子組 排行榜` },
 	{ name: '球員列表', path: `/${currentSeason}/men/players/`, h1: '球員' },
 	{ name: '歷史紀錄', path: '/records/men/', h1: '男子組 歷史紀錄' },
-	{ name: '加到主畫面', path: '/notifications/', h1: '加到主畫面' },
+	{ name: '通知', path: '/notifications/', h1: '通知' },
 	{ name: '非當季賽季的戰績', path: `/${OLD_SEASON}/men/standings/`, h1: `${OLD_SEASON} 男子組 戰績` }
 ];
 
