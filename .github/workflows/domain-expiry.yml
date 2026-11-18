@@ -33,7 +33,7 @@ jobs:
           THRESHOLD: ${{ inputs.threshold_days || 90 }}
         run: python -m src.utils.domain_expiry --threshold "$THRESHOLD"
       - name: 少於門檻就開 issue（同標題的還開著就不重開）
-        if: steps.expiryy.outputs.due == 'true'
+        if: steps.expiry.outputs.due == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           EXPIRES: ${{ steps.expiry.outputs.expires }}
