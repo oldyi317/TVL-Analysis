@@ -1,4 +1,5 @@
 from src.export.leaders import COUNT_BOARDS, rank_ordered
+from src.export.player_seasons import has_played
 
 RECORD_LIMIT = 10
 RECORD_BOARDS = tuple(spec for spec in COUNT_BOARDS
@@ -17,7 +18,7 @@ def _season_totals(match_rows: list[dict]) -> list[dict]:
             **{f: m[f] for f in ROW_FIELDS if f != "games"}, "games": 0, **{k: 0 for k in SCORING_KEYS}})
         for k in SCORING_KEYS:
             entry[k] += m["stats"][k] or 0
-        if any(m["stats"].values()):
+        if has_played(m["stats"]):
             entry["games"] += 1
             entry["team_id"], entry["team_short"] = m["team_id"], m["team_short"]
     return list(totals.values())

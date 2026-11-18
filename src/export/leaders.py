@@ -2,7 +2,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from statistics import median
 
 from src.export.player_advanced import compute_ratios
-from src.export.player_seasons import STAT_FIELDS
+from src.export.player_seasons import STAT_FIELDS, has_played
 from src.export.thresholds import RATE_BOARDS, THRESHOLD_FLOOR, BoardSpec, attempts, threshold_for
 
 
@@ -146,7 +146,7 @@ def regular_totals(games: Iterable[Mapping]) -> dict[int, dict]:
     for game in games:
         for row in (*game["home"], *game["away"]):
             total = totals.setdefault(row["player_id"], {"games": 0, **{f: 0 for f in STAT_FIELDS}})
-            total["games"] += 1
+            total["games"] += has_played(row)
             for field in STAT_FIELDS:
                 if total[field] is None or row[field] is None:
                     total[field] = None

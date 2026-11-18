@@ -10,6 +10,12 @@ STAT_FIELDS = [
     "receive_total", "receive_excellent", "dig_total", "dig_excellent", "set_total", "set_excellent",
     "total_points",
 ]
+PLAY_FIELDS = [f for f in STAT_FIELDS if f != "sets_played"]
+
+
+def has_played(stats: Mapping) -> bool:
+    """出賽場數口徑：任一項技術統計不為 0 才算出賽；sets_played 在外部來源是整場局數，不算技術統計。"""
+    return any(stats.get(f) for f in PLAY_FIELDS)
 
 
 class SeasonTotals(NamedTuple):
