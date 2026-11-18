@@ -6,21 +6,21 @@
 	"observability": { "enabled": true },
 	// 定時器每分鐘一次。這一項會被環境繼承。
 	"triggers": { "crons": ["* * * * *"] },
+	"routes": [{ "pattern": "push.vstat.tw", "custom_domain": true }],
 	"vars": {
 		"ALLOWED_ORIGIN": "https://vstat.tw",
 		"SITE_ROOT": "https://vstat.tw",
 		"FEED_URL": "https://vstat.tw/push/matches.json",
 		"SEND_WINDOW": "08:00-22:00",
 		"TODAY_WINDOW": "10:00-11:00",
-		// 由 #251 填。私鑰是 secret（VAPID_PRIVATE_KEY），不放在這個檔
-		"VAPID_PUBLIC_KEY": ""
+		// 私鑰是 secret（VAPID_PRIVATE_KEY），不放在這個檔
+		"VAPID_PUBLIC_KEY": "BGDlCqN1KpK7X7zAF4M5gsbj4zJ8lzHYDut1DEqohJOpaAUqlDZJyshcc5x2-p_CEG03u5EjoBDZfUeaqI0kIR0"
 	},
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "tvl-push",
-			// 佔位值：本機模式與單元測試可用，遠端 D1 建好後由 #251 換成真的識別碼
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			"database_id": "451277cc-bb26-4ed5-8fb0-b979a1c8ba30",
 			"migrations_dir": "migrations"
 		}
 	],
@@ -33,17 +33,17 @@
 				"ALLOWED_ORIGIN": "https://tommyyi0317.github.io",
 				"SITE_ROOT": "https://tommyyi0317.github.io/tvl-shell-proto",
 				"FEED_URL": "https://tommyyi0317.github.io/tvl-shell-proto/push/matches.json",
-				"SEND_WINDOW": "08:00-22:00",
-				"TODAY_WINDOW": "10:00-11:00",
-				// 由 #251 填，與正式環境不同一組
-				"VAPID_PUBLIC_KEY": ""
+				// 整天都可發，驗收不必等時段
+				"SEND_WINDOW": "00:00-23:59",
+				"TODAY_WINDOW": "00:00-23:59",
+				// 與正式環境不同一組
+				"VAPID_PUBLIC_KEY": "BDEwwNbsQeIi5TvATXxOwOi4QZKbhtqY9PUUBaOVew9AikqYnCjZrTHHqDo9mLpt6NYni6eTG-jB_AYo6xeEqbU"
 			},
 			"d1_databases": [
 				{
 					"binding": "DB",
 					"database_name": "tvl-push-preview",
-					// 佔位值，由 #251 換成預覽環境那個 D1 的識別碼
-					"database_id": "00000000-0000-0000-0000-000000000000",
+					"database_id": "95f2ead1-83b3-4e6c-bd06-866efea8890a",
 					"migrations_dir": "migrations"
 				}
 			]

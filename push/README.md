@@ -112,18 +112,18 @@ curl "http://localhost:8787/cdn-cgi/local/scheduled?cron=*+*+*+*+*&time=17952264
 
 | 名稱 | 種類 | 正式環境 | 預覽環境（`env.preview`） |
 |---|---|---|---|
-| `DB` | D1 綁定 | `tvl-push`；識別碼由 #251 填 | `tvl-push-preview`；識別碼由 #251 填 |
+| `DB` | D1 綁定 | `tvl-push` | `tvl-push-preview` |
 | `ALLOWED_ORIGIN` | var | `https://vstat.tw` | `https://tommyyi0317.github.io` |
 | `SITE_ROOT` | var | `https://vstat.tw` | `https://tommyyi0317.github.io/tvl-shell-proto` |
 | `FEED_URL` | var | `https://vstat.tw/push/matches.json` | `https://tommyyi0317.github.io/tvl-shell-proto/push/matches.json` |
-| `SEND_WINDOW` | var | `08:00-22:00` | 同值，驗收時可改 |
-| `TODAY_WINDOW` | var | `10:00-11:00` | 同值，驗收時可改 |
-| `VAPID_PUBLIC_KEY` | var | 由 #251 填（填入前是空字串） | 由 #251 填（填入前是空字串） |
+| `SEND_WINDOW` | var | `08:00-22:00` | `00:00-23:59`（整天，驗收用） |
+| `TODAY_WINDOW` | var | `10:00-11:00` | `00:00-23:59`（整天，驗收用） |
+| `VAPID_PUBLIC_KEY` | var | 正式環境那組的公鑰 | 預覽環境那組的公鑰 |
 | `VAPID_PRIVATE_KEY` | secret | `wrangler secret put` 存，不進 repo | 另一組，`wrangler secret put --env preview` |
 
 - 說明：`ALLOWED_ORIGIN` 只能一個 origin；`SITE_ROOT` 是通知連結的網站根，預覽站含子路徑；`FEED_URL` 是推播賽事檔的網址；`SEND_WINDOW` 是新的一則可以開始的時段（已開始的會送完）；`TODAY_WINDOW` 是今日賽事可以發的時段。
 - 格式：`SITE_ROOT` 不帶結尾斜線；時段是 `HH:MM-HH:MM`、台北時間、閉區間（`08:00-22:00` 表示 08:00 到 22:00 這一分鐘都算），開始不可晚於結束。`SEND_WINDOW` 解析不出來時不開始任何新的一則；`TODAY_WINDOW` 解析不出來時不發今日賽事，賽果摘要照常。
-- 由 #251 填：兩個環境各自的 `DB` 識別碼（`database_id`；目前是佔位值 `00000000-0000-0000-0000-000000000000`，本機模式與單元測試可用）與 `VAPID_PUBLIC_KEY`。
+- 兩個環境的 `database_id` 與 `VAPID_PUBLIC_KEY` 已填真值，值看 `wrangler.jsonc`。本機模式與單元測試用的是本機 D1，不碰遠端。
 - `vars` 與 `d1_databases` 不會被 wrangler 的環境（`env.<名稱>`）繼承，所以 `env.preview` 底下兩者都要完整重寫。
 - `triggers` 與 `routes` 會被環境繼承。定時器（`triggers.crons = ["* * * * *"]`）寫在頂層一次，兩個環境都有。`env.preview` 寫了 `"routes": []`，不要拿掉：正式環境在頂層綁了 `push.vstat.tw` 之後，沒有這一行的話部署預覽環境會把網域從正式環境搶走（wrangler 4.162 的警告：「Deploying this environment will reassign these custom domains away from the top-level Worker」）。
 - 設定檔不放任何祕密；私鑰只存在 Cloudflare 的 secret。
@@ -208,7 +208,7 @@ node scripts/gen-vapid.mjs
 
 ## 部署
 
-不做自動部署，GitHub 不放任何 Cloudflare 金鑰。以下在 `push/` 底下、用本機的 wrangler 跑。
+不做自動部署，GitHub 不放任何 Cloudflare 金鑰。以下在 `push/` 底下、用本機的 wrangler 跑。兩個環境的 D1 與金鑰都已建好、值已填進 `wrangler.jsonc`，平常改了程式只要跑各自的「部署」那一步；建 D1、產生金鑰、填值是從零重建時才做。
 
 `d1 execute`、`d1 migrations apply` 的 `--preview` 旗標是「D1 的 preview 資料庫」，與這裡的預覽環境無關，不要用。
 
@@ -218,14 +218,14 @@ node scripts/gen-vapid.mjs
 3. 產生金鑰（見「VAPID 金鑰」），存私鑰：`node_modules/.bin/wrangler secret put VAPID_PRIVATE_KEY --env preview`。
 4. 把公鑰填進 `env.preview.vars.VAPID_PUBLIC_KEY`。
 5. 部署：`node_modules/.bin/wrangler deploy --env preview`。部署出來的名稱是 `tvl-push-preview`，網址在 `workers.dev` 底下，看部署輸出。
-6. 驗收要提早觸發時，改 `env.preview.vars` 的 `SEND_WINDOW`、`TODAY_WINDOW` 後再部署一次。
+6. 預覽環境的 `SEND_WINDOW`、`TODAY_WINDOW` 是整天（`00:00-23:59`），驗收不必等時段；要改成別的時段就改 `env.preview.vars` 後再部署一次。
 
 正式環境：
 1. 建 D1：`node_modules/.bin/wrangler d1 create tvl-push`，識別碼填進頂層 `d1_databases` 的 `database_id`。
 2. 套 migration：`node_modules/.bin/wrangler d1 migrations apply DB --remote`。
 3. 產生另一組金鑰，存私鑰：`node_modules/.bin/wrangler secret put VAPID_PRIVATE_KEY`。
 4. 把公鑰填進頂層 `vars.VAPID_PUBLIC_KEY`。
-5. 綁定 `push.vstat.tw`：`vstat.tw` 已經是 Cloudflare 上的 zone（ADR 0013）。在 `wrangler.jsonc` 頂層加 `"routes": [{ "pattern": "push.vstat.tw", "custom_domain": true }]` 再部署，或在 Cloudflare 後台 Worker 的 Domains & Routes 加 Custom Domain。Cloudflare 會自己建 DNS 紀錄與憑證；條件是 `push.vstat.tw` 不能已經有 CNAME 紀錄。依據：<https://developers.cloudflare.com/workers/configuration/routing/custom-domains/>。頂層的 `routes` 會被環境繼承，`env.preview` 已用 `"routes": []` 擋掉（見「設定項目」）。
+5. 綁定 `push.vstat.tw`：`vstat.tw` 已經是 Cloudflare 上的 zone（ADR 0013）。`wrangler.jsonc` 頂層已有 `"routes": [{ "pattern": "push.vstat.tw", "custom_domain": true }]`，部署時就會綁上。Cloudflare 會自己建 DNS 紀錄與憑證；條件是 `push.vstat.tw` 不能已經有 CNAME 紀錄。依據：<https://developers.cloudflare.com/workers/configuration/routing/custom-domains/>。頂層的 `routes` 會被環境繼承，`env.preview` 已用 `"routes": []` 擋掉（見「設定項目」）。
 6. 部署：`node_modules/.bin/wrangler deploy`。
 
 ## 看發送紀錄
