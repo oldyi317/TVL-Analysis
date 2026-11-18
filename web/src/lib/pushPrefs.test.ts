@@ -2,15 +2,18 @@ import { describe, expect, it } from 'vitest';
 import {
 	DEFAULT_PREFS,
 	PREFS_KEY,
+	PROMPT_KEY,
 	REGISTERED_KEY,
 	checksOf,
 	groupOf,
 	isDue,
 	readPrefs,
+	readPromptHidden,
 	readRegisteredAt,
 	registerBody,
 	urlBase64ToBytes,
 	writePrefs,
+	writePromptHidden,
 	writeRegisteredAt
 } from './pushPrefs.js';
 
@@ -78,6 +81,24 @@ describe('最後登記時間', () => {
 	});
 	it('寫入失敗不中斷', () => {
 		expect(() => writeRegisteredAt({ setItem: throwing }, 1)).not.toThrow();
+	});
+});
+
+describe('首頁提示卡的記號（按過關閉或進過通知頁）', () => {
+	it('沒記過是 false，記了之後是 true', () => {
+		const storage = fakeStorage();
+		expect(readPromptHidden(storage)).toBe(false);
+		writePromptHidden(storage);
+		expect(storage.data[PROMPT_KEY]).toBe('1');
+		expect(readPromptHidden(storage)).toBe(true);
+	});
+	it('讀不到時當作沒關過', () => {
+		expect(readPromptHidden(null)).toBe(false);
+		expect(readPromptHidden({ getItem: throwing })).toBe(false);
+	});
+	it('寫入失敗不中斷', () => {
+		expect(() => writePromptHidden(null)).not.toThrow();
+		expect(() => writePromptHidden({ setItem: throwing })).not.toThrow();
 	});
 });
 

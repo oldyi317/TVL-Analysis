@@ -1,6 +1,6 @@
 import { type Page } from '@playwright/test';
 import { UA } from '../src/lib/installGuide.fixtures.js';
-import { BASE, currentSeason as current, expect, openMoreSheet, test, topBar } from './helpers.js';
+import { BASE, asStandalone, currentSeason as current, expect, openMoreSheet, test, topBar } from './helpers.js';
 
 const URL_PATH = `${BASE}/notifications/`;
 const PUSH = 'https://push.vstat.tw/**';
@@ -438,5 +438,108 @@ test.describe('每日重新登記', () => {
 		server.status = 200;
 		await page.reload();
 		await expect.poll(() => server.calls.length).toBe(2);
+	});
+});
+
+test.describe('首頁提示卡', () => {
+	const HOME = `${BASE}/${current}/men/`;
+	const PROMPT_KEY = 'tvl.push.promptHidden';
+	const card = (page: Page) => page.locator('.push-prompt');
+	const settingsLink = (page: Page) => card(page).getByRole('link', { name: '設定通知' });
+	const closeButton = (page: Page) => card(page).getByRole('button', { name: '關閉這則提示' });
+
+	test('獨立視窗、支援、還沒問過權限、沒有推播訂閱：出現提示卡，文字逐字，連到通知頁', async ({ page }) => {
+		await setup(page);
+		await asStandalone(page);
+		await page.goto(HOME);
+		await expect(card(page)).toBeVisible();
+		await expect(card(page).locator('p')).toHaveText('想在有新賽果、比賽日早上收到通知嗎？');
+		await expect(settingsLink(page)).toHaveAttribute('href', URL_PATH);
+		await expect(closeButton(page)).toBeVisible();
+		for (const control of [settingsLink(page), closeButton(page)]) {
+			const box = (await control.boundingBox())!;
+			expect(box.height).toBeGreaterThanOrEqual(44);
+			expect(box.width).toBeGreaterThanOrEqual(44);
+		}
+	});
+
+	// 要不要顯示是問完瀏覽器才決定的：等首頁內容與兩個畫格，該出現的話這時已經出現
+	async function expectNoCard(page: Page) {
+		await expect(page.getByRole('region', { name: '戰績' })).toBeVisible();
+		await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+		await expect(card(page)).toHaveCount(0);
+	}
+
+	for (const [name, fake, standalone] of [
+		['在瀏覽器分頁內（Android Chrome）', {}, false],
+		['瀏覽器不支援推播', { noPush: true }, true],
+		['已經允許過通知', { permission: 'granted' }, true],
+		['已經選過不允許', { permission: 'denied' }, true],
+		['已有推播訂閱', { subscribed: true }, true]
+	] as const) {
+		test(`${name}：不出現提示卡`, async ({ page }) => {
+			await setup(page, fake);
+			if (standalone) await asStandalone(page);
+			await page.goto(HOME);
+			await expectNoCard(page);
+		});
+	}
+
+	test('按關閉：提示卡消失並記在裝置上，重新載入不再出現', async ({ page }) => {
+		await setup(page);
+		await asStandalone(page);
+		await page.goto(HOME);
+		await closeButton(page).click();
+		await expect(card(page)).toHaveCount(0);
+		expect(await page.evaluate((key) => localStorage.getItem(key), PROMPT_KEY)).toBe('1');
+		await page.reload();
+		await expectNoCard(page);
+	});
+
+	test('從提示卡點進通知頁，沒開啟通知就回首頁：不再出現', async ({ page }) => {
+		await setup(page);
+		await asStandalone(page);
+		await page.goto(HOME);
+		await settingsLink(page).click();
+		await expect(page).toHaveURL(URL_PATH);
+		await expect(resultsSwitch(page)).not.toBeChecked();
+		await page.goBack();
+		await expect(page).toHaveURL(HOME);
+		await expectNoCard(page);
+		expect(await browserLog(page)).toEqual([]);
+	});
+
+	test('直接載入過通知頁：之後開首頁不出現', async ({ page }) => {
+		await setup(page);
+		await asStandalone(page);
+		await page.goto(URL_PATH);
+		await expect(resultsSwitch(page)).not.toBeChecked();
+		await page.goto(HOME);
+		await expectNoCard(page);
+	});
+
+	test('localStorage 不可用：提示卡照樣出現，按關閉會消失，首頁與通知頁都不出錯', async ({ page }) => {
+		await setup(page);
+		await asStandalone(page);
+		await page.addInitScript(() => {
+			Object.defineProperty(window, 'localStorage', {
+				get() {
+					throw new DOMException('denied', 'SecurityError');
+				}
+			});
+		});
+		// e2e 封鎖 service worker 時 register() 回 undefined，站台註冊那一段每次載入都會丟這個錯，與 localStorage 無關
+		const blockedWorker = "reading 'addEventListener'";
+		const errors: string[] = [];
+		page.on('pageerror', (error) => {
+			if (!error.message.includes(blockedWorker)) errors.push(String(error));
+		});
+		await page.goto(HOME);
+		await expect(card(page)).toBeVisible();
+		await closeButton(page).click();
+		await expect(card(page)).toHaveCount(0);
+		await page.goto(URL_PATH);
+		await expect(resultsSwitch(page)).toBeVisible();
+		expect(errors).toEqual([]);
 	});
 });

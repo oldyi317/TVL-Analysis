@@ -3,6 +3,7 @@ export type Prefs = { results: boolean; today: boolean; group: PushGroup };
 
 export const PREFS_KEY = 'tvl.push.prefs';
 export const REGISTERED_KEY = 'tvl.push.registeredAt';
+export const PROMPT_KEY = 'tvl.push.promptHidden';
 export const DEFAULT_PREFS: Prefs = { results: false, today: false, group: 'both' };
 
 const DAY_MS = 24 * 3600_000;
@@ -44,6 +45,21 @@ export function readRegisteredAt(storage: Pick<Storage, 'getItem'> | null | unde
 export function writeRegisteredAt(storage: Pick<Storage, 'setItem'> | null | undefined, at: number): void {
 	try {
 		storage?.setItem(REGISTERED_KEY, String(at));
+	} catch {}
+}
+
+// 首頁提示卡按過關閉、或進過通知頁，都記在同一個記號；讀不到當作沒關過
+export function readPromptHidden(storage: Pick<Storage, 'getItem'> | null | undefined): boolean {
+	try {
+		return storage?.getItem(PROMPT_KEY) === '1';
+	} catch {
+		return false;
+	}
+}
+
+export function writePromptHidden(storage: Pick<Storage, 'setItem'> | null | undefined): void {
+	try {
+		storage?.setItem(PROMPT_KEY, '1');
 	} catch {}
 }
 

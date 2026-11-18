@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
+	import { browserStorage } from '#lib/groupMemory.js';
 	import { inPhoneBrowserTab } from '#lib/installGuide.js';
 	import { installPrompt, promptInstall } from '#lib/installPrompt.svelte.js';
 	import { NOTIFICATIONS_TITLE } from '#lib/nav.js';
@@ -15,6 +16,7 @@
 		setGroup,
 		setKind
 	} from '#lib/push.svelte.js';
+	import { writePromptHidden } from '#lib/pushPrefs.js';
 
 	const guide = $derived(installPrompt.guide);
 	const denied = $derived(push.permission === 'denied');
@@ -44,6 +46,8 @@
 	}
 
 	onMount(() => {
+		// 進過這一頁，首頁的提示卡就不再出現
+		writePromptHidden(browserStorage());
 		void refreshPush();
 		// 到系統設定改了通知權限再切回來，頁面不會重新載入
 		const onVisible = () => {
