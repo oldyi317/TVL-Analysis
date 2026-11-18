@@ -8,6 +8,7 @@ const LABEL = '有新資料，點此更新';
 const STANDINGS = `/${currentSeason}/men/standings/`;
 // 新版要重新預存整批檔案，多個測試同時跑時比預設的 5 秒久
 const SLOW = 20_000;
+// 預存兩版再重載的測試標 test.slow()：閒置 11–13 秒，機器忙時會超過預設的 30 秒（#276）
 const standingsUrl = (site: Site) => `${site.origin}${BASE}${STANDINGS}`;
 
 const test = base.extend<{ site: Site }>({
@@ -84,6 +85,7 @@ async function showUpdateBar(page: Page, site: Site, path = STANDINGS) {
 
 for (const how of ['鍵盤', '滑鼠'] as const) {
 	test(`${how}按更新條：頁面重載、停在同一網址、只剩新版的預存`, async ({ page, site }) => {
+		test.slow();
 		const url = await showUpdateBar(page, site);
 		const bar = updateBar(page);
 		if (how === '鍵盤') {
@@ -100,6 +102,7 @@ for (const how of ['鍵盤', '滑鼠'] as const) {
 }
 
 test('不按更新條：重新整理仍是舊版，關閉重開才換新版', async ({ page, site, context }) => {
+	test.slow();
 	const url = await showUpdateBar(page, site);
 	await page.reload();
 	await expect(updateBar(page)).toBeVisible({ timeout: SLOW });
@@ -113,6 +116,7 @@ test('不按更新條：重新整理仍是舊版，關閉重開才換新版', as
 
 // 新版一啟用就刪掉舊版的預存，還開著的舊頁面之後要載入的程式檔會拿不到，所以一起重載
 test('兩個分頁：在一個分頁按更新條，另一個分頁也重載到新版、停在自己的網址', async ({ page, site, context }) => {
+	test.slow();
 	await showUpdateBar(page, site);
 	const other = await context.newPage();
 	const otherUrl = `${site.origin}${BASE}/${currentSeason}/men/`;
@@ -136,9 +140,28 @@ const FIRST_VISIT_REQUESTS = 2;
 const firstVisitSettled = (site: Site) =>
 	expect.poll(() => site.scriptRequests.length).toBe(FIRST_VISIT_REQUESTS);
 
+// 檢查還在進行中時再呼叫 update()，瀏覽器會併進同一個工作、伺服器不會多收一次請求；
+// 所以記下頁面發的每次檢查，要數請求前先等它們做完，不能只等請求到了伺服器
+const recordChecks = (page: Page) =>
+	page.addInitScript(() => {
+		const update = ServiceWorkerRegistration.prototype.update;
+		const checks: Promise<unknown>[] = [];
+		(window as unknown as { checks: Promise<unknown>[] }).checks = checks;
+		ServiceWorkerRegistration.prototype.update = function () {
+			const check = update.call(this);
+			checks.push(check.catch(() => {}));
+			return check;
+		};
+	});
+const checksDone = (page: Page) =>
+	page.evaluate(async () => {
+		await Promise.all((window as unknown as { checks: Promise<unknown>[] }).checks);
+	});
+
 // 假時鐘要在頁面載入前裝好：載入後才裝，啟動時建立的計時器不歸它管
 async function openStandalone(page: Page, site: Site) {
 	await asStandalone(page);
+	await recordChecks(page);
 	await page.clock.install();
 	const url = standingsUrl(site);
 	await loadAndWaitControlled(page, url);
@@ -151,12 +174,9 @@ test('沒有新版：獨立視窗離開超過 30 分鐘回來只再檢查一次�
 	await firstVisitSettled(site);
 	await page.clock.fastForward('03:00:00');
 	await leaveAndReturn(page, '31:00');
-	await expect.poll(() => site.scriptRequests.length).toBe(FIRST_VISIT_REQUESTS + 1);
-	// 檢查是排隊依序做的：再排一次並等它做完，計時器若偷發過檢查，這時一定已經到伺服器
-	await page.evaluate(async () => {
-		await (await navigator.serviceWorker.ready).update();
-	});
-	expect(site.scriptRequests.length).toBe(FIRST_VISIT_REQUESTS + 2);
+	// 計時器若偷發過檢查，這時也已做完、請求已到伺服器
+	await checksDone(page);
+	expect(site.scriptRequests.length).toBe(FIRST_VISIT_REQUESTS + 1);
 	await expect(updateBar(page)).toHaveCount(0);
 	expect(await marked(page)).toBe(true);
 });
@@ -165,7 +185,8 @@ test('獨立視窗離開超過 30 分鐘回來時沒有新版：之後才由別�
 	await openStandalone(page, site);
 	await firstVisitSettled(site);
 	await leaveAndReturn(page, '31:00');
-	await expect.poll(() => site.scriptRequests.length).toBe(FIRST_VISIT_REQUESTS + 1);
+	await checksDone(page);
+	expect(site.scriptRequests.length).toBe(FIRST_VISIT_REQUESTS + 1);
 	site.deploy();
 	// 不是這一頁回到前景發的檢查，例如同一個站的另一個分頁發的
 	await page.evaluate(async () => {
@@ -186,6 +207,7 @@ test('檢查新版繞過 HTTP 快取：伺服器回 max-age=600，重新整理�
 });
 
 test('獨立視窗離開超過 30 分鐘再回來：有新版就自動換，停在原本那一頁', async ({ page, site }) => {
+	test.slow();
 	const url = await openStandalone(page, site);
 	site.deploy();
 	await leaveAndReturn(page, '31:00');
