@@ -1,5 +1,6 @@
 import pytest
 
+from src.export.player_advanced import compute_ratios
 from tests.conftest import seed_player, seed_registration, seed_season_roster, seed_stat
 
 
@@ -371,3 +372,48 @@ def test_team_sets_cover_whole_season_with_golden_set_counted_as_one(export):
 
     assert entry["team_sets"] == 8
     assert entry["ratios"]["blocks_per_set"] == 0.75  # 全季攔網 6 / 8
+
+
+def test_all_zero_stat_rows_do_not_count_as_games_even_with_sets_played(export):
+    """全 0 單場數據不計場數（sets_played 在外部來源是整場局數，不算技術統計）；分子照加、場均依 1 場算。"""
+    def build(conn):
+        seed_player(conn, 1, "男甲")
+        seed_registration(conn, 1, 1, team_id=1, position="OH")
+        _match(conn, 1, date="2025-11-01", sets=3)
+        _match(conn, 2, date="2025-11-08", sets=3)
+        seed_stat(conn, 1, (3, 10, 5, 2, 4, 2, 6, 3, 8, 4, 0, 0, 8), match_date="2025-11-01")
+        seed_stat(conn, 1, (3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), match_date="2025-11-08")
+
+    [entry] = export(build)["players"]
+    assert entry["games"] == 1
+    assert entry["ratios"]["points_per_game"] == 8.0
+    assert entry["ratios"]["blocks_per_game"] == 2.0
+
+
+def test_row_with_only_receive_and_dig_counts_as_a_game(export):
+    def build(conn):
+        seed_player(conn, 1, "男甲")
+        seed_registration(conn, 1, 1, team_id=1, position="L")
+        _match(conn, 1, date="2025-11-01", sets=3)
+        seed_stat(conn, 1, (3, 0, 0, 0, 0, 0, 12, 6, 9, 5, 0, 0, 0), match_date="2025-11-01")
+
+    [entry] = export(build)["players"]
+    assert entry["games"] == 1
+
+
+def test_season_of_only_all_zero_rows_is_left_out_of_advanced_like_a_season_without_games(export):
+    def build(conn):
+        seed_player(conn, 1, "男甲")
+        seed_registration(conn, 1, 1, team_id=1, position="OH")
+        _match(conn, 1, date="2025-11-01", sets=3)
+        seed_stat(conn, 1, (3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), match_date="2025-11-01")
+
+    assert export(build)["players"] == []
+
+
+def test_per_game_ratios_are_zero_not_an_error_when_games_is_zero():
+    totals = {"games": 0, "block_points": 0, "attack_total": 0, "attack_points": 0, "serve_total": 0,
+              "serve_points": 0, "receive_total": 0, "receive_excellent": 0, "dig_total": 0, "dig_excellent": 0,
+              "set_total": 0, "set_excellent": 0, "total_points": 0}
+    ratios = compute_ratios(totals, 10)
+    assert ratios["points_per_game"] == 0.0 and ratios["blocks_per_game"] == 0.0

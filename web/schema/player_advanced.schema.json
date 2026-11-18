@@ -71,7 +71,7 @@
           "cup_id": { "type": "integer" },
           "group": { "type": "string", "enum": ["men", "women"] },
           "position": { "type": ["string", "null"], "description": "該季主要位置（週登錄最多次的位置，同數取最近）；為空者不計算 PR 值" },
-          "games": { "type": "integer", "minimum": 1, "description": "該季統計列數，黃金決勝局列也算一場" },
+          "games": { "type": "integer", "minimum": 1, "description": "出賽場數：該季任一項技術統計不為 0 的單場數據數（全 0 列不算），有數據的黃金決勝局列也算一場" },
           "team_sets": { "type": "integer", "minimum": 0, "description": "所屬球隊已打局數（例行賽、非黃金決勝局、已有單場數據的場次總局數）；浮動門檻與每局攔網的分母，查無為 0" },
           "below_threshold": { "type": "boolean", "description": "八項 PR 指標的次數全部未達浮動門檻：PR 值皆為空、不進分佈，比率照常輸出；單項未達門檻時只有該項 PR 值為空" },
           "ratios": { "$ref": "#/$defs/Ratios" },

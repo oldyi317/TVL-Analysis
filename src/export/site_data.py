@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 from src.export.leaders import compute_leaders, compute_volume_rates, count_team_sets, regular_totals
 from src.export.records import compute_records
 from src.export.player_advanced import compute_advanced, distributions
-from src.export.player_seasons import STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
+from src.export.player_seasons import PLAY_FIELDS, STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
 from src.export.standings import compute_standings
 from src.export.team_advanced import compute_team_advanced
 from src.utils.db_config import DB_PATH, PROJECT_ROOT, get_connection
@@ -261,11 +261,12 @@ def _matches_payload(conn: sqlite3.Connection) -> dict:
 def _player_seasons(conn: sqlite3.Connection, exclude_golden_set: bool = False) -> dict[int, list[dict]]:
     sums = ", ".join(("CASE WHEN COUNT(s.sets_played) = COUNT(*) THEN SUM(s.sets_played) ELSE NULL END"
                       if f == "sets_played" else f"COALESCE(SUM(s.{f}), 0)") for f in STAT_FIELDS)
+    played = " OR ".join(f"COALESCE(s.{f}, 0) <> 0" for f in PLAY_FIELDS)
     totals = {
         (player_id, cup_id): SeasonTotals(games, tuple(stats))
         for player_id, cup_id, games, *stats in conn.execute(
             f"""
-            SELECT r.player_id, r.cup_id, COUNT(*), {sums}
+            SELECT r.player_id, r.cup_id, SUM(CASE WHEN {played} THEN 1 ELSE 0 END), {sums}
             FROM player_match_stats s
             JOIN roster_registrations r ON r.registration_id = s.registration_id
             {"WHERE s.is_golden_set = 0" if exclude_golden_set else ""}
@@ -596,7 +597,7 @@ def _records_payload(conn: sqlite3.Connection) -> dict:
     season_names_by_team = _season_names_by_team(conn)
     matches = _parent_matches(conn)
     opponents = _resolve_opponents(conn)
-    fields = [f for f in STAT_FIELDS if f != "sets_played"]
+    fields = PLAY_FIELDS
     match_rows: dict[str, list[dict]] = {gender: [] for gender in GROUP_BY_GENDER}
     for gender, cup_id, player_id, team_id, match_date, opponent, *values in conn.execute(
         f"""

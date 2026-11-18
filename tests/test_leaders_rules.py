@@ -264,6 +264,17 @@ def test_regular_totals_sum_stat_fields_and_count_games():
     assert totals[7]["sets_played"] is None
 
 
+def test_regular_totals_do_not_count_all_zero_rows_as_games_but_still_sum_them():
+    g1 = game(1, [entry(7, 1, attack_total=10, attack_points=4, total_points=4)], [])
+    g2 = game(2, [entry(7, 1, sets_played=3)], [])
+    totals = regular_totals([g1, g2])
+    assert totals[7]["games"] == 1 and totals[7]["attack_total"] == 10 and totals[7]["sets_played"] is None
+
+
+def test_regular_totals_games_is_zero_when_every_row_is_all_zero():
+    assert regular_totals([game(1, [entry(7, 1, sets_played=4)], [])])[7]["games"] == 0
+
+
 def test_regular_totals_sum_sets_played_when_all_present():
     g1 = game(1, [entry(7, 1, sets_played=3)], [])
     g2 = game(2, [entry(7, 1, sets_played=2)], [])
