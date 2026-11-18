@@ -89,11 +89,13 @@ TVL-Analysis/
 │   ├── export_snapshot.sh         # 匯出器 JSON 快照比對工具
 │   ├── setup_runner.sh            # 自架 GitHub Actions runner 安裝腳本
 │   ├── setup_crawl_trigger.sh     # 每日 09:23 本機觸發 daily-crawl 的 systemd timer 安裝腳本
-│   └── runner_loop.sh             # 自架 ephemeral runner 常駐迴圈
+│   ├── runner_loop.sh             # 自架 ephemeral runner 常駐迴圈
+│   └── domain-expiry-issue.sh     # 網域快到期時開 issue（同標題還開著就不重開；domain-expiry.yml 呼叫）
+├── .github/actionlint.yaml        # actionlint 設定（自架 runner 標籤）
 ├── .github/workflows/
 │   ├── daily-crawl.yml            # 每日排程爬蟲（自架 runner）
 │   ├── pages.yml                  # 靜態站建置與 GitHub Pages 部署（雲端 runner）
-│   ├── ci.yml                     # PR 測試守門（pytest、svelte-check、Vitest）
+│   ├── ci.yml                     # PR 測試守門（pytest、svelte-check、Vitest、actionlint）
 │   └── domain-expiry.yml          # 每週檢查網域到期日，快到期就開 issue（雲端 runner）
 ├── data/db/tvl_database.db        # SQLite 資料庫（進 git）
 ├── tests/                         # Python 單元與合約測試（pytest）
@@ -165,9 +167,10 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
    - 不安裝 `requirements.txt`，直接以 Python 3.14 標準庫執行匯出器（`src.export.site_data`）從 repo 內的 `.db` 產出 JSON，接著在 `web/` 下安裝前端依賴並建置靜態站（含 Ajv JSON Schema 驗證與型別產生），最後將 `web/build` 部署至 GitHub Pages。
 3. **PR 持續整合檢查（`ci.yml`）**：
    - 於 Pull Request 時在雲端 runner 執行 Python 測試（pytest）以及前端 JSON 匯出、型別檢查與單元測試。
+   - 以 actionlint（含 shellcheck）檢查 `.github/workflows/*.yml`；新 workflow 合併前無法手動觸發，這是合併前唯一的檢查。
 4. **網域到期的每週檢查（`domain-expiry.yml`）**：
    - 每週一在雲端 runner 執行 `python -m src.utils.domain_expiry`，向 TWNIC 的公開查詢取 `vstat.tw` 的到期日。
-   - 剩餘天數少於 90 天就開一張 `ready-for-human` 的 issue 提醒續約（PChome 後台沒有自動續約）；同標題的 issue 還開著就不重開。查詢失敗會讓 workflow 失敗。
+   - 剩餘天數少於 90 天就由 `scripts/domain-expiry-issue.sh` 開一張 `ready-for-human` 的 issue 提醒續約（PChome 後台沒有自動續約）；同標題的 issue 還開著就不重開。查詢失敗會讓 workflow 失敗。
    - 手動 `workflow_dispatch` 可用 `threshold_days` 覆寫門檻。
 
 ## 賽果預測模型簡述

@@ -1,4 +1,4 @@
-# PR 守門：pytest、svelte-check、vitest、Playwright e2e，以及發送服務（push/）的型別檢查與單元測試。pages.yml 只負責部署（匯出器不裝 pip 套件），本 workflow 才裝 requirements.txt。
+# PR 守門：pytest、svelte-check、vitest、Playwright e2e、workflow 檔的 actionlint，以及發送服務（push/）的型別檢查與單元測試。pages.yml 只負責部署（匯出器不裝 pip 套件），本 workflow 才裝 requirements.txt。
 name: ci
 
 on:
@@ -54,6 +54,25 @@ jobs:
       - name: e2e（先 build）
         working-directory: web
         run: npm run test:e2e
+
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: 下載 actionlint（版本與 sha256 釘住，取自 release 的 checksums.txt）
+        env:
+          VERSION: 1.7.12
+          SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          tarball="actionlint_${VERSION}_linux_amd64.tar.gz"
+          curl -fsSLO "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/${tarball}"
+          echo "${SHA256}  ${tarball}" | sha256sum -c
+          tar xzf "$tarball" actionlint
+      # actionlint 找不到 shellcheck 會靜默略過 run 區塊的檢查；ubuntu runner 預裝，這裡確認它在
+      - name: 確認 shellcheck 在
+        run: shellcheck --version
+      - name: 檢查 workflow 檔
+        run: ./actionlint -color
 
   push:
     runs-on: ubuntu-latest

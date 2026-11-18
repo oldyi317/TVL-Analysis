@@ -1,0 +1,4 @@
+# actionlint 設定（#259）。daily-crawl.yml 跑在使用者筆電 WSL 的自架 runner，標籤 tvl 由 scripts/runner_loop.sh 註冊。
+self-hosted-runner:
+  labels:
+    - tvl
