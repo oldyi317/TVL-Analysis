@@ -13,6 +13,7 @@
 	import { browserStorage, writeGroup } from '#lib/groupMemory.js';
 	import { startInstall } from '#lib/installPrompt.svelte.js';
 	import { detailListOf, listHref, NOTIFICATIONS_TITLE, nextDepth } from '#lib/nav.js';
+	import { reregisterDaily } from '#lib/push.svelte.js';
 	import { parseId, resolveSeasonGroup } from '#lib/route.js';
 	import { checkConnection, rememberPage, startServiceWorker } from '#lib/serviceWorker.svelte.js';
 	import { currentSeason, findPlayerSeason, findTeam, isGroup, type Group } from '#lib/site.js';
@@ -107,6 +108,7 @@
 		document.documentElement.dataset.hydrated = '';
 		startServiceWorker();
 		startInstall();
+		void reregisterDaily();
 	});
 </script>
 

@@ -17,8 +17,8 @@ export const NAV_ITEMS: { section: Section; label: string; icon: ComponentProps<
 
 export const MORE_SECTIONS: readonly Section[] = ['players', 'leaders', 'records', 'notifications'];
 
-// 網址 /notifications/ 的頁名；第 4 期改成「通知」時只動這裡（「更多」面板那一列的字另寫在 TabBar）
-export const NOTIFICATIONS_TITLE = '加到主畫面';
+// 網址 /notifications/ 的頁名（頁面標題、h1 與頂部列共用；「更多」面板各列的字另寫在 TabBar）
+export const NOTIFICATIONS_TITLE = '通知';
 
 function isMore(section: Section): section is MoreSection {
 	return MORE_SECTIONS.includes(section);
