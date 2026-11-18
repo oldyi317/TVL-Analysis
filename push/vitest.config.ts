@@ -8,8 +8,17 @@ export default defineConfig(async () => {
 		plugins: [
 			cloudflareTest({
 				wrangler: { configPath: './wrangler.jsonc' },
-				// 寫死測試用的 origin，本機 .dev.vars 改了 ALLOWED_ORIGIN 也不影響測試
-				miniflare: { bindings: { TEST_MIGRATIONS: migrations, ALLOWED_ORIGIN: 'https://vstat.tw' } }
+				// 寫死測試用的設定，本機 .dev.vars 改了這些值也不影響測試
+				miniflare: {
+					bindings: {
+						TEST_MIGRATIONS: migrations,
+						ALLOWED_ORIGIN: 'https://vstat.tw',
+						SITE_ROOT: 'https://vstat.tw',
+						FEED_URL: 'https://vstat.tw/push/matches.json',
+						SEND_WINDOW: '08:00-22:00',
+						TODAY_WINDOW: '10:00-11:00'
+					}
+				}
 			})
 		],
 		test: { setupFiles: ['./test/apply-migrations.ts'] }

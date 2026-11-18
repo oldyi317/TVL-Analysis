@@ -1,9 +1,17 @@
+import { tick } from './sender';
 import { deleteSubscription, upsertSubscription } from './store';
 import { parseSubscribe, parseUnsubscribe } from './validate';
+import { createPush } from './webpush';
 
 export interface Env {
 	DB: D1Database;
 	ALLOWED_ORIGIN: string;
+	SITE_ROOT: string;
+	FEED_URL: string;
+	SEND_WINDOW: string;
+	TODAY_WINDOW: string;
+	VAPID_PUBLIC_KEY: string;
+	VAPID_PRIVATE_KEY: string;
 }
 
 const MAX_BODY_BYTES = 4096;
@@ -81,5 +89,12 @@ export default {
 		const response = await route(request, env, origin);
 		for (const [name, value] of Object.entries(corsHeaders(origin))) response.headers.set(name, value);
 		return response;
+	},
+	async scheduled(controller, env): Promise<void> {
+		const now = new Date(controller.scheduledTime);
+		await tick(env, now, {
+			fetch: (input, init) => fetch(input, init),
+			push: createPush({ publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY }, now)
+		});
 	}
 } satisfies ExportedHandler<Env>;
