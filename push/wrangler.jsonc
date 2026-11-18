@@ -4,8 +4,16 @@
 	"main": "src/index.ts",
 	"compatibility_date": "2026-11-01",
 	"observability": { "enabled": true },
+	// 定時器每分鐘一次。這一項會被環境繼承。
+	"triggers": { "crons": ["* * * * *"] },
 	"vars": {
-		"ALLOWED_ORIGIN": "https://vstat.tw"
+		"ALLOWED_ORIGIN": "https://vstat.tw",
+		"SITE_ROOT": "https://vstat.tw",
+		"FEED_URL": "https://vstat.tw/push/matches.json",
+		"SEND_WINDOW": "08:00-22:00",
+		"TODAY_WINDOW": "10:00-11:00",
+		// 由 #251 填。私鑰是 secret（VAPID_PRIVATE_KEY），不放在這個檔
+		"VAPID_PUBLIC_KEY": ""
 	},
 	"d1_databases": [
 		{
@@ -15,5 +23,30 @@
 			"database_id": "00000000-0000-0000-0000-000000000000",
 			"migrations_dir": "migrations"
 		}
-	]
+	],
+	"env": {
+		// 只給驗收用，部署出來的名稱是 tvl-push-preview。vars 與 d1_databases 不會繼承，要整份重寫。
+		"preview": {
+			// 頂層的 routes 會被環境繼承；不擋掉的話，正式環境綁了 push.vstat.tw 之後部署預覽環境會把網域搶走
+			"routes": [],
+			"vars": {
+				"ALLOWED_ORIGIN": "https://tommyyi0317.github.io",
+				"SITE_ROOT": "https://tommyyi0317.github.io/tvl-shell-proto",
+				"FEED_URL": "https://tommyyi0317.github.io/tvl-shell-proto/push/matches.json",
+				"SEND_WINDOW": "08:00-22:00",
+				"TODAY_WINDOW": "10:00-11:00",
+				// 由 #251 填，與正式環境不同一組
+				"VAPID_PUBLIC_KEY": ""
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "tvl-push-preview",
+					// 佔位值，由 #251 換成預覽環境那個 D1 的識別碼
+					"database_id": "00000000-0000-0000-0000-000000000000",
+					"migrations_dir": "migrations"
+				}
+			]
+		}
+	}
 }
