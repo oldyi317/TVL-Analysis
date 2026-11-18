@@ -30,6 +30,10 @@ export const seasonsData = readJson('seasons');
 export const currentSeason: string = seasonsData.seasons.find(
 	(s: { cup_id: number }) => s.cup_id === seasonsData.current_cup_id
 ).name;
+export const currentMatches = (group: string): { date: string }[] =>
+	readJson('matches').matches.find(
+		(g: { cup_id: number; group: string }) => g.cup_id === seasonsData.current_cup_id && g.group === group
+	)?.matches ?? [];
 
 // 讀匯出 JSON 的薄包裝：給 spec 取「最近一個有該資料的賽季」
 export const findSeason = (kind: Kind, group = 'men') => {

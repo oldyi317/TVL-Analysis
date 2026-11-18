@@ -18,7 +18,7 @@ describe('sectionOf', () => {
 		expect(sectionOf(routeId)).toBe(section);
 	});
 
-	it.each(['/', '/404', '/styleguide', null])('%s 沒有區段', (routeId) => {
+	it.each(['/', '/matches', '/404', '/styleguide', null])('%s 沒有區段', (routeId) => {
 		expect(sectionOf(routeId)).toBeNull();
 	});
 });

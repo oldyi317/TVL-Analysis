@@ -4,6 +4,7 @@ import {
 	BASE,
 	OLD_SEASON,
 	asStandalone,
+	currentMatches,
 	currentSeason,
 	expect,
 	findSeason,
@@ -174,6 +175,19 @@ test('離線開根路徑會轉到當季首頁', async ({ page, context }) => {
 	expect(await response!.text()).toBe(shellHtml);
 	await expect(page).toHaveURL(`${BASE}/${currentSeason}/men/`);
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${currentSeason} 男子組`);
+});
+
+test('離線開 /matches/#d-… 轉到記住的組別的賽事頁並帶著錨點', async ({ page, context }) => {
+	const matches = currentMatches('women');
+	test.skip(matches.length === 0, '現行賽季女子組還沒有賽事');
+	const date = matches.at(-1)!.date;
+	await loadAndWaitControlled(page, `${BASE}/${currentSeason}/women/`);
+	await context.setOffline(true);
+	const response = await page.goto(`${BASE}/matches/#d-${date}`);
+	expect(response!.fromServiceWorker()).toBe(true);
+	await expect(page).toHaveURL(`${BASE}/${currentSeason}/women/matches/#d-${date}`);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${currentSeason} 女子組 賽事`);
+	await expect(page.locator(`#d-${date}`)).toBeInViewport();
 });
 
 // ---- 看過就存、預先下載、離線狀態顯示（#238） ----
