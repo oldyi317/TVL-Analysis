@@ -90,6 +90,18 @@ export function groupByMonth<T extends { date: string }>(matches: readonly T[]):
 	return groups;
 }
 
+// 每個比賽日第一場的錨點 id；同一天其餘場次不在 Map 裡，整頁每個 id 只出現一次
+export function dayAnchors<T extends { date: string }>(matches: readonly T[]): Map<T, string> {
+	const anchors = new Map<T, string>();
+	const seen = new Set<string>();
+	for (const match of matches) {
+		if (seen.has(match.date)) continue;
+		seen.add(match.date);
+		anchors.set(match, `d-${match.date}`);
+	}
+	return anchors;
+}
+
 type Dated = { date: string; start_time?: string | null; sets: readonly unknown[] };
 
 // 最近一個有已完賽場次的比賽日，回該日全部已完賽場次（保持原順序）

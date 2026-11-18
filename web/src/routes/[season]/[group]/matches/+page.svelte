@@ -4,7 +4,7 @@
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import MatchLink from '#lib/components/MatchLink.svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
-	import { isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
+	import { dayAnchors, isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
 	import { GROUP_LABEL } from '#lib/site.js';
 	import type { PageProps } from './$types';
 
@@ -44,6 +44,8 @@
 		return () => window.removeEventListener('scroll', onScroll);
 	});
 
+	const anchors = $derived(dayAnchors(data.months.flatMap((month) => month.matches)));
+
 	const hasUnplayed = $derived(data.months.some((month) => month.matches.some((m) => !isPlayed(m))));
 
 	const matchHref = (game: number) =>
@@ -79,7 +81,7 @@
 			<h2 id="h-{month.key}">{month.label}</h2>
 			<ol class="cards">
 				{#each month.matches as match, j (match.game_id)}
-					<li class:rise={i === 0 && j < 6} style:--i={j + 1}>
+					<li id={anchors.get(match)} class:rise={i === 0 && j < 6} style:--i={j + 1}>
 						<MatchLink href={matchHref(match.game_id)} {match} stage={stageLabel(match.stage, match.week)} />
 					</li>
 				{/each}
@@ -117,8 +119,9 @@
 		flex: none;
 	}
 
-	/* 錨點停在頂部列（手機）與月份列下方再留 16px；月份列高 = 44px 觸控高 + 上下各 8px 內距 */
-	section {
+	/* 月份與比賽日錨點都停在頂部列（手機）與月份列下方再留 16px；月份列高 = 44px 觸控高 + 上下各 8px 內距 */
+	section,
+	li[id] {
 		scroll-margin-block-start: calc(var(--shell-top) + var(--tap) + 2 * var(--space-2) + var(--space-4));
 	}
 
