@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # 收工四項：pytest、npm run check、npm run test:unit、e2e（先 build，再跑 scripts/e2e.sh）。
+# 另外本機找得到 actionlint 就先檢查 .github/workflows（找不到印一行略過、算通過）。
 # pytest 在背景與網站那一串同時跑；網站那一串依序跑（check、unit、build 啟動時都會重寫 gen 與 svelte-kit sync 的產生檔，不能並行）。
 # 每一項都會跑完並各自回報，任何一項失敗就以非零結束；輸出寫到 log，失敗才印末段。
 #
@@ -31,6 +32,11 @@ step() {
 	return 1
 }
 
+if command -v actionlint > /dev/null; then
+	step lint "$repo" actionlint
+else
+	echo "- lint     略過（找不到 actionlint；CI 會跑。本機要跑就裝到 PATH：https://github.com/rhysd/actionlint/blob/main/docs/install.md）"
+fi
 step export "$repo" "$python" -m src.export.site_data
 # 背景的 step 改不到這裡的 failed：結果行先寫進檔案，網站那一串跑完再印
 step pytest "$repo" env OMP_NUM_THREADS="${OMP_NUM_THREADS:-2}" "$python" -m pytest -q > "$logs/pytest.result" &

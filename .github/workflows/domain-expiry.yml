@@ -36,23 +36,6 @@ jobs:
         if: steps.expiry.outputs.due == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          TITLE: vstat.tw 網域快到期了，請到 PChome 續約
           EXPIRES: ${{ steps.expiry.outputs.expires }}
           DAYS_LEFT: ${{ steps.expiry.outputs.days_left }}
-        run: |
-          open_titles=$(gh issue list --state open --limit 1000 --json title --jq '.[].title')
-          if grep -Fxq "$TITLE" <<<"$open_titles"; then
-            echo "同標題的 issue 還開著，不重開"
-            exit 0
-          fi
-          gh issue create --title "$TITLE" --label ready-for-human --body-file - <<EOF
-          vstat.tw 的到期日是 **$EXPIRES**，剩 **$DAYS_LEFT 天**。
-
-          PChome 後台沒有自動續約。網域過期後整站打不開，已訂閱的推播也會一起失效。
-
-          - [ ] 到 PChome 買網址的後台替 vstat.tw 續約
-          - [ ] 續約後 TWNIC 的公開查詢大約一天才會更新；隔天手動跑一次 domain-expiry workflow，確認到期日已經往後延
-          - [ ] 確認後關掉這張 issue（這張還開著的期間，每週檢查不會再開新的）
-
-          這張 issue 由每週檢查（.github/workflows/domain-expiry.yml）自動開出：$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-          EOF
+        run: bash scripts/domain-expiry-issue.sh "$EXPIRES" "$DAYS_LEFT"

@@ -15,7 +15,7 @@ npm run test:e2e                                 # Playwright smoke（需先 bui
 
 # Ticket 流程（從 repo 根目錄跑）
 bash scripts/new-worktree.sh <分支> [base]        # 在 ~/work 開 worktree，依賴與資料一併備好
-bash scripts/verify.sh                           # 收工四項各自回報（pytest 與網站那一串同時跑，網站那一串依序跑）
+bash scripts/verify.sh                           # 收工四項各自回報（pytest 與網站那一串同時跑，網站那一串依序跑；PATH 有 actionlint 就先檢查 workflow 檔）
 bash scripts/e2e.sh [--repeat N | --profile] [spec…]  # 在自己挑的空 port 跑 e2e（不 build；spec 如 e2e/smoke.e2e.ts；--repeat 連跑 N 輪各自回報；--profile 印 worker 數、逐檔耗時與最慢的測試）
 bash scripts/verify-sw-removal.sh                # 自我移除版的檢查（建置兩次再用瀏覽器實測，不在 verify.sh 裡）；改了 service worker 的註冊、換版或 cache 之後跑
 bash scripts/ci-timings.sh [N]                   # 最近 N 次成功 CI 的 web job、e2e 步驟與測試本身耗時及範圍；比較 CI 前後先看範圍
