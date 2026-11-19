@@ -5,6 +5,7 @@ TVL 官網比賽結果爬蟲模組
 """
 
 import argparse
+from contextlib import contextmanager
 from datetime import date
 import re
 import time
@@ -16,7 +17,12 @@ from pathlib import Path
 
 from src.utils.db_config import DB_PATH, get_connection
 from src.utils.logger import get_logger
-from src.utils.constants import EXT_HEADERS as HEADERS, ROUND_STAGE_ALIAS, TVL_BASE_URL as BASE_URL
+from src.utils.constants import (
+    EXT_HEADERS as HEADERS,
+    GAME_PAGE_PREFIXES,
+    ROUND_STAGE_ALIAS,
+    TVL_BASE_URL as BASE_URL,
+)
 from src.utils.teams import resolve_team_id
 
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
@@ -24,7 +30,6 @@ SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
 logger = get_logger(__name__)
 
 ROUND_NAME_RE = re.compile(r"(例行賽|挑戰賽|總決賽|總冠軍賽|季後賽|明星賽)\s*Week\s*(\d+)")  # 官網原字
-PREFIX_BY_GENDER = {"M": "game", "F": "wgame"}
 
 
 def parse_round_name(text: str) -> str | None:
@@ -80,7 +85,7 @@ def scrape_match_page(prefix: str, game_id: int) -> dict | None:
     ------
     requests.HTTPError : 官網有回應但狀態碼是 4xx／5xx
     """
-    gender = "M" if prefix == "game" else "F"
+    gender = "M" if prefix == GAME_PAGE_PREFIXES["M"] else "F"
     url = f"{BASE_URL}/{prefix}/{game_id}"
 
     try:
@@ -278,6 +283,18 @@ def _record_match(conn: sqlite3.Connection, prefix: str, game_id: int, match: di
     )
 
 
+@contextmanager
+def _crawl_connection():
+    conn = get_connection()
+    try:
+        yield conn
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 def _finalize_stats(conn: sqlite3.Connection, stats: dict) -> dict:
     # 全部抓完才 commit：中途被官網擋下時，這一輪什麼都不寫入
     conn.commit()
@@ -303,18 +320,18 @@ def scrape_all_matches(
     delay : 請求間隔秒數
     """
     if prefixes is None:
-        prefixes = ["game", "wgame"]
+        prefixes = list(GAME_PAGE_PREFIXES.values())
     if id_range is None:
         id_range = range(220, 400)
 
-    conn = get_connection()
-    try:
+    with _crawl_connection() as conn:
         init_matches_table(conn)
-        stats = {"inserted": 0, "updated": 0, "skipped": 0, "golden_sets": 0}
+        stats = {"requested": 0, "inserted": 0, "updated": 0, "skipped": 0, "golden_sets": 0}
 
         for prefix in prefixes:
             consecutive_empty = 0
             for game_id in id_range:
+                stats["requested"] += 1
                 match = scrape_match_page(prefix, game_id)
                 if match is None:
                     consecutive_empty += 1
@@ -332,17 +349,11 @@ def scrape_all_matches(
                 time.sleep(delay)
 
         return _finalize_stats(conn, stats)
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 
 def scrape_matches_by_date(target_date: str, delay: float = 0.5) -> dict:
     """只對資料庫中指定日期、本季的賽事抓官網賽事頁並寫回比分。"""
-    conn = get_connection()
-    try:
+    with _crawl_connection() as conn:
         init_matches_table(conn)
         targets = conn.execute(
             """
@@ -365,7 +376,7 @@ def scrape_matches_by_date(target_date: str, delay: float = 0.5) -> dict:
         for index, (game_id, gender) in enumerate(targets):
             if index:
                 time.sleep(delay)
-            prefix = PREFIX_BY_GENDER[gender]
+            prefix = GAME_PAGE_PREFIXES[gender]
             match = scrape_match_page(prefix, game_id)
             if match is None:
                 stats["skipped"] += 1
@@ -374,11 +385,6 @@ def scrape_matches_by_date(target_date: str, delay: float = 0.5) -> dict:
             _record_match(conn, prefix, game_id, match, stats)
 
         return _finalize_stats(conn, stats)
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 
 def _iso_date(value: str) -> str:
@@ -420,8 +426,7 @@ def main():
         )
 
     print(f"\n===== 比賽結果爬取完成 =====")
-    if "requested" in stats:
-        print(f"本次請求：{stats['requested']} 頁")
+    print(f"本次請求：{stats['requested']} 頁")
     print(f"matches 表總筆數：{stats['total']}")
     print(f"本次新增：{stats['inserted']} 場")
     print(f"本次更新：{stats['updated']} 場")
