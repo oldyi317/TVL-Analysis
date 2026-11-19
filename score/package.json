@@ -1,0 +1,17 @@
+{
+	"name": "tvl-score",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"check": "tsc -p tsconfig.json",
+		"test": "node --test test/*.test.mjs"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^5.20261116.1",
+		"typescript": "~5.9.3",
+		"wrangler": "^4.162.0"
+	},
+	"dependencies": {
+		"@cfworker/json-schema": "^4.1.6"
+	}
+}
