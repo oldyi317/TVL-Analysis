@@ -4,6 +4,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# 日期與時間一律用台北時間，不跟著機器（雲端 runner 是 UTC）；commit 訊息的日期、賽前勝率的計算時間、
+# 報名名單歸哪一季都吃這個設定
+export TZ=Asia/Taipei
+
 PYTHON="${PYTHON:-$HOME/venvs/tvl/bin/python}"
 
 # 計算 DB 邏輯內容的 SHA-256 雜湊（用 SQLite dump 避免位元組雜訊）

@@ -71,18 +71,24 @@ def scrape_match_page(prefix: str, game_id: int) -> dict | None:
 
     Returns
     -------
-    dict or None (頁面不存在或無資料)
+    dict or None (頁面不存在、無資料，或連線層錯誤)
+
+    Raises
+    ------
+    requests.HTTPError : 官網有回應但狀態碼是 4xx／5xx
     """
     gender = "M" if prefix == "game" else "F"
     url = f"{BASE_URL}/{prefix}/{game_id}"
 
     try:
         r = requests.get(url, headers=HEADERS, timeout=15)
-        r.raise_for_status()
-        r.encoding = "utf-8"
     except requests.RequestException as e:
         logger.error("無法取得 %s: %s", url, e)
         return None
+    # 官網對不存在的場次也回 200（2026-11-19 實測），4xx／5xx 就是被擋或出錯（如 Cloudflare 的 403 封鎖頁）：
+    # 不當成空頁，往上拋讓整輪失敗
+    r.raise_for_status()
+    r.encoding = "utf-8"
 
     soup = BeautifulSoup(r.text, "html.parser")
 
@@ -315,7 +321,8 @@ def scrape_all_matches(
 
             time.sleep(delay)
 
-        conn.commit()
+    # 兩組都掃完才 commit：中途被官網擋下時，這一輪什麼都不寫入
+    conn.commit()
 
     # 統計
     total = conn.execute("SELECT COUNT(*) FROM matches").fetchone()[0]
