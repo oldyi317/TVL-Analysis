@@ -25,6 +25,10 @@ describe('SiteFooter', () => {
 		}
 	});
 
+	it('最後一行有站內連結「通知」指向 /notifications/', () => {
+		expect(html).toMatch(/<a[^>]*href="\/notifications\/"[^>]*>通知<\/a>/);
+	});
+
 	it('既有兩段文案一字不改', () => {
 		expect(html).toContain(
 			'資料來源：TVL 企業排球聯賽官網與其技術統計系統。本站為球迷自製的非官方網站，數據僅供參考，與聯賽及各球隊無關。'

@@ -94,10 +94,10 @@ test.describe('手機底部分頁列', () => {
 		await expect(tabLink(page, '戰績')).toHaveAttribute('href', `${BASE}/${current}/women/standings/`);
 	});
 
-	test('「更多」面板在瀏覽器分頁內是球員、排行榜、歷史紀錄、加到主畫面；點項目導頁並關閉', async ({ page }) => {
+	test('「更多」面板在瀏覽器分頁內是球員、排行榜、歷史紀錄、通知、加到主畫面；點項目導頁並關閉', async ({ page }) => {
 		await page.goto(`${group}/`);
 		await openMoreSheet(page);
-		await expect(sheet(page).getByRole('link')).toHaveText(['球員', '排行榜', '歷史紀錄', '加到主畫面']);
+		await expect(sheet(page).getByRole('link')).toHaveText(['球員', '排行榜', '歷史紀錄', '通知', '加到主畫面']);
 		await sheet(page).getByRole('link', { name: '排行榜' }).click();
 		await expect(page).toHaveURL(`${group}/leaders/`);
 		await expect(sheet(page)).toBeHidden();

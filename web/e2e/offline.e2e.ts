@@ -4,6 +4,7 @@ import {
 	BASE,
 	OLD_SEASON,
 	asStandalone,
+	currentMatches,
 	currentSeason,
 	expect,
 	findSeason,
@@ -80,7 +81,7 @@ const listPages = [
 	{ name: '排行榜', path: `/${currentSeason}/men/leaders/`, h1: `${currentSeason} 男子組 排行榜` },
 	{ name: '球員列表', path: `/${currentSeason}/men/players/`, h1: '球員' },
 	{ name: '歷史紀錄', path: '/records/men/', h1: '男子組 歷史紀錄' },
-	{ name: '加到主畫面', path: '/notifications/', h1: '加到主畫面' },
+	{ name: '通知', path: '/notifications/', h1: '通知' },
 	{ name: '非當季賽季的戰績', path: `/${OLD_SEASON}/men/standings/`, h1: `${OLD_SEASON} 男子組 戰績` }
 ];
 
@@ -174,6 +175,19 @@ test('離線開根路徑會轉到當季首頁', async ({ page, context }) => {
 	expect(await response!.text()).toBe(shellHtml);
 	await expect(page).toHaveURL(`${BASE}/${currentSeason}/men/`);
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${currentSeason} 男子組`);
+});
+
+test('離線開 /matches/#d-… 轉到記住的組別的賽事頁並帶著錨點', async ({ page, context }) => {
+	const matches = currentMatches('women');
+	test.skip(matches.length === 0, '現行賽季女子組還沒有賽事');
+	const date = matches.at(-1)!.date;
+	await loadAndWaitControlled(page, `${BASE}/${currentSeason}/women/`);
+	await context.setOffline(true);
+	const response = await page.goto(`${BASE}/matches/#d-${date}`);
+	expect(response!.fromServiceWorker()).toBe(true);
+	await expect(page).toHaveURL(`${BASE}/${currentSeason}/women/matches/#d-${date}`);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${currentSeason} 女子組 賽事`);
+	await expect(page.locator(`#d-${date}`)).toBeInViewport();
 });
 
 // ---- 看過就存、預先下載、離線狀態顯示（#238） ----

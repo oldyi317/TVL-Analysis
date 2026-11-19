@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import siteJson from '#lib/data/site.json';
 	import { formatTaipeiMinute } from '#lib/datetime.js';
 
@@ -20,6 +21,8 @@
 		<a href="https://github.com/oldyi317/TVL-Analysis/issues" target="_blank" rel="noopener">回報錯誤或許願</a>
 		·
 		<a href="https://tvl.ctvba.org.tw/" target="_blank" rel="noopener">TVL 官網</a>
+		·
+		<a href="{resolve('/notifications')}/">通知</a>
 	</p>
 </footer>
 

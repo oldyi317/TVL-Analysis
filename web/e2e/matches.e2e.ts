@@ -1,5 +1,6 @@
 import {
 	BASE,
+	currentMatches,
 	currentSeason,
 	findSeason,
 	groupLink,
@@ -7,9 +8,11 @@ import {
 	readJson,
 	seasonSheet,
 	seasonsData,
+	topBar,
 	expect,
 	test
 } from './helpers.js';
+import { type Locator, type Page } from '@playwright/test';
 import { isPlayed } from '../src/lib/match.js';
 
 // 開季初當季還沒有已完賽場次，退回最近一個有已完賽場次的賽季
@@ -169,4 +172,67 @@ test('未開打賽事有一隊本季沒有單場數據：顯示空狀態，不�
 		() => document.documentElement.scrollWidth - document.documentElement.clientWidth
 	);
 	expect(overflow).toBeLessThanOrEqual(0);
+});
+
+// ---- 比賽日錨點與 /matches/ 轉址（#246） ----
+
+const datesOf = (matches: { date: string }[]) => [...new Set(matches.map((m) => m.date))];
+const middleOf = <T>(items: T[]) => items[Math.floor(items.length / 2)];
+const noCurrent = '現行賽季這一組還沒有賽事';
+
+// 錨點那張卡片停在月份列（吸頂、在頂部列下方）與頂部列底下約 16px 處，沒被任何一個蓋住
+async function expectDayUncovered(page: Page, date: string) {
+	const day = page.locator(`#d-${date}`);
+	await expect(day).toBeInViewport();
+	await expect(day).toContainText(date);
+	// 只算橫向與卡片重疊的：桌面寬度的 banner 是側欄，在卡片旁邊不在上面
+	const bottomAbove = async (locator: Locator, card: { x: number; width: number }) => {
+		const box = await locator.boundingBox();
+		if (!box || box.x >= card.x + card.width || box.x + box.width <= card.x) return 0;
+		return box.y + box.height;
+	};
+	const gap = async () => {
+		const card = (await day.boundingBox())!;
+		const nav = await bottomAbove(page.getByRole('navigation', { name: '月份' }), card);
+		return card.y - Math.max(nav, await bottomAbove(topBar(page), card));
+	};
+	await expect.poll(gap).toBeGreaterThanOrEqual(0);
+	expect(await gap()).toBeLessThanOrEqual(24);
+	expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+}
+
+test('每個比賽日的第一張卡片帶 d-YYYY-MM-DD，整頁每個 id 只出現一次', async ({ page }) => {
+	test.skip(!picked, noPlayed);
+	await page.goto(URL);
+	const ids = await page.locator('[id^="d-"]').evaluateAll((els) => els.map((el) => el.id));
+	expect(ids).toEqual(datesOf(menMatches).map((d) => `d-${d}`));
+});
+
+for (const viewport of [undefined, { width: 1280, height: 900 }]) {
+	test(`開 #d-<比賽日> 捲到該比賽日，第一張卡片不被頂部列或月份列蓋住（${viewport ? '桌面' : '手機'}）`, async ({ page }) => {
+		test.skip(!picked, noPlayed);
+		if (viewport) await page.setViewportSize(viewport);
+		const date = middleOf(datesOf(menMatches));
+		await page.goto(`${URL}#d-${date}`);
+		await expectDayUncovered(page, date);
+	});
+}
+
+test('/matches/ 沒記過組別時轉到現行賽季男子組賽事頁', async ({ page }) => {
+	await page.goto(`${BASE}/matches/`);
+	await expect(page).toHaveURL(`${BASE}/${currentSeason}/men/matches/`);
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${currentSeason} 男子組 賽事`);
+});
+
+test('/matches/#d-… 轉到記住的組別、帶著錨點捲到該比賽日；返回鈕不退回 /matches/', async ({ page }) => {
+	const dates = datesOf(currentMatches('women'));
+	test.skip(dates.length === 0, noCurrent);
+	const date = middleOf(dates);
+	const home = `${BASE}/${currentSeason}/women/`;
+	await page.goto(home);
+	await page.goto(`${BASE}/matches/#d-${date}`);
+	await expect(page).toHaveURL(`${BASE}/${currentSeason}/women/matches/#d-${date}`);
+	await expectDayUncovered(page, date);
+	await page.goBack();
+	await expect(page).toHaveURL(home);
 });

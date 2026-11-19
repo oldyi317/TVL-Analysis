@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	dayAnchors,
 	groupByMonth,
 	headToHead,
 	headToHeadText,
@@ -59,6 +60,24 @@ describe('groupByMonth', () => {
 	});
 	it('沒有賽事回空陣列', () => {
 		expect(groupByMonth([])).toEqual([]);
+	});
+});
+
+describe('dayAnchors', () => {
+	it('每個比賽日只有第一場帶 d-YYYY-MM-DD', () => {
+		const a = { date: '2025-11-01' };
+		const b = { date: '2025-11-01' };
+		const c = { date: '2025-11-08' };
+		const anchors = dayAnchors([a, b, c]);
+		expect(anchors.get(a)).toBe('d-2025-11-01');
+		expect(anchors.get(b)).toBeUndefined();
+		expect(anchors.get(c)).toBe('d-2025-11-08');
+	});
+	it('同一天的場次不相鄰時仍只出現一次', () => {
+		const a = { date: '2025-11-01' };
+		const b = { date: '2025-11-08' };
+		const c = { date: '2025-11-01' };
+		expect([...dayAnchors([a, b, c]).values()]).toEqual(['d-2025-11-01', 'd-2025-11-08']);
 	});
 });
 

@@ -207,6 +207,12 @@ components:
     height: "2.75rem"
   update-bar-hover:
     backgroundColor: "{colors.accent-strong}"
+  switch:
+    backgroundColor: "{colors.line}"
+    rounded: "{rounded.full}"
+    height: "1.75rem"
+  switch-on:
+    backgroundColor: "{colors.accent}"
   empty-state:
     backgroundColor: "{colors.surface-2}"
     textColor: "{colors.text-muted}"
@@ -344,7 +350,7 @@ components:
 
 圓角三級加圓形：卡片 20px（`--radius-lg`）、內嵌面板與桌面導覽項 14px（`--radius-md`）、chip／標籤／分段控制／PR 條 999px（`--radius-full`），隊徽、名次圓點、背號圓點、甜甜圈是正圓。ECharts tooltip 12px、長條頂端 `[6, 6, 0, 0]`。`--radius-sm: 0.5rem` 只有離線細條使用（styleguide 頁的色票框不算）。
 
-邊線極少：淺色模式卡片無邊線，表格只有列線（1px `--line`），有隊徽的圓標 1px 內描邊，深色模式卡片 1px 邊線。沒有彩色左邊條、沒有外框按鈕。Icon 全部是手寫 inline SVG：24 viewBox、`fill="none"`、`stroke="currentColor"`、stroke-width 1.75、round cap／join，預設 20px，集中在 `Icon.svelte`（home、calendar、trophy、shield、user、podium、chevron-left、chevron-down、arrow-up-right、map-pin、more、add-square）；podium 是三階頒獎台，給導覽「排行榜」；add-square 是圓角方框內畫十字（rect 16px、rx 4），給「更多」面板的「加到主畫面」。
+邊線極少：淺色模式卡片無邊線，表格只有列線（1px `--line`），有隊徽的圓標 1px 內描邊，深色模式卡片 1px 邊線。沒有彩色左邊條、沒有外框按鈕。Icon 全部是手寫 inline SVG：24 viewBox、`fill="none"`、`stroke="currentColor"`、stroke-width 1.75、round cap／join，預設 20px，集中在 `Icon.svelte`（home、calendar、trophy、shield、user、podium、chevron-left、chevron-down、arrow-up-right、map-pin、more、add-square、bell、close）；podium 是三階頒獎台，給導覽「排行榜」；add-square 是圓角方框內畫十字（rect 16px、rx 4），給「更多」面板的「加到主畫面」；bell 是鐘形加底部鈴舌，給「更多」面板的「通知」；close 是兩條交叉斜線，給首頁提示卡的關閉鈕。
 
 ## Components
 
@@ -366,19 +372,41 @@ components:
 七項固定順序（`nav.ts` 的 `NAV_ITEMS`）：首頁、賽事、戰績、球隊、球員、排行榜、歷史紀錄；地標名稱「頁面」。≥64rem 直排，每項 44px 高、14px 圓角、圖示 20px + 文字、靠左；選中改成靛藍 tint 底 + 靛藍字，並以 `::after` 在 sidebar 右緣畫 3px 寬、上下內縮 8px 的靛藍指示條（絕對定位到 `-24px`，不是 border）。<64rem 隱藏，改由分頁列承擔。
 
 ### 頂部列 TopBar（手機）
-`position: sticky` 貼頂、高 `--shell-top`、`--surface` 底、Card 陰影加 1px `--card-edge` 底線；左右內距 12px 加安全區。左側是站名連結「VStat 企排」（`--text-lg` 800，連到首頁），在單場、球隊、球員三種詳情頁換成返回鈕（安裝引導頁也換成返回鈕，並在其右側加頁名，見「安裝引導頁」）；右側是組別 SegmentNav（短標、14px）與賽季鈕。賽季鈕是套用 `chip` 的按鈕：靛藍 tint 底、靛藍 700 字、尾端 chevron-down 圖示，點開賽季面板；`aria-label` 為「切換賽季，目前 <賽季>」。歷史紀錄頁不屬於任何賽季，不顯示賽季鈕。`/`、404、styleguide 沒有賽季與組別，頂部列只有站名；安裝引導頁同樣沒有賽季與組別，頂部列只有返回鈕與頁名。
+`position: sticky` 貼頂、高 `--shell-top`、`--surface` 底、Card 陰影加 1px `--card-edge` 底線；左右內距 12px 加安全區。左側是站名連結「VStat 企排」（`--text-lg` 800，連到首頁），在單場、球隊、球員三種詳情頁換成返回鈕（通知頁也換成返回鈕，並在其右側加頁名，見「通知頁」）；右側是組別 SegmentNav（短標、14px）與賽季鈕。賽季鈕是套用 `chip` 的按鈕：靛藍 tint 底、靛藍 700 字、尾端 chevron-down 圖示，點開賽季面板；`aria-label` 為「切換賽季，目前 <賽季>」。歷史紀錄頁不屬於任何賽季，不顯示賽季鈕。`/`、404、styleguide 沒有賽季與組別，頂部列只有站名；通知頁同樣沒有賽季與組別，頂部列只有返回鈕與頁名。
 
 ### 分頁列 TabBar（手機）
-固定在底部、`--surface` 底、頂緣 1px `--line`；`<nav aria-label="主要分頁">`（桌面側欄仍是「頁面」）。五格等寬，順序固定：首頁、賽事、戰績、球隊、更多；每格 ≥44px、上圖示 + 下文字 14px、附註灰。選中格（`aria-current="page"`）靛藍字 700，頂端畫 32px 寬、4px 高的靛藍藥丸尾（`::before`）。前四格是連結；「更多」是 `button`（`aria-haspopup="dialog"`），點開「更多」底部面板，球員、排行榜、歷史紀錄與安裝引導頁都算「更多」選中。沒有賽季或組別的頁（`/`、404、styleguide）連到現行賽季與預設組別（男子組），不標目前頁。
+固定在底部、`--surface` 底、頂緣 1px `--line`；`<nav aria-label="主要分頁">`（桌面側欄仍是「頁面」）。五格等寬，順序固定：首頁、賽事、戰績、球隊、更多；每格 ≥44px、上圖示 + 下文字 14px、附註灰。選中格（`aria-current="page"`）靛藍字 700，頂端畫 32px 寬、4px 高的靛藍藥丸尾（`::before`）。前四格是連結；「更多」是 `button`（`aria-haspopup="dialog"`），點開「更多」底部面板，球員、排行榜、歷史紀錄與通知頁都算「更多」選中。沒有賽季或組別的頁（`/`、404、styleguide）連到現行賽季與預設組別（男子組），不標目前頁。
 
 ### 底部面板 BottomSheet（「更多」與賽季共用）
-原生 `<dialog>`，用 `showModal()` 開啟，Esc 關閉；遮罩由 dialog 本身撐滿視窗當背景（`--scrim`），`::backdrop` 設為透明——iOS 17.4 前 `::backdrop` 不繼承自訂屬性。內容是貼底的面板：`--surface` 底、上兩角 20px、Pop 陰影、最高 80dvh 可捲，內距 12px／16px，底部與左右加安全區。點遮罩或面板內任一連結即關閉，關閉後把焦點還給觸發鈕（Safari 點按鈕不會讓按鈕取得焦點，不靠瀏覽器還原）。「更多」面板（`aria-label="更多"`）放直排連結：球員、排行榜、歷史紀錄，加上只在手機瀏覽器分頁內才有的「加到主畫面」（add-square 圖示，連到安裝引導頁；獨立視窗與桌面瀏覽器不出現），每項 44px 高、14px 圓角、圖示 + 文字 16px 700，目前項靛藍 tint 底。連結清單下方依離線資料狀態放一行 14px 附註灰說明（上緣間距 12px、左右內距 12px）：備好時「可離線使用，資料更新至 M/D」，準備中「離線資料準備中」，其他狀態不顯示這一行。賽季面板（`aria-label="賽季"`）是 SeasonSwitch 的直排清單：每季一顆 `chip`，700、16px、選中靛藍底白字。
+原生 `<dialog>`，用 `showModal()` 開啟，Esc 關閉；遮罩由 dialog 本身撐滿視窗當背景（`--scrim`），`::backdrop` 設為透明——iOS 17.4 前 `::backdrop` 不繼承自訂屬性。內容是貼底的面板：`--surface` 底、上兩角 20px、Pop 陰影、最高 80dvh 可捲，內距 12px／16px，底部與左右加安全區。點遮罩或面板內任一連結即關閉，關閉後把焦點還給觸發鈕（Safari 點按鈕不會讓按鈕取得焦點，不靠瀏覽器還原）。「更多」面板（`aria-label="更多"`）放直排連結，順序固定：球員、排行榜、歷史紀錄、通知（bell 圖示，連到通知頁，一律出現），最後是只在手機瀏覽器分頁內才有的「加到主畫面」（add-square 圖示，同樣連到通知頁；獨立視窗與桌面瀏覽器不出現），每項 44px 高、14px 圓角、圖示 + 文字 16px 700，目前項靛藍 tint 底。連結清單下方依離線資料狀態放一行 14px 附註灰說明（上緣間距 12px、左右內距 12px）：備好時「可離線使用，資料更新至 M/D」，準備中「離線資料準備中」，其他狀態不顯示這一行。賽季面板（`aria-label="賽季"`）是 SeasonSwitch 的直排清單：每季一顆 `chip`，700、16px、選中靛藍底白字。
 
 ### 返回鈕（手機）
-出現在單場、球隊、球員頁（`nav.ts` 的 `detailListOf` 判定）與安裝引導頁，取代頂部列的站名；44px 圓形、24px chevron-left 圖示，`aria-label="返回"`，按下底色 `accent-tint`。它是 `<a href=上一層列表>`（賽事列表、球隊列表、球員列表；單場頁帶日期時落在該月份錨點，由 `listHref` 組出；安裝引導頁連到首頁 `/`），所以重新整理或直接開啟深層頁時回到上一層列表。站內導覽深度（`nextDepth`，只存記憶體、重新整理歸零）>0 時，左鍵單擊攔下改呼叫 `history.back()`，回到使用者真正來的頁；帶修飾鍵或非左鍵不攔，保留開新分頁。內文原本的「賽事列表」「球隊列表」「球員列表」返回連結在 <64rem 隱藏、≥64rem 保留。
+出現在單場、球隊、球員頁（`nav.ts` 的 `detailListOf` 判定）與通知頁，取代頂部列的站名；44px 圓形、24px chevron-left 圖示，`aria-label="返回"`，按下底色 `accent-tint`。它是 `<a href=上一層列表>`（賽事列表、球隊列表、球員列表；單場頁帶日期時落在該月份錨點，由 `listHref` 組出；通知頁連到首頁 `/`），所以重新整理或直接開啟深層頁時回到上一層列表。站內導覽深度（`nextDepth`，只存記憶體、重新整理歸零）>0 時，左鍵單擊攔下改呼叫 `history.back()`，回到使用者真正來的頁；帶修飾鍵或非左鍵不攔，保留開新分頁。內文原本的「賽事列表」「球隊列表」「球員列表」返回連結在 <64rem 隱藏、≥64rem 保留。
 
-### 安裝引導頁（`/notifications/`）
-頁名是 `nav.ts` 的 `NOTIFICATIONS_TITLE`「加到主畫面」。<64rem 頁面的 h1 視覺上隱藏（該頁自己的 `position: absolute`、1px、`clip-path` 樣式，`app.css` 沒有共用 class），只留給輔助科技，頁名改由頂部列顯示：返回鈕（見「返回鈕」）右側接 `--text-lg` 700 的頁名，不顯示組別與賽季控制。≥64rem 顯示 h1，桌面 sidebar 只留七項導覽，不含組別與賽季。內文是一般段落與有序清單（段落間距 12px、清單左內距 32px），依 `installGuide.ts` 判定的環境顯示不同說明：iOS Safari 是「點分享鈕、選『加入主畫面』、點『加入』」三步；iOS 其他瀏覽器與 Android 其他瀏覽器分別請改用 Safari、Chrome 開啟；Android Chrome 在可安裝時顯示 `class="chip install"` 的「安裝 VStat 企排」鈕（`accent` 底、`on-accent` 字，hover `accent-strong`），否則請從 Chrome 選單加入；獨立視窗顯示「已經從主畫面開啟 VStat 企排，不用再加一次。」；桌面瀏覽器請改用手機瀏覽器開啟。
+### 通知頁（`/notifications/`）
+頁名是 `nav.ts` 的 `NOTIFICATIONS_TITLE`「通知」。入口：「更多」面板的「通知」列與只在手機瀏覽器分頁內才有的「加到主畫面」列（兩列都連到這頁）、頁尾連結列的「通知」、首頁提示卡的「設定通知」連結。<64rem 頁面的 h1 視覺上隱藏（該頁自己的 `position: absolute`、1px、`clip-path` 樣式，`app.css` 沒有共用 class），只留給輔助科技，頁名改由頂部列顯示：返回鈕（見「返回鈕」）右側接 `--text-lg` 700 的頁名，不顯示組別與賽季控制。≥64rem 顯示 h1，桌面 sidebar 只留七項導覽，不含組別與賽季。內文不包卡片，直接排在內容欄上，段落間距 12px；瀏覽器知道能否推播之前（prerender 的 HTML）只有 h1。依瀏覽器能力分兩種版面：
+
+- **不支援推播**（`push.support === false`，自我移除版也算不支援）：一行「加到主畫面後才能開啟通知」，接安裝說明（見下）。
+- **支援推播**：由上而下是開關列、隱私說明、組別勾選、狀態文字，最後視環境補一段「加到主畫面」。
+
+**開關列**：兩列，「賽果摘要」（說明「有新賽果進站時通知」）與「今日賽事」（說明「比賽日上午 10 點通知當天各場的開賽時間與賽前勝率」）。每列是兩欄 grid：左欄名稱 700 加下方說明（`--text-sm`、`text-muted`），右欄開關；列高至少 `--tap`、上下內距 12px、列間 1px `--line` 底線。開關是 `input[type=checkbox][role=switch]`、`aria-describedby` 指向說明，軌道 3rem × 1.75rem、`--radius-full`；關時軌道 `line`、旋鈕 `surface`，開時軌道 `accent`、旋鈕右移 1.25rem，160ms ease-out。失敗時把開關彈回原狀。
+
+**隱私說明**：固定顯示（只要支援推播，不論開關狀態）的一段 `--text-sm`、`text-muted` 文字，說明本站會存這台裝置的推播位址（由 Apple、Google 等推播服務產生）與所選通知種類、組別，存放在 Cloudflare，不存姓名、帳號或任何能認出使用者的資料，兩種通知都關掉就刪除、推播服務回報位址失效時也刪除。
+
+**組別勾選**：`<fieldset>` 加 legend「組別」（700），內有「男子組」「女子組」兩個核取方塊，每個至少 `--tap` 高、核取方塊與文字間距 8px、橫排可換行（間距 8px／24px）。只在已允許通知且至少一個開關為開時出現；兩個至少留一個，只剩一個勾著時那一格停用。
+
+**狀態文字**：開關與組別下方一個 `<p role="status">`，最小高度 1.5em（有無文字都不讓版面跳動）。同一時間只顯示一則，優先序為：
+
+1. 系統通知權限被拒（`denied`）：「你先前選了不允許通知。請到系統設定允許『VStat 企排』的通知，再回來開啟。」
+2. 離線：「連上網路後才能更改」
+3. 操作結果：開啟成功「已開啟」、失敗「目前無法開啟通知，請稍後再試」；沒有操作過就是空的。
+
+權限被拒、離線與送出中（`push.busy`）三種狀態下所有開關與核取方塊一律 `opacity: 0.5`、`cursor: not-allowed`、停用。從系統設定改權限再切回頁面時，頁面會重新讀一次權限與推播訂閱。
+
+**安裝說明**（不支援推播時直接顯示；支援推播且在手機瀏覽器分頁內時，放進 `section`，上方間距 24px，標題 h2「加到主畫面」）：依 `installGuide.ts` 判定的環境顯示不同說明。iOS Safari 是「點分享鈕、選『加入主畫面』、點『加入』」三步有序清單（清單左內距 32px）；iOS 其他瀏覽器與 Android 其他瀏覽器分別請改用 Safari、Chrome 開啟；Android Chrome 在可安裝時顯示 `class="chip install"` 的「安裝 VStat 企排」鈕（`accent` 底、`on-accent` 字，hover `accent-strong`），否則請從 Chrome 選單加入；獨立視窗顯示「已經從主畫面開啟 VStat 企排，不用再加一次。」；桌面瀏覽器請改用手機瀏覽器開啟。獨立視窗與桌面瀏覽器在支援推播時不顯示這一段。
+
+### 首頁提示卡 PushPrompt
+放在首頁 h1 與雙欄區塊之間（`[season]/[group]/+page.svelte`），套全域 `.card` 與 `.rise`（首屏進場），下方間距 24px。只在四個條件同時成立時渲染：從主畫面開啟（獨立視窗）、沒按過關閉也沒在獨立視窗裡進過通知頁、瀏覽器支援推播、系統通知權限還沒決定（`default`）且沒有推播訂閱；權限與訂閱每次掛載都重問瀏覽器，問完才決定顯不顯示，所以不會先閃一下再消失。內容：一行文字「想在有新賽果、比賽日早上收到通知嗎？」（高度至少 `--tap`）、一顆套用全域 `.chip` 的連結「設定通知」（`accent-tint` 底、`accent` 字、`--text-sm`、700，連到 `/notifications/`）、右側關閉鈕。關閉鈕是 `--tap` 見方的圓形（`--radius-full`），透明底、`text-muted` 的 close 圖示，`aria-label="關閉這則提示"`，hover 底色 `surface-2`、字色 `text`。<40rem 是兩欄 grid：文字與連結上下疊在左，關閉鈕佔右欄；≥40rem 改成文字、連結、關閉鈕同列。卡片內距上下 12px、右側 8px。按關閉鈕，或在獨立視窗裡進過通知頁，都會在瀏覽器儲存空間寫下同一個記號，之後不再出現（瀏覽器分頁內進通知頁不寫：iPhone 加到主畫面後的 app 讀得到 Safari 分頁留下的記號，#285）；讀寫失敗當作沒關過。
 
 ### 離線細條 OfflineBar
 放在 `<main>` 最上面（`+layout.svelte`），只在離線時渲染一個 `<p role="status">`，線上時不輸出任何元素；不吸頂，跟著頁面捲走。`warn-tint` 底、`warn-ink` 字、14px 700、`--radius-sm` 圓角、內距 8px／12px、下方間距 16px，文字「離線中，資料更新至 M/D」（日期取 `site.json` 的 `generated_at`，台北時區）。
