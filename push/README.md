@@ -32,7 +32,9 @@ curl "http://localhost:8787/cdn-cgi/local/scheduled?cron=*+*+*+*+*&time=17952264
 - 一次觸發等於一次每分鐘的呼叫；排程時間的分鐘數是 10 的倍數才會讀檔，其餘只送批次。要測讀檔、時段、今日賽事就用 `time` 指定時間。
 - 本機會真的去抓 `FEED_URL`、真的對推播位址送出，而且要有 `VAPID_PUBLIC_KEY`、`VAPID_PRIVATE_KEY` 才送得出去。要蓋過這些值與時段，用 `node_modules/.bin/wrangler dev --env-file <檔>` 指到 `push/` 以外的檔（一行一個 `名稱=值`）；寫在 `push/.dev.vars` 也可以，但那個檔單元測試也會讀到，用完要刪。
 
-注意：`src/index.ts` 是 Worker 的進入點，只能 export handler（`export default`）與型別。export 一般的值（例如常數）時單元測試照樣會過，但 `wrangler dev` 與部署會在啟動時失敗（`Incorrect type for map entry …`）。
+注意：`src/index.ts` 只能 `export default`（其他 export 會讓 workerd 啟動失敗），`test/entry.test.ts` 會擋。
+
+`score/` 的 `src/schedule.ts` 匯入了 `push/src/time.ts`；改它要連 `score/` 的測試一起跑（`cd ../score && npm test`）。
 
 ## 入口
 
