@@ -4,6 +4,8 @@ TVL 官網比賽結果爬蟲模組
 抓取各局比分、比賽資訊，並寫入 matches 表。
 """
 
+import argparse
+from datetime import date
 import re
 import time
 import sqlite3
@@ -22,6 +24,7 @@ SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
 logger = get_logger(__name__)
 
 ROUND_NAME_RE = re.compile(r"(例行賽|挑戰賽|總決賽|總冠軍賽|季後賽|明星賽)\s*Week\s*(\d+)")  # 官網原字
+PREFIX_BY_GENDER = {"M": "game", "F": "wgame"}
 
 
 def parse_round_name(text: str) -> str | None:
@@ -261,6 +264,30 @@ def upsert_match(conn: sqlite3.Connection, match: dict) -> bool:
         return True
 
 
+def _record_match(conn: sqlite3.Connection, prefix: str, game_id: int, match: dict, stats: dict) -> None:
+    is_new = upsert_match(conn, match)
+    stats["inserted" if is_new else "updated"] += 1
+    if match["is_golden_set"]:
+        stats["golden_sets"] += 1
+    logger.info(
+        "[%s/%d] %s %s vs %s %s%s",
+        prefix, game_id, match["match_date"],
+        match["home_team"], match["away_team"],
+        "NEW" if is_new else "UPD",
+        "（黃金決勝局）" if match["is_golden_set"] else "",
+    )
+
+
+def _finalize_stats(conn: sqlite3.Connection, stats: dict) -> dict:
+    # 全部抓完才 commit：中途被官網擋下時，這一輪什麼都不寫入
+    conn.commit()
+    stats["total"] = conn.execute("SELECT COUNT(*) FROM matches").fetchone()[0]
+    stats["total_golden"] = conn.execute(
+        "SELECT COUNT(*) FROM matches WHERE is_golden_set = 1"
+    ).fetchone()[0]
+    return stats
+
+
 def scrape_all_matches(
     prefixes: list[str] | None = None,
     id_range: range | None = None,
@@ -281,64 +308,95 @@ def scrape_all_matches(
         id_range = range(220, 400)
 
     conn = get_connection()
-    init_matches_table(conn)
+    try:
+        init_matches_table(conn)
+        stats = {"inserted": 0, "updated": 0, "skipped": 0, "golden_sets": 0}
 
-    stats = {"inserted": 0, "updated": 0, "skipped": 0, "golden_sets": 0}
+        for prefix in prefixes:
+            consecutive_empty = 0
+            for game_id in id_range:
+                match = scrape_match_page(prefix, game_id)
+                if match is None:
+                    consecutive_empty += 1
+                    # 連續 20 個空頁面就停止該組別
+                    if consecutive_empty >= 20:
+                        logger.info(
+                            "[%s] 連續 %d 個空頁面，停止掃描",
+                            prefix, consecutive_empty,
+                        )
+                        break
+                    continue
 
-    for prefix in prefixes:
-        consecutive_empty = 0
-        for game_id in id_range:
+                consecutive_empty = 0
+                _record_match(conn, prefix, game_id, match, stats)
+                time.sleep(delay)
+
+        return _finalize_stats(conn, stats)
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def scrape_matches_by_date(target_date: str, delay: float = 0.5) -> dict:
+    """只對資料庫中指定日期、本季的賽事抓官網賽事頁並寫回比分。"""
+    conn = get_connection()
+    try:
+        init_matches_table(conn)
+        targets = conn.execute(
+            """
+            SELECT game_id, gender FROM matches
+            WHERE match_date = ? AND cup_id = (SELECT MAX(cup_id) FROM seasons)
+            ORDER BY CASE gender WHEN 'M' THEN 0 ELSE 1 END, game_id
+            """,
+            (target_date,),
+        ).fetchall()
+
+        stats = {
+            "requested": len(targets),
+            "inserted": 0,
+            "updated": 0,
+            "skipped": 0,
+            "golden_sets": 0,
+        }
+        logger.info("[%s] 本季賽事 %d 場", target_date, len(targets))
+
+        for index, (game_id, gender) in enumerate(targets):
+            if index:
+                time.sleep(delay)
+            prefix = PREFIX_BY_GENDER[gender]
             match = scrape_match_page(prefix, game_id)
             if match is None:
-                consecutive_empty += 1
-                # 連續 20 個空頁面就停止該組別
-                if consecutive_empty >= 20:
-                    logger.info(
-                        "[%s] 連續 %d 個空頁面，停止掃描",
-                        prefix, consecutive_empty,
-                    )
-                    break
+                stats["skipped"] += 1
+                logger.warning("[%s/%d] 未取得比分，略過", prefix, game_id)
                 continue
+            _record_match(conn, prefix, game_id, match, stats)
 
-            consecutive_empty = 0
-            is_new = upsert_match(conn, match)
+        return _finalize_stats(conn, stats)
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
-            if is_new:
-                stats["inserted"] += 1
-            else:
-                stats["updated"] += 1
 
-            if match["is_golden_set"]:
-                stats["golden_sets"] += 1
-
-            logger.info(
-                "[%s/%d] %s %s vs %s %s%s",
-                prefix, game_id, match["match_date"],
-                match["home_team"], match["away_team"],
-                "NEW" if is_new else "UPD",
-                " ★Golden Set" if match["is_golden_set"] else "",
-            )
-
-            time.sleep(delay)
-
-    # 兩組都掃完才 commit：中途被官網擋下時，這一輪什麼都不寫入
-    conn.commit()
-
-    # 統計
-    total = conn.execute("SELECT COUNT(*) FROM matches").fetchone()[0]
-    golden = conn.execute(
-        "SELECT COUNT(*) FROM matches WHERE is_golden_set = 1"
-    ).fetchone()[0]
-    conn.close()
-
-    stats["total"] = total
-    stats["total_golden"] = golden
-    return stats
+def _iso_date(value: str) -> str:
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        raise argparse.ArgumentTypeError(f"日期格式須為 YYYY-MM-DD：{value!r}")
+    try:
+        date.fromisoformat(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"無效的日期：{value!r}") from exc
+    return value
 
 
 def main():
-    import argparse
     parser = argparse.ArgumentParser(description="TVL 官網比賽結果爬蟲")
+    parser.add_argument(
+        "--date", type=_iso_date, default=None, metavar="YYYY-MM-DD",
+        help="只抓指定日期的本季賽事（不重掃區間）",
+    )
     parser.add_argument(
         "--range-start", type=int, default=220,
         help="起始 game_id (預設 220)",
@@ -353,12 +411,17 @@ def main():
     )
     args = parser.parse_args()
 
-    stats = scrape_all_matches(
-        id_range=range(args.range_start, args.range_end),
-        delay=args.delay,
-    )
+    if args.date is not None:
+        stats = scrape_matches_by_date(args.date, delay=args.delay)
+    else:
+        stats = scrape_all_matches(
+            id_range=range(args.range_start, args.range_end),
+            delay=args.delay,
+        )
 
     print(f"\n===== 比賽結果爬取完成 =====")
+    if "requested" in stats:
+        print(f"本次請求：{stats['requested']} 頁")
     print(f"matches 表總筆數：{stats['total']}")
     print(f"本次新增：{stats['inserted']} 場")
     print(f"本次更新：{stats['updated']} 場")
