@@ -1,7 +1,9 @@
+from datetime import datetime
 import os
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -9,15 +11,17 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "daily_update.sh"
 DB = "data/db/tvl_database.db"
 
-# 替身 Python：帶 -m 的呼叫記下模組名與當下的 UTC 偏移；不帶參數的呼叫是腳本在算資料庫雜湊
+# 替身 Python：帶 -m 的呼叫記下模組名、參數與當下的 UTC 偏移；不帶參數的呼叫是腳本在算資料庫雜湊
 FAKE_PYTHON = """#!/usr/bin/env bash
 if [ $# -eq 0 ]; then
     sha256sum data/db/tvl_database.db | cut -d' ' -f1
     exit 0
 fi
-echo "$(date +%z) $2" >> "$CALLS"
-if [ "$2" = "${FAKE_CHANGES_DB_ON:-}" ]; then echo changed >> data/db/tvl_database.db; fi
-if [ "$2" = "${FAKE_FAILS_ON:-}" ]; then exit 1; fi
+module=$2
+shift
+echo "$(date +%z) $*" >> "$CALLS"
+if [ "$module" = "${FAKE_CHANGES_DB_ON:-}" ]; then echo changed >> data/db/tvl_database.db; fi
+if [ "$module" = "${FAKE_FAILS_ON:-}" ]; then exit 1; fi
 """
 
 FULL_UPDATE_STEPS = [
@@ -45,7 +49,11 @@ def repo(tmp_path):
     _executable(bin_dir / "python", FAKE_PYTHON)
     _executable(bin_dir / "gh", f'#!/usr/bin/env bash\necho "$*" >> {tmp_path / "gh.log"}\n')
 
-    env = {key: value for key, value in os.environ.items() if key not in {"GH_TOKEN", "DRY_RUN", "TZ"}}
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in {"GH_TOKEN", "DRY_RUN", "TZ", "MODE", "TARGET_DATE"}
+    }
     env.update(
         PATH=f"{bin_dir}:{os.environ['PATH']}",
         PYTHON=str(bin_dir / "python"),
@@ -83,8 +91,9 @@ def repo(tmp_path):
     return SimpleNamespace(work=work, origin=origin, git=git, run=run, calls=calls, gh_log=tmp_path / "gh.log")
 
 
-def test_full_update_runs_schedule_roster_scores_box_scores_predictions_in_order(repo):
-    result = repo.run()
+@pytest.mark.parametrize("extra_env", [{}, {"MODE": "full"}])
+def test_full_update_runs_schedule_roster_scores_box_scores_predictions_in_order(repo, extra_env):
+    result = repo.run(**extra_env)
 
     assert result.returncode == 0, result.stderr
     assert [module for _, module in repo.calls()] == FULL_UPDATE_STEPS
@@ -136,4 +145,78 @@ def test_unchanged_db_ends_without_commit(repo):
     result = repo.run(GH_TOKEN="token")
 
     assert result.returncode == 0, result.stderr
+    _assert_nothing_committed(repo)
+
+
+def _tz_with_different_date_from_taipei() -> str:
+    taipei_today = datetime.now(ZoneInfo("Asia/Taipei")).date()
+    return next(
+        tz for tz in ("Etc/GMT+12", "Etc/GMT-14")
+        if datetime.now(ZoneInfo(tz)).date() != taipei_today
+    )
+
+
+def test_slim_mode_runs_three_steps_with_taipei_today(repo):
+    before = datetime.now(ZoneInfo("Asia/Taipei")).date().isoformat()
+    result = repo.run(MODE="slim", TZ=_tz_with_different_date_from_taipei())
+    after = datetime.now(ZoneInfo("Asia/Taipei")).date().isoformat()
+
+    assert result.returncode == 0, result.stderr
+    calls = repo.calls()
+    assert [offset for offset, _ in calls] == ["+0800", "+0800", "+0800"]
+    assert [cmd for _, cmd in calls[1:]] == [
+        "src.etl.match_stats_writer",
+        "src.models.predict",
+    ]
+    assert calls[0][1] in {
+        f"src.etl.match_crawler --date {before}",
+        f"src.etl.match_crawler --date {after}",
+    }
+
+
+def test_slim_mode_uses_explicit_target_date(repo):
+    result = repo.run(MODE="slim", TARGET_DATE="2026-11-15", TZ="UTC")
+
+    assert result.returncode == 0, result.stderr
+    assert [cmd for _, cmd in repo.calls()] == [
+        "src.etl.match_crawler --date 2026-11-15",
+        "src.etl.match_stats_writer",
+        "src.models.predict",
+    ]
+
+
+def test_slim_mode_score_step_failure_fails_without_commit(repo):
+    result = repo.run(
+        MODE="slim",
+        TARGET_DATE="2026-11-15",
+        FAKE_CHANGES_DB_ON="src.etl.match_crawler",
+        FAKE_FAILS_ON="src.etl.match_crawler",
+        GH_TOKEN="token",
+    )
+
+    assert result.returncode != 0
+    assert [cmd for _, cmd in repo.calls()] == ["src.etl.match_crawler --date 2026-11-15"]
+    _assert_nothing_committed(repo)
+
+
+def test_slim_mode_dry_run_restores_db_without_commit(repo):
+    result = repo.run(
+        MODE="slim",
+        TARGET_DATE="2026-11-15",
+        FAKE_CHANGES_DB_ON="src.etl.match_crawler",
+        DRY_RUN="1",
+        GH_TOKEN="token",
+    )
+
+    assert result.returncode == 0, result.stderr
+    _assert_nothing_committed(repo)
+    assert (repo.work / DB).read_text(encoding="utf-8") == "original\n"
+    assert repo.git("status", "--porcelain") == ""
+
+
+def test_unknown_mode_fails_without_running_steps(repo):
+    result = repo.run(MODE="invalid")
+
+    assert result.returncode != 0
+    assert repo.calls() == []
     _assert_nothing_committed(repo)

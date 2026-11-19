@@ -6,7 +6,7 @@ import sys
 import requests
 from bs4 import BeautifulSoup
 
-from src.utils.constants import EXT_HEADERS, TVL_BASE_URL, parse_position
+from src.utils.constants import EXT_HEADERS, GAME_PAGE_PREFIXES, TVL_BASE_URL, parse_position
 
 
 HEADERS = [
@@ -140,8 +140,7 @@ def fetch_page(gender: str, game_id: int) -> str:
 
 
 def page_url(gender: str, game_id: int) -> str:
-    prefix = "game" if gender == "M" else "wgame"
-    return f"{TVL_BASE_URL}/{prefix}/{game_id}"
+    return f"{TVL_BASE_URL}/{GAME_PAGE_PREFIXES[gender]}/{game_id}"
 
 
 def main(argv: list[str] | None = None) -> int:

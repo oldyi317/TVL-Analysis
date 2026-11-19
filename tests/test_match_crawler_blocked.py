@@ -50,6 +50,12 @@ def test_rescan_stores_scores_from_pages_that_respond_200(monkeypatch, tmp_db_pa
     assert _stored_matches(tmp_db_path) == 1
 
 
+def test_rescan_reports_pages_requested(monkeypatch, tmp_db_path, capsys, played_page):
+    _rescan(monkeypatch, tmp_db_path, {"/game/301": played_page, "/wgame/301": _response(200, "<html></html>")})
+
+    assert "本次請求：2 頁" in capsys.readouterr().out
+
+
 def test_rescan_blocked_by_403_fails_and_stores_nothing(monkeypatch, tmp_db_path, played_page):
     blocked = _response(403, "<html>Attention Required! | Cloudflare</html>")
 

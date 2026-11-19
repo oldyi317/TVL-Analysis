@@ -1,14 +1,28 @@
 #!/usr/bin/env bash
 # TVL 每日增量更新：爬蟲 → .db 邏輯內容有變更才 commit/push（push 後觸發 pages.yml 重建靜態站）
+# 環境變數：
+#   MODE=full|slim（預設 full）；slim 只抓當天比分、寫入單場數據、重算賽前勝率
+#   TARGET_DATE=YYYY-MM-DD（僅 slim 模式；預設台北今天，供驗證與補跑用）
+#   DRY_RUN=1 不 commit／push 並還原 .db
 # 本機驗證：DRY_RUN=1 bash scripts/daily_update.sh
+#           MODE=slim TARGET_DATE=2026-11-15 DRY_RUN=1 bash scripts/daily_update.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # 日期與時間一律用台北時間，不跟著機器（雲端 runner 是 UTC）；commit 訊息的日期、賽前勝率的計算時間、
-# 報名名單歸哪一季都吃這個設定
+# 報名名單歸哪一季、精簡模式的預設日期都吃這個設定
 export TZ=Asia/Taipei
 
 PYTHON="${PYTHON:-$HOME/venvs/tvl/bin/python}"
+MODE="${MODE:-full}"
+
+case "$MODE" in
+    full|slim) ;;
+    *)
+        echo "不支援的 MODE：$MODE（只接受 full 或 slim）" >&2
+        exit 2
+        ;;
+esac
 
 # 計算 DB 邏輯內容的 SHA-256 雜湊（用 SQLite dump 避免位元組雜訊）
 db_hash() {
@@ -31,11 +45,16 @@ PYTHON_EOF
 # 爬蟲前記錄 hash
 BEFORE=$(db_hash)
 
-# 賽事列表（ADR 0003）：先寫未開打場次的基本資料；失敗只記 log，不中止每日更新
-"$PYTHON" -m src.etl.schedule_crawler || echo "賽事列表步驟失敗（exit $?），略過。"
-# 賽季報名名單（ADR 0004）：排在賽事列表後，新季賽程寫入當天就歸到新季；失敗只記 log
-{ "$PYTHON" -m src.etl.crawler && "$PYTHON" -m src.etl.db_loader; } || echo "賽季報名名單步驟失敗（exit $?），略過。"
-"$PYTHON" -m src.etl.match_crawler
+if [ "$MODE" = "slim" ]; then
+    TARGET_DATE="${TARGET_DATE:-$(date +%F)}"
+    "$PYTHON" -m src.etl.match_crawler --date "$TARGET_DATE"
+else
+    # 賽事列表（ADR 0003）：先寫未開打場次的基本資料；失敗只記 log，不中止每日更新
+    "$PYTHON" -m src.etl.schedule_crawler || echo "賽事列表步驟失敗（exit $?），略過。"
+    # 賽季報名名單（ADR 0004）：排在賽事列表後，新季賽程寫入當天就歸到新季；失敗只記 log
+    { "$PYTHON" -m src.etl.crawler && "$PYTHON" -m src.etl.db_loader; } || echo "賽季報名名單步驟失敗（exit $?），略過。"
+    "$PYTHON" -m src.etl.match_crawler
+fi
 # 官網單場數據（ADR 0009）：本季有比分且無統計的場次，週登錄一併由官網賽事頁寫入；
 # 讀 matches.round_name 決定 week_label，必須排在 match_crawler 之後（ADR 0008）、predict 之前；
 # 只讀 matches 不寫；失敗只記 log，不中止每日更新與 commit。
