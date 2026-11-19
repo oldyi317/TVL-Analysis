@@ -17,6 +17,7 @@
 		setKind
 	} from '#lib/push.svelte.js';
 	import { writePromptHidden } from '#lib/pushPrefs.js';
+	import { isStandalone } from '#lib/serviceWorker.svelte.js';
 
 	const guide = $derived(installPrompt.guide);
 	const denied = $derived(push.permission === 'denied');
@@ -46,8 +47,8 @@
 	}
 
 	onMount(() => {
-		// 進過這一頁，首頁的提示卡就不再出現
-		writePromptHidden(browserStorage());
+		// 分頁內不記：iPhone 主畫面的 app 讀得到 Safari 分頁留下的記號（#285）
+		if (isStandalone()) writePromptHidden(browserStorage());
 		void refreshPush();
 		// 到系統設定改了通知權限再切回來，頁面不會重新載入
 		const onVisible = () => {

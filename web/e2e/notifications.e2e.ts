@@ -514,8 +514,22 @@ test.describe('首頁提示卡', () => {
 		await asStandalone(page);
 		await page.goto(URL_PATH);
 		await expect(resultsSwitch(page)).not.toBeChecked();
+		expect(await page.evaluate((key) => localStorage.getItem(key), PROMPT_KEY)).toBe('1');
 		await page.goto(HOME);
 		await expectNoCard(page);
+	});
+
+	// iPhone 實機（#285）：Safari 分頁留下的記號，加到主畫面後的 app 讀得到
+	test('在瀏覽器分頁內進過通知頁：不記在裝置上，之後以獨立視窗開首頁仍出現提示卡', async ({ page, context }) => {
+		await setup(page);
+		await page.goto(URL_PATH);
+		await expect(resultsSwitch(page)).not.toBeChecked();
+		expect(await page.evaluate((key) => localStorage.getItem(key), PROMPT_KEY)).toBeNull();
+		const app = await context.newPage();
+		await setup(app);
+		await asStandalone(app);
+		await app.goto(HOME);
+		await expect(card(app)).toBeVisible();
 	});
 
 	test('localStorage 不可用：提示卡照樣出現，按關閉會消失，首頁與通知頁都不出錯', async ({ page }) => {
