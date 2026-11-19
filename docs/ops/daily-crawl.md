@@ -9,7 +9,7 @@
   腳本會移除舊的 svc.sh 常駐服務與持久註冊，把 `scripts/runner_loop.sh` 複製到 `~/actions-runner/`，
   並安裝 systemd service `tvl-runner`（enable 後重啟，隨 WSL 開機自啟；WSL 開機靠 Windows 工作排程器，見腳本步驟 6）。
 - 每日觸發：`setup_runner.sh` 步驟 5 會跑 `scripts/setup_crawl_trigger.sh`（也可單獨跑，不需 sudo、需 linger），裝 user 層級 timer `tvl-crawl-trigger`：
-  每天台北 09:23 `gh workflow run daily-crawl.yml`，`Persistent=true` 讓未開機錯過的那次在開機後補跑（開機當下網路可能未通，觸發失敗每 2 分鐘重試、最多 5 次）。workflow 自己的 schedule 實際常晚 4–7 小時（#196），只當備援；
+  每天台北 09:23 `gh workflow run daily-crawl.yml`，`Persistent=true` 讓未開機錯過的那次在開機後補跑（開機當下網路可能未通，觸發失敗每 2 分鐘重試、最多 5 次）。workflow 自己的 schedule 實際常晚 4–7 小時（#196），只當備援（取樣期間改做雲端取樣、不當備援，見「雲端 runner 與取樣期」）；
   一天跑兩次無害，`.db` 沒有實質變更就不 commit。查看：`systemctl --user list-timers tvl-crawl-trigger.timer`、`journalctl --user -u tvl-crawl-trigger`。
 - 運作：`tvl-runner` 跑迴圈「`gh api` 取註冊 token → `config.sh --ephemeral --replace` 註冊（名稱 `tvl-wsl`、label `tvl`）
   → `run.sh` 接一個 job → job 結束 runner 自動註銷 → 回到開頭」。每輪先清掉 `_work` 與殘留的本機註冊檔；但 job 仍以同一個使用者執行，`$HOME`（venv、gh 登入）不會重置。
@@ -23,11 +23,28 @@
 - 查狀態：`systemctl status tvl-runner`、`journalctl -u tvl-runner -f`；GitHub 端
   `gh api repos/oldyi317/TVL-Analysis/actions/runners --jq '.runners[] | {id, name, status}'`，每跑完一個 job，`id` 會換成新的。
 
+## 雲端 runner 與取樣期（#291）
+
+- workflow 有兩個 job：`laptop` 跑在筆電的自架 runner；`cloud` 跑在 GitHub 雲端 runner（`ubuntu-latest`，Python 版本與 CI 相同，照 CI 裝 `requirements.txt` 並用 pip 快取）。
+- 手動觸發的輸入：`mode`（`full`／`slim`，預設 `full`）、`runner`（`laptop`／`cloud`，預設 `laptop`）、`dry_run`（預設否；為真時不 commit、不 push、不啟動網站建置）。
+  不帶輸入的觸發（本機 timer）照舊在筆電上以整包、寫入的方式跑。例：`gh workflow run daily-crawl.yml -f runner=cloud -f mode=slim -f dry_run=true`，測分支上的改動加 `--ref <分支>`。
+  取樣期間不要以 `runner=cloud` 且 `dry_run` 為否觸發：那會從雲端正式寫入並部署，正式切換是 #292 的事。
+- **取樣期（#291 合併起，到 #292 改回為止）**：排程事件不做正式更新，改在雲端 runner 以不寫入方式依序跑「取樣：整包（不寫入）」與「取樣：精簡（不寫入）」兩個步驟，
+  每天留一筆「雲端 runner 抓不抓得到官網」的紀錄。整包失敗時精簡照跑，任一段失敗整個 run 就算失敗（GitHub 會寄失敗信）；兩段都不寫入，不會有 commit 或網站建置。
+  這段期間筆電上原本由排程補跑的備援暫停；平日 09:23 的準時觸發仍由本機 timer 負責，不受影響。
+- 列出取樣 run 與兩段各自的結論：
+
+  ```bash
+  gh run list --workflow=daily-crawl.yml --event=schedule --limit 20 --json databaseId,createdAt,conclusion,url
+  gh run view <run_id> --json jobs --jq '.jobs[].steps[] | select(.name | startswith("取樣")) | "\(.name)\t\(.conclusion)"'
+  gh run view <run_id> --log | grep -E "本次請求|資料庫"   # 每段的請求頁數與資料庫有無變更；行首是步驟名稱
+  ```
+
 ## 失敗時怎麼看
 
 - **先看 runner 在不在線，再看程式**：runner 在使用者筆電的 WSL，關機時 job 排隊 24 小時後 cancelled（annotation「exceeded the maximum
   execution time while awaiting a runner」）；跑到一半 WSL 被關則是「self-hosted runner lost communication」。週末筆電通常不開，
-  週六 run 取消、週日 run 拖到週一開機才被接走，屬預期（#196）。
+  週末的資料要等週一開機、本機 timer 補跑才進站，屬預期（#196）。取樣期間排程事件跑在雲端 runner 且不寫入，補不上週末資料。
 - 取消或失敗原因：`gh api repos/oldyi317/TVL-Analysis/check-runs/<job_id>/annotations`；對照 runner 機器的
   `journalctl --list-boots` 與 job 的 started／completed 時間。筆電睡眠不算新 boot，`--list-boots` 看不出來，
   listener 的 `_diag` 日誌會跨越睡眠期持續。runner 迴圈日誌：`journalctl -u tvl-runner`；本機觸發 timer：`journalctl --user -u tvl-crawl-trigger`。
