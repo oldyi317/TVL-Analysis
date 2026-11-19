@@ -48,7 +48,7 @@ export function writeRegisteredAt(storage: Pick<Storage, 'setItem'> | null | und
 	} catch {}
 }
 
-// 首頁提示卡按過關閉、或進過通知頁，都記在同一個記號；讀不到當作沒關過
+// 首頁提示卡按過關閉、或在獨立視窗裡進過通知頁，都記在同一個記號；讀不到當作沒關過
 export function readPromptHidden(storage: Pick<Storage, 'getItem'> | null | undefined): boolean {
 	try {
 		return storage?.getItem(PROMPT_KEY) === '1';

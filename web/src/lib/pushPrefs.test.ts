@@ -84,7 +84,7 @@ describe('最後登記時間', () => {
 	});
 });
 
-describe('首頁提示卡的記號（按過關閉或進過通知頁）', () => {
+describe('首頁提示卡的記號（按過關閉或在獨立視窗裡進過通知頁）', () => {
 	it('沒記過是 false，記了之後是 true', () => {
 		const storage = fakeStorage();
 		expect(readPromptHidden(storage)).toBe(false);
