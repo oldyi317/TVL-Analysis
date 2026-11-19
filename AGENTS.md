@@ -15,7 +15,7 @@ npm run test:e2e                                 # Playwright smoke（需先 bui
 
 # Ticket 流程（從 repo 根目錄跑）
 bash scripts/new-worktree.sh <分支> [base]        # 在 ~/work 開 worktree，依賴與資料一併備好
-bash scripts/verify.sh                           # 收工四項各自回報（pytest 與網站那一串同時跑，網站那一串依序跑；PATH 有 actionlint 就先檢查 workflow 檔）
+bash scripts/verify.sh                           # 收工各項各自回報（pytest 與網站那一串同時跑，網站那一串依序跑；再驗 push/、score/ 的 check 與 test；PATH 要有 actionlint，沒有就失敗）
 bash scripts/e2e.sh [--repeat N | --profile] [spec…]  # 在自己挑的空 port 跑 e2e（不 build；spec 如 e2e/smoke.e2e.ts；--repeat 連跑 N 輪各自回報；--profile 印 worker 數、逐檔耗時與最慢的測試）
 bash scripts/verify-sw-removal.sh                # 自我移除版的檢查（建置兩次再用瀏覽器實測，不在 verify.sh 裡）；改了 service worker 的註冊、換版或 cache 之後跑
 bash scripts/ci-timings.sh [N]                   # 最近 N 次成功 CI 的 web job、e2e 步驟與測試本身耗時及範圍；比較 CI 前後先看範圍
@@ -71,8 +71,8 @@ npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔�
 - worktree 用 `bash scripts/new-worktree.sh <分支> [base]` 開在 `~/work/`，在那裡實作與驗證：
   `/mnt/d` 上 `npm run build` 一次 14 分鐘，`~/work` 整輪驗證約 3 分鐘。
 - 順序：開發中只跑相關的單檔測試 → 審查 → 修完 → commit → 在乾淨工作樹跑一次
-  `bash scripts/verify.sh` → push。四項全過才算完成：pytest、`npm run check`、
-  `npm run test:unit`、`npm run test:e2e`。
+  `bash scripts/verify.sh` → push。全過才算完成：pytest、`npm run check`、
+  `npm run test:unit`、`npm run test:e2e`、actionlint、push/ 與 score/ 的 `npm run check` 與 `npm test`。
 - push 分支後開 PR，內文照 `/pr` 的格式（Summary／Evidence／Merge Danger）並寫 `Closes #<N>`；合併由使用者做，合併後才關票。
 - 驗收要手動觸發這張票新增的 workflow 時，等合併後在 main 上跑，再把結果補進 PR 內文
   （新 workflow 檔合併前 `gh workflow run` 回 404）。

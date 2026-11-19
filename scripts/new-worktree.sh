@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 在 Linux 檔案系統開 ticket 用的 git worktree，並備好前端依賴與資料。
+# 在 Linux 檔案系統開 ticket 用的 git worktree，並備好前端、push/、score/ 依賴與資料。
 # repo 在 /mnt/d（Windows 檔案系統）上 vite build 要十幾分鐘，搬到 ~/work 只要幾秒。
 #
 # 用法：bash scripts/new-worktree.sh <分支> [base]
@@ -38,6 +38,9 @@ cd "$dir"
 cd web
 npm ci --prefer-offline --no-audit --no-fund
 npm run gen
+for svc in push score; do
+	(cd "../$svc" && npm ci --prefer-offline --no-audit --no-fund)
+done
 
 echo
 echo "worktree 好了：$dir（分支 $branch）"
