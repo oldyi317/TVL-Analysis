@@ -9,7 +9,7 @@ Cloudflare 每分鐘呼叫一次 `tvl-score`。排程使用事件的預定時間
 | `FEED_URL` | `https://vstat.tw/push/matches.json` | 網站已發佈的推播賽事檔 |
 | `GITHUB_REPO` | `oldyi317/TVL-Analysis` | 要啟動 workflow 的擁有者與 repo |
 | `GITHUB_WORKFLOW` | `daily-crawl.yml` | 在 main 分支上啟動的 workflow 檔名 |
-| `DRY_RUN` | `true` | 布林值。啟用時送出 `dry_run: true`；關閉時沿用 workflow 的寫入設定 |
+| `DRY_RUN` | `false` | 布林值。啟用時送出 `dry_run: true`；關閉時沿用 workflow 的寫入設定 |
 | `GITHUB_TOKEN` | Worker secret | 呼叫 GitHub workflow dispatch 的 fine-grained token，限目標 repo，Actions 權限為 write |
 
 設定值放在 `wrangler.json` 的 `vars`；部署步驟、secret 怎麼產生與更換見 `docs/ops/daily-crawl.md`「比分服務」。GitHub 回非成功狀態時，每次排程最多嘗試三次，最後一次仍失敗就回報錯誤。

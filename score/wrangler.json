@@ -13,6 +13,6 @@
 		"FEED_URL": "https://vstat.tw/push/matches.json",
 		"GITHUB_REPO": "oldyi317/TVL-Analysis",
 		"GITHUB_WORKFLOW": "daily-crawl.yml",
-		"DRY_RUN": true
+		"DRY_RUN": false
 	}
 }
