@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SKIP_A = "  跳過：甲測試 -- 原因一"
 SKIP_B = "  跳過：乙測試 -- 原因二"
@@ -19,7 +21,7 @@ def _run_e2e(tmp_path: Path, npx_body: str, *args: str) -> subprocess.CompletedP
     """把 e2e.sh 與它呼叫的檔案複製到 tmp_path，npx 換成假的再跑。"""
     scripts = tmp_path / "scripts"
     scripts.mkdir()
-    for name in ("e2e.sh", "busy-warning.sh", "e2e_profile.py"):
+    for name in ("e2e.sh", "busy-warning.sh", "e2e_profile.py", "isolated-net.sh"):
         shutil.copy(ROOT / "scripts" / name, scripts / name)
     (tmp_path / "web" / "build").mkdir(parents=True)
     bin_dir = tmp_path / "bin"
@@ -108,3 +110,23 @@ def test_repeat_and_profile_together_is_a_usage_error(tmp_path):
     out = _run_e2e(tmp_path, "exit 0", "--repeat", "2", "--profile")
 
     assert out.returncode == 2
+
+
+def _interfaces(text: str) -> set[str]:
+    return {line.split()[1].rstrip(":") for line in text.splitlines() if line[:1].isdigit()}
+
+
+def test_playwright_runs_where_host_address_changes_cannot_reach_it(tmp_path):
+    # #304：主機網卡的位址一變（Wi-Fi 重連），Chromium 會中斷進行中的請求，連 localhost 也是。
+    # Playwright 要跑在看不到主機網卡的 network namespace 裡，且裡面要有一張有位址的非 loopback 網卡，否則瀏覽器判成離線
+    probe = "ip link set lo up && ip link add probe0 type dummy"
+    if subprocess.run(["unshare", "-Urn", "sh", "-c", probe], capture_output=True).returncode != 0:
+        pytest.skip("這個環境開不了 network namespace，e2e.sh 會照原樣跑")
+    host = _interfaces(subprocess.run(["ip", "-o", "-4", "addr"], capture_output=True, text=True).stdout) - {"lo"}
+
+    out = _run_e2e(tmp_path, 'ip -o -4 addr\necho "  1 passed (1.0s)"')
+
+    assert out.returncode == 0, out.stdout + out.stderr
+    seen = _interfaces(out.stdout) - {"lo"}
+    assert seen, out.stdout
+    assert not seen & host, out.stdout
