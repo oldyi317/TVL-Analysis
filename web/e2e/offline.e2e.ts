@@ -392,6 +392,8 @@ test('離線狀態細條：線上沒有、頁尾照舊；離線出現「離線�
 	const footer = page.getByText(/^資料更新時間/);
 	await expect(footer).toBeVisible();
 	const [, month, day] = (await page.locator('footer time').textContent())!.match(/-(\d+)-(\d+) /)!;
+	// setOffline 先讓頁面離線、稍後才輪到 service worker：頁面收到 offline 後的探測若趕在中間，會經還在線上的 service worker 成功回來，細條就被收掉（#304）
+	await context.route('**/_app/version.json', (route) => route.abort());
 	await context.setOffline(true);
 	await expect(page.getByText(BAR, { exact: true })).toBeVisible();
 	expect(BAR).toBe(`離線中，資料更新至 ${Number(month)}/${Number(day)}`);
