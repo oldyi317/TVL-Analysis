@@ -73,6 +73,9 @@ jobs:
         run: shellcheck --version
       - name: 檢查 workflow 檔
         run: ./actionlint -color
+      # SC1087 出在 /wizard skill 產生的固定函式庫（launch_wizard.sh 等），不手改它
+      - name: 檢查 scripts/ 的 shell 腳本
+        run: shellcheck -S warning -e SC1087 scripts/*.sh
 
   push:
     runs-on: ubuntu-latest
