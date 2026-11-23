@@ -13,8 +13,8 @@
 
 ## 依賴
 
-- Python 依賴只有一份 `requirements.txt`（爬蟲、模型重訓、pytest 全在裡面，裝在自架
-  runner 與本機）。
+- Python 依賴只有一份 `requirements.txt`（爬蟲、模型重訓、pytest 全在裡面，每日更新的雲端
+  runner 與 CI 都照它安裝，本機與筆電 runner（備援期）用 venv）。
 - pages.yml 的匯出器只用標準庫、不裝 pip 套件；`src/export/` 與它匯入的模組維持只用標準庫。
 - 前端依賴在 `web/package.json`，改動要考慮 pages.yml 的 `npm ci`。
 

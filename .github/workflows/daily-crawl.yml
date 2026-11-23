@@ -1,12 +1,11 @@
-# 每日增量爬蟲。主要由 runner 所在 WSL 的 user systemd timer 於台灣 09:23 以不帶輸入的 workflow_dispatch 觸發
-# （scripts/setup_crawl_trigger.sh，#196），跑在筆電的 self-hosted runner（laptop job）。
-# 手動觸發可選 runner=cloud 改在 GitHub 雲端 runner 跑（cloud job，#291）；2026-11-19 實測雲端 runner 進得去官網。
-# 筆電未開機時 laptop job 會排隊等 runner 上線（至多 24 小時），開機即補跑。
-# schedule 錯開整點——GitHub 高負載時整點 schedule 事件可能延遲甚至丟棄（2026-08-28 首次排程即未觸發），實際常晚 4–7 小時才觸發。
+# 每日增量更新，跑在 GitHub 雲端 runner（cloud job，#292）。
+# 主要由筆電 WSL 的 user systemd timer 於台灣 09:23 以不帶輸入的 workflow_dispatch 觸發（scripts/setup_crawl_trigger.sh，#196）；
+# 不帶輸入時是整包、寫入。
+# 備援期間（#296 退役前）手動觸發可選 runner=laptop 改在筆電的 self-hosted runner 跑（laptop job），用法見 docs/ops/daily-crawl.md。
+# schedule 錯開整點——GitHub 高負載時整點 schedule 事件可能延遲甚至丟棄（2026-08-28 首次排程即未觸發），實際常晚 4–7 小時才觸發；
+# 它在雲端 runner 上跑整包、寫入，準時觸發漏掉的那天由它補上。
 name: daily-crawl
 on:
-  # 取樣期暫時設定（#291）：排程事件不做正式更新，改在雲端 runner 以不寫入方式先跑整包、再跑精簡，
-  # 每天留一筆「雲端 runner 抓不抓得到官網」的取樣；取樣期間筆電上由排程提供的備援暫停。由 #292 改回正式更新。
   schedule:
     - cron: "23 1 * * *"
   workflow_dispatch:
@@ -19,8 +18,8 @@ on:
       runner:
         description: 筆電的自架 runner（laptop）或 GitHub 雲端 runner（cloud）
         type: choice
-        options: [laptop, cloud]
-        default: laptop
+        options: [cloud, laptop]
+        default: cloud
       dry_run:
         description: 不寫入（不 commit、不 push、不啟動網站建置）
         type: boolean
@@ -38,7 +37,7 @@ concurrency:
 
 jobs:
   laptop:
-    if: github.event_name == 'workflow_dispatch' && inputs.runner != 'cloud'
+    if: github.event_name == 'workflow_dispatch' && inputs.runner == 'laptop'
     runs-on: [self-hosted, tvl]
     timeout-minutes: 60
     steps:
@@ -51,7 +50,7 @@ jobs:
         run: bash scripts/daily_update.sh
 
   cloud:
-    if: github.event_name == 'schedule' || inputs.runner == 'cloud'
+    if: github.event_name == 'schedule' || inputs.runner != 'laptop'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -63,28 +62,10 @@ jobs:
         with:
           python-version: '3.14'
           cache: pip
-      - id: deps
-        run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt
       - name: 每日增量更新
-        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
           MODE: ${{ inputs.mode }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: bash scripts/daily_update.sh
-      # 取樣期暫時設定（#291，由 #292 移除）：兩段分成兩個步驟，各自的成敗在 run 紀錄裡分得出來；
-      # 整包失敗仍照跑精簡（先還原整包中途失敗時寫了一半的 .db），job 只要有一段失敗就以失敗收場
-      - name: 取樣：整包（不寫入）
-        if: github.event_name == 'schedule'
-        env:
-          MODE: full
-          DRY_RUN: '1'
-        run: bash scripts/daily_update.sh
-      - name: 取樣：精簡（不寫入）
-        if: github.event_name == 'schedule' && !cancelled() && steps.deps.conclusion == 'success'
-        env:
-          MODE: slim
-          DRY_RUN: '1'
-        run: |
-          git checkout -- data/db/tvl_database.db
-          bash scripts/daily_update.sh

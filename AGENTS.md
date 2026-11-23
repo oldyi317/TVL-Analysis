@@ -51,7 +51,7 @@ npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔�
   對不上就略過並 warning，不插入 `players`；整季沒有報名名單（legacy）時才以全域
   姓名比對、查無就動態新增。比對到人但查無登錄時補一筆 `source='backfill'`
   登錄（背號/位置先取自 `season_rosters`，查無才 NULL），下游計算仍須對缺值防禦。
-- **daily-crawl 失敗或排程異常先讀 `docs/ops/daily-crawl.md`**：runner 在使用者筆電 WSL，先查 runner 在線再查程式。
+- **daily-crawl 失敗或排程異常先讀 `docs/ops/daily-crawl.md`**：每日更新跑在 GitHub 雲端 runner，先看 run log 哪一步失敗、官網是否回封鎖頁；備援期可手動改用筆電 runner。
 - **要撤掉 service worker、訪客卡在舊版，或要回答更新多久到使用者手上，先讀 `docs/ops/service-worker.md`**：裝進訪客瀏覽器的
   service worker 靠 revert 撤不掉，要部署自我移除版（建置時設 `VITE_SW_REMOVE=1`）。
 - **換季前必跑 `docs/ops/season-switch.md` checklist**：cup_id 已進

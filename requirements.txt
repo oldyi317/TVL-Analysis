@@ -1,4 +1,4 @@
-# 自架 runner（爬蟲、模型重訓）與本機測試共用；pages.yml 的匯出器只用標準庫，不裝本檔
+# 每日更新的雲端 runner（爬蟲、模型重訓）、CI 與本機測試共用；pages.yml 的匯出器只用標準庫，不裝本檔
 beautifulsoup4==4.15.0
 joblib==1.5.3
 numpy==2.5.2
