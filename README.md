@@ -88,7 +88,8 @@ TVL-Analysis/
 │   ├── daily_update.sh            # 每日增量更新腳本（排程與本機演練共用）
 │   ├── export_snapshot.sh         # 匯出器 JSON 快照比對工具
 │   ├── setup_runner.sh            # 自架 GitHub Actions runner 安裝腳本
-│   ├── setup_crawl_trigger.sh     # 每日 09:23 本機觸發 daily-crawl 的 systemd timer 安裝腳本
+│   ├── setup_crawl_trigger.sh     # 本機觸發 timer 安裝腳本（已停用，比分服務故障時的臨時觸發；#296 移除）
+│   ├── score_token_wizard.sh      # 帶維護者產生比分服務的 GitHub token 並存成比分服務的 secret
 │   ├── runner_loop.sh             # 自架 ephemeral runner 常駐迴圈
 │   └── domain-expiry-issue.sh     # 網域快到期時開 issue（同標題還開著就不重開；domain-expiry.yml 呼叫）
 ├── .github/actionlint.yaml        # actionlint 設定（自架 runner 標籤）
@@ -102,7 +103,7 @@ TVL-Analysis/
 ├── docs/
 │   ├── adr/                       # 架構決策紀錄（ADR 0001–0009）
 │   ├── ops/season-switch.md       # 換季操作檢查表
-│   ├── ops/daily-crawl.md         # daily-crawl 維運：雲端 runner、本機觸發 timer、失敗排查、備援期筆電 runner
+│   ├── ops/daily-crawl.md         # daily-crawl 維運：雲端 runner、比分服務的部署與 token、失敗排查、備援期筆電 runner
 │   ├── ops/service-worker.md      # service worker 維運：換版機制、自我移除版的部署、退回與演練
 │   └── design-system.md           # 網站視覺與設計規範
 ├── CONTEXT.md                     # 領域詞彙表（組別、賽季、週登錄、主要位置等命名規範）
@@ -158,7 +159,7 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
 
 1. **每日增量爬蟲（`daily-crawl.yml`）**：
    - 跑在 GitHub 雲端 runner（`cloud` job，`ubuntu-latest`），整包預設、寫入。
-   - 觸發：筆電 WSL 以 user 層級 systemd timer 每日台灣時間 09:23 用不帶輸入的 `gh workflow run` 觸發（`scripts/setup_crawl_trigger.sh` 安裝；筆電沒開機那天不會觸發；觸發失敗每 2 分鐘重試，最多 5 次）。workflow 內的 `01:23 UTC` 排程同樣在雲端整包、寫入，GitHub 實際常晚 4–7 小時才觸發，補上筆電沒開機的日子（例如週末），前一天賽果最晚當天下午進站；亦可手動 `workflow_dispatch`。
+   - 觸發：比分服務（`score/`，部署在 Cloudflare Workers，名稱 `tvl-score`）每天台灣時間 09:23 啟動整包；當天有賽事時另在 15:30、18:30、21:15 各啟動一次精簡版（只抓當天場次並重算賽前勝率），比賽日的賽果當天進站。workflow 內的 `01:23 UTC` 排程留作備援，同樣在雲端整包、寫入，GitHub 實際常晚 4–7 小時才觸發；亦可手動 `workflow_dispatch`。比分服務的部署與 token 見 `docs/ops/daily-crawl.md`。
    - 備援期間（筆電 runner 退役前）可 `gh workflow run daily-crawl.yml -f runner=laptop` 改在筆電的自架 runner（`[self-hosted, tvl]`）跑，用法與時機見 `docs/ops/daily-crawl.md`。
    - 執行 `scripts/daily_update.sh`：依序跑官網賽事列表（`schedule_crawler`）、賽季報名名單（`crawler` + `db_loader`）、各局比分（`match_crawler`）、官網單場數據與週登錄（`match_stats_writer`）以及未開打賽事賽前勝率（`src.models.predict`）。
    - 腳本透過 SQLite `iterdump()` 計算資料庫邏輯內容 SHA-256 雜湊（忽略 `sqlite_sequence` 自增序號雜訊）；確認有實質資料變更才 commit 並 push `data/db/tvl_database.db`，隨後主動觸發 `pages.yml` 部署靜態站。

@@ -12,6 +12,6 @@ Cloudflare 每分鐘呼叫一次 `tvl-score`。排程使用事件的預定時間
 | `DRY_RUN` | `true` | 布林值。啟用時送出 `dry_run: true`；關閉時沿用 workflow 的寫入設定 |
 | `GITHUB_TOKEN` | Worker secret | 呼叫 GitHub workflow dispatch 的 fine-grained token，限目標 repo，Actions 權限為 write |
 
-設定值放在 `wrangler.json` 的 `vars`，secret 由維護者在 #294 部署時設定。GitHub 回非成功狀態時，每次排程最多嘗試三次，最後一次仍失敗就回報錯誤。
+設定值放在 `wrangler.json` 的 `vars`；部署步驟、secret 怎麼產生與更換見 `docs/ops/daily-crawl.md`「比分服務」。GitHub 回非成功狀態時，每次排程最多嘗試三次，最後一次仍失敗就回報錯誤。
 
 在本目錄用 Node.js 24 執行 `npm ci`、`npm run check`、`npm test`。
