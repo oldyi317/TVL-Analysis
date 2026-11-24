@@ -6,7 +6,7 @@ import type { BoxScoresData, TeamAdvancedData } from '#lib/data/types.js';
 import { headToHead, isPlayed } from '#lib/match.js';
 import { parseId, requireSeasonGroup } from '#lib/route.js';
 import { findMatch, matchEntries, matchesFor, players } from '#lib/site.js';
-import { pregameComparison } from '#lib/teamAdvanced.js';
+import { postgameComparison, pregameComparison } from '#lib/teamAdvanced.js';
 import type { EntryGenerator, PageServerLoad } from './$types';
 
 export const entries: EntryGenerator = matchEntries;
@@ -16,18 +16,24 @@ export const load: PageServerLoad = ({ params }) => {
 	const gameId = parseId(params.game);
 	const match = gameId === undefined ? undefined : findMatch(season.cup_id, group, gameId);
 	if (!match) error(404, '找不到這場賽事');
-	const pregame = isPlayed(match)
+	const played = isPlayed(match);
+	const teamAdvanced = teamAdvancedJson as TeamAdvancedData;
+	const pregame = played
 		? null
 		: {
-				comparison: pregameComparison(teamAdvancedJson as TeamAdvancedData, season.cup_id, group, match.home.team_id, match.away.team_id) ?? null,
+				comparison: pregameComparison(teamAdvanced, season.cup_id, group, match.home.team_id, match.away.team_id) ?? null,
 				record: headToHead(matchesFor(season.cup_id, group), match.home.team_id, match.away.team_id)
 			};
+	const postgame = played
+		? (postgameComparison(teamAdvanced, season.cup_id, group, match.game_id, match.home.team_id, match.away.team_id) ?? null)
+		: null;
 	const game = findBoxScore(boxScoresJson as BoxScoresData, season.cup_id, group, match.game_id);
 	return {
 		season,
 		group,
 		match,
 		pregame,
+		postgame,
 		boxScore: game ? toBoxScoreView(game, group, players) : null
 	};
 };

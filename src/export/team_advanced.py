@@ -18,6 +18,17 @@ METRICS = (
 TOTAL_FIELDS = sorted({f for _, *fields, _ in METRICS for f in fields} - {"sets"})
 
 
+def _game_points(skill: Mapping[str, int], total_points: int, game_id: int, team_id: int) -> dict[str, int]:
+    """單場得分來源（排除黃金決勝局）：球隊頁得分來源組成與單場頁賽後對戰比較共用。"""
+    attack, block, serve = skill["attack_points"], skill["block_points"], skill["serve_points"]
+    opponent_error = total_points - attack - block - serve
+    if opponent_error < 0:
+        logger.warning("對手失誤得分推算為負值：game_id=%s team_id=%s opponent_error=%s",
+                       game_id, team_id, opponent_error)
+    return {"attack": attack, "block": block, "serve": serve,
+            "opponent_error": opponent_error, "total": total_points}
+
+
 def _team_totals(games: Iterable[Mapping], scores: Mapping[int, Mapping[str, int]]) -> list[dict]:
     totals: dict[int, dict] = {}
     for game in games:
@@ -36,18 +47,15 @@ def _team_totals(games: Iterable[Mapping], scores: Mapping[int, Mapping[str, int
             for field in TOTAL_FIELDS:
                 team[field] += skill[field]
             game_totals = {**skill, "sets": score["sets"]}
+            game_points = _game_points(skill, score[f"{side}_points"], game["game_id"], team["team_id"])
             team["trend"].append({
                 "game_id": game["game_id"], "date": game["date"],
                 "opponent_id": score["away_team_id" if side == "home" else "home_team_id"],
+                "points": game_points,
                 "metrics": {key: _metric(game_totals, num, den, scale) for key, num, den, scale in METRICS},
             })
-            points = score[f"{side}_points"]
-            opponent_error = points - skill["attack_points"] - skill["block_points"] - skill["serve_points"]
-            if opponent_error < 0:
-                logger.warning("對手失誤得分推算為負值：game_id=%s team_id=%s opponent_error=%s",
-                               game["game_id"], team["team_id"], opponent_error)
-            team["total"] += points
-            team["opponent_error"] += opponent_error
+            team["total"] += game_points["total"]
+            team["opponent_error"] += game_points["opponent_error"]
     for team in totals.values():
         team["trend"].sort(key=lambda g: (g["date"], g["game_id"]))
     return sorted(totals.values(), key=lambda t: t["team_id"])

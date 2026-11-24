@@ -136,6 +136,7 @@ test('未開打賽事頁：賽前對戰比較的蝴蝶長條、以表格檢視�
 	test.skip(!game, '沒有兩隊都有單場數據的未開打賽事');
 	await page.goto(gameUrl(game!));
 	await expect(page.getByRole('heading', { level: 2, name: '賽前對戰比較' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: '賽後對戰比較' })).toHaveCount(0);
 	const frame = page.getByRole('region', { name: PREGAME });
 	await expect(frame.locator('[role="img"]')).toBeVisible();
 	await expect(frame.getByText(/已賽 \d+ 場/)).toBeVisible();
