@@ -194,3 +194,58 @@ def test_unknown_sets_stay_null_in_box_score_and_player_season(export):
     assert game["home"][0]["sets_played"] is None
     players = json.loads((out_dir / "players.json").read_text())
     assert players["players"][0]["seasons"][0]["sets_played"] is None
+
+
+def _scoring(total_points, attack=0, block=0, serve=0):
+    return (3, 0, attack, block, 0, serve, 0, 0, 0, 0, 0, 0, total_points)
+
+
+def test_top_performers_merges_sides_excludes_golden_set_and_omits_zero_categories(export):
+    def build(conn):
+        _season_with_one_game(conn)
+        seed_stat(conn, 1, _scoring(12, attack=10, block=2, serve=0), match_date="2025-11-01", opponent="雲林美津濃")
+        seed_stat(conn, 3, _scoring(6, attack=6, block=0, serve=0), match_date="2025-11-01", opponent="雲林美津濃")
+        seed_stat(conn, 4, _scoring(15, attack=11, block=4, serve=0), match_date="2025-11-01", opponent="屏東台電")
+        # 黃金決勝局故意給更高分與發球得分，不應併入單場前三名
+        seed_stat(conn, 1, _scoring(30, attack=20, block=5, serve=5), match_date="2025-11-01", opponent="雲林美津濃", golden=1)
+
+    box_scores, _ = export(build)
+    [game] = next(b["games"] for b in box_scores if (b["cup_id"], b["group"]) == (21, "men"))
+    assert game["top_performers"] == [
+        {
+            "key": "total_points",
+            "label": "得分",
+            "rows": [
+                {"rank": 1, "player_id": 3, "team_id": 2, "value": 15},
+                {"rank": 2, "player_id": 1, "team_id": 1, "value": 12},
+                {"rank": 3, "player_id": 2, "team_id": 1, "value": 6},
+            ],
+        },
+        {
+            "key": "attack_points",
+            "label": "攻擊得分",
+            "rows": [
+                {"rank": 1, "player_id": 3, "team_id": 2, "value": 11},
+                {"rank": 2, "player_id": 1, "team_id": 1, "value": 10},
+                {"rank": 3, "player_id": 2, "team_id": 1, "value": 6},
+            ],
+        },
+        {
+            "key": "block_points",
+            "label": "攔網得分",
+            "rows": [
+                {"rank": 1, "player_id": 3, "team_id": 2, "value": 4},
+                {"rank": 2, "player_id": 1, "team_id": 1, "value": 2},
+            ],
+        },
+    ]
+
+
+def test_top_performers_is_empty_when_only_golden_set_has_stats(export):
+    def build(conn):
+        _season_with_one_game(conn)
+        seed_stat(conn, 4, _scoring(8, attack=8), match_date="2025-11-01", opponent="屏東台電", golden=1)
+
+    box_scores, _ = export(build)
+    [game] = next(b["games"] for b in box_scores if (b["cup_id"], b["group"]) == (21, "men"))
+    assert game["top_performers"] == []

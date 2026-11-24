@@ -1,8 +1,9 @@
 import { render } from 'svelte/server';
 import BoxScoreTable from './components/BoxScoreTable.svelte';
 import { describe, expect, it } from 'vitest';
-import type { BoxScoresData, PlayerEntry, StatRow } from '#lib/data/types.js';
-import { findBoxScore, toBoxScoreView } from './boxScore.js';
+import type { BoxScoresData, MatchTopBoard, PlayerEntry, StatRow } from '#lib/data/types.js';
+import { seasons, seasonTeam, teams } from '#lib/site.js';
+import { findBoxScore, toBoxScoreView, toMatchTopView } from './boxScore.js';
 
 const stat = (player_id: number, over: Partial<StatRow> = {}): StatRow => ({
 	player_id,
@@ -39,7 +40,7 @@ const data: BoxScoresData = {
 		{
 			cup_id: 21,
 			group: 'men',
-			games: [{ game_id: 5, home: [stat(1), stat(2)], away: [stat(3)], golden_set: null }]
+			games: [{ game_id: 5, home: [stat(1), stat(2)], away: [stat(3)], golden_set: null, top_performers: [] }]
 		},
 		{ cup_id: 20, group: 'men', games: [] }
 	]
@@ -77,7 +78,8 @@ describe('toBoxScoreView', () => {
 			game_id: 9,
 			home: [stat(2, { jersey_number: null, position: null, total_points: 0 }), stat(1)],
 			away: [],
-			golden_set: null
+			golden_set: null,
+			top_performers: []
 		};
 		const [first, second] = toBoxScoreView(game, 'men', players).home;
 		expect(first).toMatchObject({ player_id: 2, number: null, position: null, total_points: 0 });
@@ -94,7 +96,8 @@ describe('toBoxScoreView', () => {
 			game_id: 9,
 			home: [stat(1)],
 			away: [stat(3)],
-			golden_set: { home: [stat(1, { total_points: 4 })], away: [stat(2, { total_points: 2 })] }
+			golden_set: { home: [stat(1, { total_points: 4 })], away: [stat(2, { total_points: 2 })] },
+			top_performers: []
 		};
 		const view = toBoxScoreView(game, 'men', players);
 		expect(view.golden_set?.home[0]).toMatchObject({ name: '王小明', total_points: 4 });
@@ -104,10 +107,58 @@ describe('toBoxScoreView', () => {
 
 
 it('單場數據表不顯示出賽局數欄與相關提示', () => {
-	const view = toBoxScoreView({ game_id: 9, home: [stat(1, { sets_played: null }), stat(2, { sets_played: 3 })], away: [], golden_set: null }, 'men', []);
+	const view = toBoxScoreView(
+		{ game_id: 9, home: [stat(1, { sets_played: null }), stat(2, { sets_played: 3 })], away: [], golden_set: null, top_performers: [] },
+		'men',
+		[]
+	);
 	expect(view.home[0]).not.toHaveProperty('sets_played');
 	const html = render(BoxScoreTable, { props: { rows: view.home, label: '測試' } }).body;
 	expect(html).not.toContain('局數');
 	expect(html).not.toContain('官網單場數據不提供出賽局數');
 	expect(html).not.toContain('>null<');
+});
+
+describe('toMatchTopView', () => {
+	const menTeams = teams.filter((t) => t.group === 'men');
+	const [homeTeam, awayTeam] = menTeams;
+	const cupId = seasons[0].cup_id;
+	const players = [
+		player(1, 'men', '王小明'),
+		player(2, 'men', null),
+		player(3, 'men', '  '),
+		player(1, 'women', '女同號')
+	];
+	const boards: MatchTopBoard[] = [
+		{
+			key: 'total_points',
+			label: '得分',
+			rows: [
+				{ rank: 1, player_id: 1, team_id: homeTeam.team_id, value: 24 },
+				{ rank: 2, player_id: 2, team_id: awayTeam.team_id, value: 18 },
+				{ rank: 3, player_id: 3, team_id: homeTeam.team_id, value: 12 },
+				{ rank: 3, player_id: 99, team_id: awayTeam.team_id, value: 12 }
+			]
+		}
+	];
+
+	it('對回當季球隊與姓名，姓名為 null、空白或查無時沿用備援名稱且不連到球員頁', () => {
+		const view = toMatchTopView(boards, 'men', cupId, players);
+		expect(view).toHaveLength(1);
+		expect(view[0].key).toBe('total_points');
+		expect(view[0].label).toBe('得分');
+		expect(view[0].rows.map((r) => [r.rank, r.name, r.linked, r.team.short_name, r.value])).toEqual([
+			[1, '王小明', true, seasonTeam(homeTeam, cupId).short_name, 24],
+			[2, '球員 #2', false, seasonTeam(awayTeam, cupId).short_name, 18],
+			[3, '球員 #3', false, seasonTeam(homeTeam, cupId).short_name, 12],
+			[3, '球員 #99', false, seasonTeam(awayTeam, cupId).short_name, 12]
+		]);
+	});
+
+	it('球隊不在 teams.json 時丟錯', () => {
+		const broken: MatchTopBoard[] = [
+			{ key: 'total_points', label: '得分', rows: [{ rank: 1, player_id: 1, team_id: -1, value: 10 }] }
+		];
+		expect(() => toMatchTopView(broken, 'men', cupId, players)).toThrow('team_id -1');
+	});
 });

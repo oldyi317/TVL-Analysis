@@ -1,9 +1,20 @@
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from statistics import median
+from typing import Any, TypeVar
 
 from src.export.player_advanced import compute_ratios
 from src.export.player_seasons import STAT_FIELDS, has_played
 from src.export.thresholds import RATE_BOARDS, THRESHOLD_FLOOR, BoardSpec, attempts, threshold_for
+
+T = TypeVar("T")
+
+MATCH_TOP_LIMIT = 3
+MATCH_TOP_BOARDS = (
+    ("total_points", "得分"),
+    ("attack_points", "攻擊得分"),
+    ("block_points", "攔網得分"),
+    ("serve_points", "發球得分"),
+)
 
 
 COUNT_BOARDS = (
@@ -33,6 +44,46 @@ def rank_ordered(values: Sequence) -> list[int]:
     for index, value in enumerate(values):
         ranks.append(ranks[-1] if index and value == values[index - 1] else index + 1)
     return ranks
+
+
+def top_ranked(
+    rows: Iterable[T],
+    value: Callable[[T], int | float],
+    limit: int,
+    tiebreak: Callable[[T], Any] = lambda _: (),
+) -> list[tuple[int, int | float, T]]:
+    """濾掉 ≤ 0、依數值由高到低排序並以 rank_ordered 給名次，取到第 limit 名（並列者全列）。"""
+    ordered = sorted((r for r in rows if value(r) > 0), key=lambda r: (-value(r), tiebreak(r)))
+    values = [value(r) for r in ordered]
+    ranked = list(zip(rank_ordered(values), values, ordered))
+    if len(ranked) <= limit:
+        return ranked
+    cutoff = ranked[limit - 1][0]
+    return [entry for entry in ranked if entry[0] <= cutoff]
+
+
+def compute_match_top(rows: Iterable[Mapping], names: Mapping[int, str | None]) -> list[dict]:
+    """一場賽事正賽（不含黃金決勝局）兩隊單場數據列 → 四個項目各自的前三名；全場皆為 0 的項目省略。"""
+    pool = list(rows)
+
+    def tiebreak(r: Mapping) -> tuple:
+        name = (names.get(r["player_id"]) or "").strip()
+        return (not name, name, r["jersey_number"] is None, r["jersey_number"] or 0, r["player_id"])
+
+    boards = []
+    for key, label in MATCH_TOP_BOARDS:
+        top = top_ranked(pool, lambda r, k=key: r[k] or 0, MATCH_TOP_LIMIT, tiebreak)
+        if not top:
+            continue
+        boards.append({
+            "key": key,
+            "label": label,
+            "rows": [
+                {"rank": rank, "player_id": r["player_id"], "team_id": r["team_id"], "value": val}
+                for rank, val, r in top
+            ],
+        })
+    return boards
 
 
 def makeup_candidate(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int],

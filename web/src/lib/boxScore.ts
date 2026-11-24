@@ -1,5 +1,5 @@
-import type { BoxScoresData, GameBoxScore, PlayerEntry, StatRow } from '#lib/data/types.js';
-import { playerName, type Group } from '#lib/site.js';
+import type { BoxScoresData, GameBoxScore, MatchTopBoard, PlayerEntry, StatRow } from '#lib/data/types.js';
+import { playerDisplayName, playerName, teamOf, type Group, type SeasonTeam } from '#lib/site.js';
 
 export type BoxRow = {
 	player_id: number;
@@ -71,4 +71,42 @@ export function toBoxScoreView(
 			? { home: rows(game.golden_set.home), away: rows(game.golden_set.away) }
 			: null
 	};
+}
+
+export type MatchTopRowView = {
+	rank: number;
+	player_id: number;
+	name: string;
+	linked: boolean;
+	team: SeasonTeam;
+	value: number;
+};
+
+export type MatchTopBoardView = {
+	key: MatchTopBoard['key'];
+	label: string;
+	rows: MatchTopRowView[];
+};
+
+export function toMatchTopView(
+	boards: readonly MatchTopBoard[],
+	group: Group,
+	cupId: number,
+	players: readonly PlayerEntry[]
+): MatchTopBoardView[] {
+	return boards.map((board) => ({
+		key: board.key,
+		label: board.label,
+		rows: board.rows.map((row) => {
+			const entry = players.find((p) => p.group === group && p.player_id === row.player_id);
+			return {
+				rank: row.rank,
+				player_id: row.player_id,
+				name: playerDisplayName(entry ?? { player_id: row.player_id, name: null }),
+				linked: Boolean(entry?.name?.trim()),
+				team: teamOf(row.team_id, group, cupId, '單場前三名'),
+				value: row.value
+			};
+		})
+	}));
 }

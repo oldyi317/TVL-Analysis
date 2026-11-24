@@ -1,4 +1,4 @@
-from src.export.leaders import COUNT_BOARDS, rank_ordered
+from src.export.leaders import COUNT_BOARDS, top_ranked
 from src.export.player_seasons import has_played
 
 RECORD_LIMIT = 10
@@ -46,15 +46,10 @@ def _match_values(match_rows: list[dict]) -> list[dict]:
 
 
 def _top(key: str, rows: list[dict], fields: tuple[str, ...]) -> list[dict]:
-    ordered = sorted((r for r in rows if r[key] > 0), key=lambda r: (-r[key], r["name"], -r["cup_id"]))
-    ranked = [
-        {"rank": rank, "value": r[key], **{f: r[f] for f in fields}}
-        for r, rank in zip(ordered, rank_ordered([r[key] for r in ordered]))
+    return [
+        {"rank": rank, "value": value, **{f: r[f] for f in fields}}
+        for rank, value, r in top_ranked(rows, lambda r: r[key], RECORD_LIMIT, lambda r: (r["name"], -r["cup_id"]))
     ]
-    if len(ranked) <= RECORD_LIMIT:
-        return ranked
-    cutoff = ranked[RECORD_LIMIT - 1]["rank"]
-    return [r for r in ranked if r["rank"] <= cutoff]
 
 
 def compute_records(match_rows: list[dict]) -> list[dict]:

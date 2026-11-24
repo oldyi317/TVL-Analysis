@@ -1,5 +1,6 @@
 from src.export.leaders import (
-    RATE_BOARDS, compute_leaders, compute_volume_rates, count_team_sets, regular_totals, threshold_text,
+    RATE_BOARDS, compute_leaders, compute_match_top, compute_volume_rates, count_team_sets,
+    regular_totals, threshold_text, top_ranked,
 )
 from src.export.player_seasons import STAT_FIELDS
 
@@ -379,3 +380,68 @@ def test_count_team_sets_adds_one_set_per_golden_set_game_only_when_asked():
     golden = {"home_team_id": 1, "away_team_id": 3, "sets": 4, "golden_set": {"home": [], "away": []}}
     assert count_team_sets([plain, golden]) == {1: 7, 2: 3, 3: 4}
     assert count_team_sets([plain, golden], include_golden_set=True) == {1: 8, 2: 3, 3: 5}
+
+
+def test_top_ranked_ties_skip_ranks_keep_cutoff_ties_and_drop_zeros():
+    sample = [
+        {"id": 1, "v": 15}, {"id": 2, "v": 12}, {"id": 3, "v": 10},
+        {"id": 4, "v": 10}, {"id": 5, "v": 8}, {"id": 6, "v": 0},
+    ]
+    assert [(rank, val, r["id"]) for rank, val, r in top_ranked(sample, lambda r: r["v"], 3, lambda r: r["id"])] == [
+        (1, 15, 1), (2, 12, 2), (3, 10, 3), (3, 10, 4),
+    ]
+    first_tie = [{"id": 1, "v": 15}, {"id": 2, "v": 15}, {"id": 3, "v": 12}, {"id": 4, "v": 10}]
+    assert [(rank, r["id"]) for rank, _, r in top_ranked(first_tie, lambda r: r["v"], 3, lambda r: r["id"])] == [
+        (1, 1), (1, 2), (3, 3),
+    ]
+    second_tie = [{"id": 1, "v": 15}, {"id": 2, "v": 12}, {"id": 3, "v": 12}, {"id": 4, "v": 10}]
+    assert [(rank, r["id"]) for rank, _, r in top_ranked(second_tie, lambda r: r["v"], 3, lambda r: r["id"])] == [
+        (1, 1), (2, 2), (2, 3),
+    ]
+    assert top_ranked([{"id": 1, "v": 0}, {"id": 2, "v": 0}], lambda r: r["v"], 3) == []
+
+
+def test_compute_match_top_merges_both_teams_handles_ties_and_omits_zero_categories():
+    rows = [
+        entry(1, 1, total_points=20, attack_points=15, block_points=5, serve_points=0),
+        entry(2, 2, total_points=20, attack_points=18, block_points=2, serve_points=0),
+        entry(3, 1, total_points=14, attack_points=12, block_points=2, serve_points=0),
+        entry(4, 2, total_points=10, attack_points=10, block_points=0, serve_points=0),
+        entry(5, 1, total_points=0, attack_points=10, block_points=0, serve_points=0),
+    ]
+    names = {1: "乙", 2: "甲", 3: "丙", 4: "丁", 5: "戊"}
+    boards = compute_match_top(rows, names)
+    assert [(b["key"], b["label"]) for b in boards] == [
+        ("total_points", "得分"), ("attack_points", "攻擊得分"), ("block_points", "攔網得分"),
+    ]
+    # 第一名並列兩人時下一名是第三名，第四名（10 分）不列，0 分不列
+    assert [(r["rank"], r["player_id"], r["team_id"], r["value"]) for r in boards[0]["rows"]] == [
+        (1, 1, 1, 20), (1, 2, 2, 20), (3, 3, 1, 14),
+    ]
+    assert [(r["rank"], r["player_id"], r["value"]) for r in boards[1]["rows"]] == [
+        (1, 2, 18), (2, 1, 15), (3, 3, 12),
+    ]
+    # 第二名並列（5、2、2），0 不列
+    assert [(r["rank"], r["player_id"], r["value"]) for r in boards[2]["rows"]] == [
+        (1, 1, 5), (2, 3, 2), (2, 2, 2),
+    ]
+
+
+def test_compute_match_top_includes_all_tied_for_third_and_handles_blank_names():
+    rows = [
+        entry(1, 1, total_points=15, attack_points=0, block_points=0, serve_points=3),
+        entry(2, 2, total_points=12, attack_points=0, block_points=0, serve_points=2),
+        entry(3, 1, total_points=10, attack_points=0, block_points=0, serve_points=1),
+        entry(4, 2, total_points=10, attack_points=0, block_points=0, serve_points=1),
+        entry(5, 1, total_points=8, attack_points=0, block_points=0, serve_points=0),
+    ]
+    names = {1: "甲", 2: "乙", 3: None, 4: "  ", 5: "戊"}
+    boards = compute_match_top(rows, names)
+    assert [(b["key"], b["label"]) for b in boards] == [("total_points", "得分"), ("serve_points", "發球得分")]
+    assert [(r["rank"], r["player_id"], r["value"]) for r in boards[0]["rows"]] == [
+        (1, 1, 15), (2, 2, 12), (3, 3, 10), (3, 4, 10),
+    ]
+    assert [(r["rank"], r["player_id"], r["value"]) for r in boards[1]["rows"]] == [
+        (1, 1, 3), (2, 2, 2), (3, 3, 1), (3, 4, 1),
+    ]
+    assert compute_match_top([entry(1, 1)], names) == []

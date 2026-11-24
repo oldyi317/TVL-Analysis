@@ -442,9 +442,11 @@ describe('findPlayerSeason', () => {
 });
 
 describe('playerDisplayName', () => {
-	it('有姓名用姓名，null 用備援名稱', () => {
+	it('有姓名用姓名，null 或空白用備援名稱', () => {
 		expect(playerDisplayName({ player_id: 1, name: '王小明' })).toBe('王小明');
 		expect(playerDisplayName({ player_id: 2, name: null })).toBe('球員 #2');
+		expect(playerDisplayName({ player_id: 3, name: '' })).toBe('球員 #3');
+		expect(playerDisplayName({ player_id: 4, name: '   ' })).toBe('球員 #4');
 	});
 });
 
