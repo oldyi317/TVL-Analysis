@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 在自己挑的空 port 起 preview 跑 Playwright，不會沿用 4173 上別的 worktree 的 preview。
 # 不自己 build：web/build/ 要先由 npm run build 產生。
+# Playwright 經 scripts/isolated-net.sh 跑在自己的 network namespace 裡（主機 Wi-Fi 重連不會中斷測試的請求，#304）；測試連不到外部網路。
 #
 # 用法：bash scripts/e2e.sh [--repeat N | --profile] [spec…]
 #   spec：以 web/ 為起點，例如 e2e/smoke.e2e.ts；不給就跑整套
@@ -66,7 +67,7 @@ if [ "$profile" -eq 1 ]; then
 	report=$(mktemp -d "${TMPDIR:-/tmp}/tvl-e2e-profile.XXXXXX")/report.json
 	echo "e2e（profile）：port $port，報表 $report"
 	PW_PORT=$port PLAYWRIGHT_JSON_OUTPUT_FILE=$report \
-		npx playwright test --reporter=list,./e2e/skip-reporter.ts,json "${specs[@]}"
+		bash "$repo/scripts/isolated-net.sh" npx playwright test --reporter=list,./e2e/skip-reporter.ts,json "${specs[@]}"
 	rc=$?
 	echo
 	"$python" "$repo/scripts/e2e_profile.py" "$report" || exit 1
@@ -76,7 +77,7 @@ fi
 if [ "$repeat" -eq 0 ]; then
 	next_port
 	echo "e2e：port $port"
-	PW_PORT=$port exec npx playwright test "${specs[@]}"
+	PW_PORT=$port exec bash "$repo/scripts/isolated-net.sh" npx playwright test "${specs[@]}"
 fi
 
 # 有內容才逐行輸出：空字串給 comm 會被當成一行空白
@@ -91,7 +92,7 @@ for round in $(seq "$repeat"); do
 	start=$SECONDS
 	log=$logs/$round.log
 	mark=✓ note=
-	if ! PW_PORT=$port npx playwright test --output "$logs/$round" "${specs[@]}" > "$log" 2>&1; then
+	if ! PW_PORT=$port bash "$repo/scripts/isolated-net.sh" npx playwright test --output "$logs/$round" "${specs[@]}" > "$log" 2>&1; then
 		mark=✗ note="  （$log）"
 		failed=$((failed + 1))
 	fi

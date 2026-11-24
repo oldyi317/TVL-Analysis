@@ -34,7 +34,7 @@ check "自我移除版的頁面程式沒有 service-worker.js（不註冊）" no
 check "一般建置的 service-worker.js 不含 unregister" lacks unregister build/service-worker.js
 check "一般建置的頁面程式有 service-worker.js（上一條的 grep 抓得到）" any_file_has 'service-worker.js' build
 
-npx playwright test --config playwright.removal.config.ts || failed=$((failed + 1))
+bash "$repo/scripts/isolated-net.sh" npx playwright test --config playwright.removal.config.ts || failed=$((failed + 1))
 
 if [ "$failed" -gt 0 ]; then
 	echo "✗ 自我移除版檢查：$failed 項失敗"
