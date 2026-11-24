@@ -6,6 +6,7 @@
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import MatchCard from '#lib/components/MatchCard.svelte';
+	import PostgameComparison from '#lib/components/PostgameComparison.svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import type { BoxRow } from '#lib/boxScore.js';
 	import { headToHeadText, isPlayed, stageLabel, WIN_PROB_NOTE } from '#lib/match.js';
@@ -133,6 +134,11 @@
 	</div>
 	{#if match.golden_set}
 		<p class="basis">黃金決勝局是總決賽加打的單局，不計入局數與戰績</p>
+	{/if}
+
+	{#if data.postgame}
+		<h2>賽後對戰比較</h2>
+		<PostgameComparison comparison={data.postgame} homeName={names.home} awayName={names.away} />
 	{/if}
 
 	<h2>單場數據</h2>

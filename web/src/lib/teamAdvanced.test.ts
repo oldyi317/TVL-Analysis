@@ -5,6 +5,9 @@ import {
 	metricsConclusion,
 	metricsDotOption,
 	metricsTable,
+	postgameComparison,
+	postgameMetricRows,
+	postgameSourceRows,
 	pregameBarOption,
 	pregameComparison,
 	pregameConclusion,
@@ -408,23 +411,31 @@ describe('pregameTable', () => {
 	});
 });
 
+const gameMetric = (numerator: number, denominator: number, scale = 100) => ({
+	numerator,
+	denominator,
+	value: denominator === 0 ? null : Math.round((numerator / denominator) * scale * 100) / 100
+});
+
 describe('球隊逐場趨勢', () => {
-	const rate = (numerator: number, denominator: number) => ({
-		numerator,
-		denominator,
-		value: denominator === 0 ? null : Math.round((numerator / denominator) * 10000) / 100
-	});
-	const game = (game_id: number, date: string, opponent_id: number | null, attack: [number, number], blocks: [number, number] = [2, 3]): TeamTrendGame => {
-		const zero = rate(0, 0);
+	const game = (
+		game_id: number,
+		date: string,
+		opponent_id: number | null,
+		attack: [number, number],
+		blocks: [number, number] = [2, 3]
+	): TeamTrendGame => {
+		const zero = gameMetric(0, 0);
 		const metrics: TeamGameMetrics = {
-			attack_success_rate: rate(...attack),
+			attack_success_rate: gameMetric(...attack),
 			serve_point_rate: zero,
 			receive_excellent_rate: zero,
 			dig_excellent_rate: zero,
 			set_excellent_rate: zero,
-			blocks_per_set: { numerator: blocks[0], denominator: blocks[1], value: Math.round((blocks[0] / blocks[1]) * 100) / 100 }
+			blocks_per_set: gameMetric(...blocks, 1)
 		};
-		return { game_id, date, opponent_id, metrics };
+		const points = { attack: attack[0], block: blocks[0], serve: 0, opponent_error: 20, total: attack[0] + blocks[0] + 20 };
+		return { game_id, date, opponent_id, points, metrics };
 	};
 	const withTrend = (trend: TeamTrendGame[]): TeamAdvanced => {
 		const sum = (key: keyof TeamGameMetrics, part: 'numerator' | 'denominator') =>
@@ -516,5 +527,123 @@ describe('球隊逐場趨勢', () => {
 		expect(rows[0]).toMatchObject({ game_id: 1, date: '2026-01-03', opponent: '台電' });
 		expect(rows[4].opponent).toBe('—');
 		expect(rows[0].cells.map((c) => c.value)).toEqual(['25%', '—', '—', '—', '—', '0.67']);
+	});
+});
+
+describe('賽後對戰比較', () => {
+	const trendGame = (
+		game_id: number,
+		opponent_id: number,
+		points: TeamAdvanced['points'],
+		overrides: Partial<TeamGameMetrics> = {}
+	): TeamTrendGame => ({
+		game_id,
+		date: '2026-01-10',
+		opponent_id,
+		points,
+		metrics: {
+			attack_success_rate: gameMetric(40, 100),
+			serve_point_rate: gameMetric(5, 50),
+			receive_excellent_rate: gameMetric(30, 60),
+			dig_excellent_rate: gameMetric(20, 40),
+			set_excellent_rate: gameMetric(35, 70),
+			blocks_per_set: gameMetric(6, 3, 1),
+			...overrides
+		}
+	});
+	const withGames = (team_id: number, trend: TeamTrendGame[]): TeamAdvanced => ({
+		...team(team_id, {}, Math.max(1, trend.length)),
+		trend
+	});
+
+	it('兩隊都有該場單場數據時回傳雙方該場資料，任一隊缺資料或賽季組別不符回 undefined', () => {
+		const homeGame = trendGame(10, 1, { attack: 40, block: 6, serve: 5, opponent_error: 24, total: 75 });
+		const awayGame = trendGame(10, 4, { attack: 35, block: 8, serve: 5, opponent_error: 17, total: 65 });
+		const d = data([withGames(4, [homeGame]), withGames(1, [awayGame])]);
+
+		expect(postgameComparison(d, 21, 'men', 10, 4, 1)).toEqual({ home: homeGame, away: awayGame });
+		expect(postgameComparison(d, 21, 'men', 99, 4, 1)).toBeUndefined();
+		expect(postgameComparison(d, 21, 'women', 10, 4, 1)).toBeUndefined();
+		expect(postgameComparison(d, 22, 'men', 10, 4, 1)).toBeUndefined();
+		expect(postgameComparison(data([withGames(4, [homeGame]), withGames(1, [])]), 21, 'men', 10, 4, 1)).toBeUndefined();
+	});
+
+	it('得分來源列出五列並標示較高一方，同值不標示', () => {
+		const home = trendGame(10, 1, { attack: 40, block: 6, serve: 5, opponent_error: 24, total: 75 });
+		const away = trendGame(10, 4, { attack: 35, block: 8, serve: 5, opponent_error: 17, total: 65 });
+
+		expect(postgameSourceRows({ home, away })).toEqual([
+			{ key: 'attack', label: '攻擊得分', home: '40', away: '35', leader: 'home' },
+			{ key: 'block', label: '攔網得分', home: '6', away: '8', leader: 'away' },
+			{ key: 'serve', label: '發球得分', home: '5', away: '5', leader: null },
+			{ key: 'opponent_error', label: '對手失誤得分', home: '24', away: '17', leader: 'home' },
+			{ key: 'total', label: '總得分', home: '75', away: '65', leader: 'home' }
+		]);
+	});
+
+	it('對手失誤得分推算為負值時顯示「—」且不標示較高一方，0 仍顯示 0', () => {
+		const home = trendGame(10, 1, { attack: 80, block: 0, serve: 0, opponent_error: -5, total: 75 });
+		const away = trendGame(10, 4, { attack: 50, block: 5, serve: 5, opponent_error: 0, total: 60 });
+
+		const rows = postgameSourceRows({ home, away });
+		expect(rows.find((r) => r.key === 'opponent_error')).toEqual({
+			key: 'opponent_error',
+			label: '對手失誤得分',
+			home: '—',
+			away: '0',
+			leader: null
+		});
+		expect(rows.find((r) => r.key === 'attack')).toEqual({
+			key: 'attack',
+			label: '攻擊得分',
+			home: '80',
+			away: '50',
+			leader: 'home'
+		});
+		expect(rows.find((r) => r.key === 'total')).toEqual({
+			key: 'total',
+			label: '總得分',
+			home: '75',
+			away: '60',
+			leader: 'home'
+		});
+	});
+
+	it('球隊指標六列格式與球隊頁逐場趨勢一致，分母為 0 顯示「—」且不標示較高一方', () => {
+		const homeGame = trendGame(
+			10,
+			1,
+			{ attack: 40, block: 6, serve: 5, opponent_error: 24, total: 75 },
+			{
+				attack_success_rate: gameMetric(45, 100),
+				serve_point_rate: gameMetric(0, 0),
+				set_excellent_rate: gameMetric(30, 60),
+				blocks_per_set: gameMetric(6, 3, 1)
+			}
+		);
+		const awayGame = trendGame(
+			10,
+			4,
+			{ attack: 35, block: 9, serve: 5, opponent_error: 16, total: 65 },
+			{
+				attack_success_rate: gameMetric(40, 100),
+				serve_point_rate: gameMetric(5, 50),
+				set_excellent_rate: gameMetric(30, 60),
+				blocks_per_set: gameMetric(9, 3, 1)
+			}
+		);
+		const homeTeam = withGames(4, [homeGame]);
+		const rows = postgameMetricRows({ home: homeGame, away: awayGame });
+
+		expect(rows).toEqual([
+			{ key: 'attack_success_rate', label: '攻擊成功率', home: '45%', away: '40%', leader: 'home' },
+			{ key: 'serve_point_rate', label: '發球得分率', home: '—', away: '10%', leader: null },
+			{ key: 'receive_excellent_rate', label: '接發球到位率', home: '50%', away: '50%', leader: null },
+			{ key: 'dig_excellent_rate', label: '防守到位率', home: '50%', away: '50%', leader: null },
+			{ key: 'set_excellent_rate', label: '舉球到位率', home: '50%', away: '50%', leader: null },
+			{ key: 'blocks_per_set', label: '每局攔網', home: '2', away: '3', leader: 'away' }
+		]);
+		const trendRow = trendTable(homeTeam, () => '對手')[0];
+		expect(rows.map((r) => r.home)).toEqual(trendRow.cells.map((c) => c.value));
 	});
 });

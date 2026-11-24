@@ -382,3 +382,71 @@ export function trendTable(team: TeamAdvanced, teamName: (id: number) => string)
 		cells: TEAM_METRIC_KEYS.map((key) => ({ key, value: formatMetricValue(key, game.metrics[key].value) }))
 	}));
 }
+
+export type PostgameComparison = Pair<TeamTrendGame>;
+export type PostgameRow = {
+	key: string;
+	label: string;
+	home: string;
+	away: string;
+	leader: 'home' | 'away' | null;
+};
+
+export function postgameComparison(
+	data: TeamAdvancedData,
+	cupId: number,
+	group: Group,
+	gameId: number,
+	homeId: number,
+	awayId: number
+): PostgameComparison | undefined {
+	const scope = data.team_advanced.find((s) => s.cup_id === cupId && s.group === group);
+	const gameOf = (teamId: number) =>
+		scope?.teams.find((t) => t.team_id === teamId)?.trend.find((g) => g.game_id === gameId);
+	const home = gameOf(homeId);
+	const away = gameOf(awayId);
+	return home && away ? { home, away } : undefined;
+}
+
+function higherSide(home: number | null, away: number | null): 'home' | 'away' | null {
+	if (home === null || away === null || home === away) return null;
+	return home > away ? 'home' : 'away';
+}
+
+const POSTGAME_SOURCES: readonly { key: keyof TeamTrendGame['points']; label: string }[] = [
+	...SCORE_SOURCES,
+	{ key: 'total', label: STAT_LABELS.total_points }
+];
+
+export function postgameSourceRows(c: PostgameComparison): PostgameRow[] {
+	return POSTGAME_SOURCES.map(({ key, label }) => {
+		const numericValue = (side: 'home' | 'away') => {
+			const value = c[side].points[key];
+			// 對手失誤得分推算為負值代表原始資料異常，顯示「—」且不標示領先
+			return key === 'opponent_error' && value < 0 ? null : value;
+		};
+		const home = numericValue('home');
+		const away = numericValue('away');
+		return {
+			key,
+			label,
+			home: home === null ? '—' : String(home),
+			away: away === null ? '—' : String(away),
+			leader: higherSide(home, away)
+		};
+	});
+}
+
+export function postgameMetricRows(c: PostgameComparison): PostgameRow[] {
+	return TEAM_METRIC_KEYS.map((key) => {
+		const home = c.home.metrics[key].value;
+		const away = c.away.metrics[key].value;
+		return {
+			key,
+			label: metricLabel(key),
+			home: formatMetricValue(key, home),
+			away: formatMetricValue(key, away),
+			leader: higherSide(home, away)
+		};
+	});
+}

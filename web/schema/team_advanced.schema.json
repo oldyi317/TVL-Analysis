@@ -26,21 +26,8 @@
               "required": ["team_id", "games", "points", "metrics", "trend"],
               "properties": {
                 "team_id": { "type": "integer" },
-                "games": { "type": "integer", "minimum": 1, "description": "已有單場數據且對得回賽程的場次數" },
-                "points": {
-                  "title": "TeamPoints",
-                  "description": "整季得分來源（排除黃金決勝局）；對手失誤得分是逐場推算值：該場比分總分減全隊攻擊、攔網、發球得分，再加總；推算可能為負",
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["attack", "block", "serve", "opponent_error", "total"],
-                  "properties": {
-                    "attack": { "type": "integer", "minimum": 0 },
-                    "block": { "type": "integer", "minimum": 0 },
-                    "serve": { "type": "integer", "minimum": 0 },
-                    "opponent_error": { "type": "integer", "description": "推算值，可能為負" },
-                    "total": { "type": "integer", "minimum": 0, "description": "各局比分加總" }
-                  }
-                },
+                "games": { "type": "integer", "minimum": 1, "description": "已有單場數據且對得回賽事的場數" },
+                "points": { "$ref": "#/$defs/teamPoints" },
                 "metrics": {
                   "title": "TeamMetrics",
                   "type": "object",
@@ -59,17 +46,18 @@
                   }
                 },
                 "trend": {
-                  "description": "逐場趨勢：每場的六項球隊指標，依日期排序，不含黃金決勝局",
+                  "description": "逐場趨勢：每場的得分來源與六項球隊指標，依日期排序，不含黃金決勝局",
                   "type": "array",
                   "items": {
                     "title": "TeamTrendGame",
                     "type": "object",
                     "additionalProperties": false,
-                    "required": ["game_id", "date", "opponent_id", "metrics"],
+                    "required": ["game_id", "date", "opponent_id", "points", "metrics"],
                     "properties": {
                       "game_id": { "type": "integer" },
                       "date": { "type": "string", "format": "date" },
                       "opponent_id": { "type": ["integer", "null"], "description": "對手球隊編號；比分列沒有對應到球隊時為 null" },
+                      "points": { "$ref": "#/$defs/teamPoints" },
                       "metrics": {
                         "title": "TeamGameMetrics",
                         "type": "object",
@@ -98,6 +86,20 @@
     }
   },
   "$defs": {
+    "teamPoints": {
+      "title": "TeamPoints",
+      "description": "得分來源（排除黃金決勝局）；對手失誤得分為比分總分減去攻擊、攔網、發球得分的推算值，可能為負",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attack", "block", "serve", "opponent_error", "total"],
+      "properties": {
+        "attack": { "type": "integer", "minimum": 0 },
+        "block": { "type": "integer", "minimum": 0 },
+        "serve": { "type": "integer", "minimum": 0 },
+        "opponent_error": { "type": "integer", "description": "推算值，可能為負" },
+        "total": { "type": "integer", "minimum": 0, "description": "各局比分加總" }
+      }
+    },
     "gameMetric": {
       "title": "TeamGameMetric",
       "type": "object",

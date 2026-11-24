@@ -216,3 +216,52 @@ def test_trend_excludes_golden_set_and_keeps_men_and_women_apart(export):
         (1, 1, 50.0)]
     assert [(g["game_id"], g["opponent_id"], g["metrics"]["attack_success_rate"]["value"]) for g in women] == [
         (1, 3, 20.0)]
+
+
+def test_trend_includes_per_game_points_summing_to_season_points(export):
+    def build(conn):
+        # 第 1 場：鳳凰 75 分，兩位球員合計攻擊 7、攔網 3、發球 2 → 對手失誤 63
+        # 第 2 場：鳳凰 62 分，攻擊 4、攔網 1、發球 0 → 對手失誤 57
+        match(conn, 1, PHOENIX, TAIPOWER, THREE_SETS, date="2025-11-01")
+        match(conn, 2, MIZUNO, PHOENIX, FOUR_SETS, date="2025-11-08")
+        player(conn, 1, 4)
+        player(conn, 2, 4)
+        seed_stat(conn, 1, stat(attack=(5, 10), block=2, serve=(2, 4)), match_date="2025-11-01", opponent="屏東台電")
+        seed_stat(conn, 2, stat(attack=(2, 5), block=1), match_date="2025-11-01", opponent="屏東台電")
+        seed_stat(conn, 1, stat(attack=(4, 10), block=1), match_date="2025-11-08", opponent="雲林美津濃")
+
+    phoenix = team(export(build), 21, "men", 4)
+    assert [g["points"] for g in phoenix["trend"]] == [
+        {"attack": 7, "block": 3, "serve": 2, "opponent_error": 63, "total": 75},
+        {"attack": 4, "block": 1, "serve": 0, "opponent_error": 57, "total": 62},
+    ]
+    for key in ("attack", "block", "serve", "opponent_error", "total"):
+        assert sum(g["points"][key] for g in phoenix["trend"]) == phoenix["points"][key]
+
+
+def test_trend_points_preserve_negative_opponent_error_with_single_warning(export, caplog):
+    def build(conn):
+        match(conn, 1, PHOENIX, TAIPOWER, THREE_SETS)
+        player(conn, 1, 4)
+        seed_stat(conn, 1, stat(attack=(80, 100)), opponent="屏東台電")
+
+    with caplog.at_level("WARNING"):
+        phoenix = team(export(build), 21, "men", 4)
+    assert phoenix["trend"][0]["points"] == {
+        "attack": 80, "block": 0, "serve": 0, "opponent_error": -5, "total": 75}
+    warnings = [r.message for r in caplog.records if "對手失誤得分推算為負值" in r.message]
+    assert len(warnings) == 1
+    assert "game_id=1" in warnings[0] and "team_id=4" in warnings[0] and "-5" in warnings[0]
+
+
+def test_trend_points_exclude_golden_set(export):
+    def build(conn):
+        match(conn, 1, PHOENIX, TAIPOWER, THREE_SETS)
+        match(conn, 2, PHOENIX, TAIPOWER, (15, None, None, None, 10, None, None, None), golden=1)
+        player(conn, 1, 4)
+        seed_stat(conn, 1, stat(attack=(5, 10), block=3, serve=(1, 4)), opponent="屏東台電")
+        seed_stat(conn, 1, stat(attack=(9, 9), block=9, serve=(9, 9)), opponent="屏東台電", golden=1)
+
+    phoenix = team(export(build), 21, "men", 4)
+    assert phoenix["trend"][0]["points"] == {
+        "attack": 5, "block": 3, "serve": 1, "opponent_error": 66, "total": 75}
