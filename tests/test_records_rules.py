@@ -1,4 +1,4 @@
-from src.export.leaders import rank_ordered
+from src.export.leaders import compute_match_top, rank_ordered
 from src.export.records import RECORD_LIMIT, compute_records
 
 
@@ -24,6 +24,16 @@ def test_four_boards_in_scoring_order_with_labels():
     assert [(b["key"], b["label"]) for b in boards] == [
         ("total_points", "總得分"), ("attack_points", "攻擊得分"),
         ("block_points", "攔網得分"), ("serve_points", "發球得分")]
+
+
+def test_match_top_uses_the_same_four_boards_in_the_same_order():
+    stats = {"total_points": 3, "attack_points": 1, "block_points": 1, "serve_points": 1}
+    match_top = compute_match_top([{"player_id": 1, "team_id": 1, "jersey_number": 1, **stats}], {1: "甲"})
+    records = compute_records([row(1, "甲", 3)])
+    assert [b["key"] for b in match_top] == [b["key"] for b in records]
+    # 顯示名稱只有第一項不同：單場前三名叫「得分」，單場紀錄叫「總得分」
+    differing = [(m["label"], r["label"]) for m, r in zip(match_top, records) if m["label"] != r["label"]]
+    assert differing == [("得分", "總得分")]
 
 
 def test_ties_share_rank_and_are_ordered_by_name():

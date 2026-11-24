@@ -8,24 +8,21 @@ from src.export.thresholds import RATE_BOARDS, THRESHOLD_FLOOR, BoardSpec, attem
 
 T = TypeVar("T")
 
-MATCH_TOP_LIMIT = 3
-MATCH_TOP_BOARDS = (
-    ("total_points", "得分"),
-    ("attack_points", "攻擊得分"),
-    ("block_points", "攔網得分"),
-    ("serve_points", "發球得分"),
-)
-
-
-COUNT_BOARDS = (
+SCORING_BOARDS = (
     BoardSpec("total_points", "總得分", "count", "得分王"),
     BoardSpec("attack_points", "攻擊得分", "count", "攻擊王"),
     BoardSpec("block_points", "攔網得分", "count", "攔網王"),
     BoardSpec("serve_points", "發球得分", "count", "發球王"),
+)
+COUNT_BOARDS = SCORING_BOARDS + (
     BoardSpec("receive_excellent", "接發球到位", "count", None),
     BoardSpec("dig_excellent", "防守到位", "count", None),
     BoardSpec("set_excellent", "舉球到位", "count", None, position="S"),
 )
+
+MATCH_TOP_LIMIT = 3
+# 單場前三名沿用 SCORING_BOARDS 的項目與順序，只有這裡列出的顯示名稱不同（CONTEXT.md「單場前三名」）
+MATCH_TOP_LABELS = {"total_points": "得分"}
 
 
 def threshold_text(spec: BoardSpec, team_sets: Mapping[int, int]) -> str:
@@ -71,13 +68,13 @@ def compute_match_top(rows: Iterable[Mapping], names: Mapping[int, str | None]) 
         return (not name, name, r["jersey_number"] is None, r["jersey_number"] or 0, r["player_id"])
 
     boards = []
-    for key, label in MATCH_TOP_BOARDS:
-        top = top_ranked(pool, lambda r, k=key: r[k] or 0, MATCH_TOP_LIMIT, tiebreak)
+    for spec in SCORING_BOARDS:
+        top = top_ranked(pool, lambda r, k=spec.key: r[k] or 0, MATCH_TOP_LIMIT, tiebreak)
         if not top:
             continue
         boards.append({
-            "key": key,
-            "label": label,
+            "key": spec.key,
+            "label": MATCH_TOP_LABELS.get(spec.key, spec.label),
             "rows": [
                 {"rank": rank, "player_id": r["player_id"], "team_id": r["team_id"], "value": val}
                 for rank, val, r in top
