@@ -7,7 +7,9 @@ from pathlib import Path
 from statistics import median
 from zoneinfo import ZoneInfo
 
-from src.export.leaders import compute_leaders, compute_volume_rates, count_team_sets, regular_totals
+from src.export.leaders import (
+    compute_leaders, compute_match_top, compute_volume_rates, count_team_sets, regular_totals,
+)
 from src.export.records import compute_records
 from src.export.player_advanced import compute_advanced, distributions
 from src.export.player_seasons import PLAY_FIELDS, STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
@@ -503,6 +505,7 @@ GAME_INTERNAL_KEYS = {"date", "home_team_id", "away_team_id", "round_name", "set
 
 def _box_scores_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict[int, dict]]) -> dict:
     cup_ids = [r[0] for r in conn.execute("SELECT cup_id FROM seasons ORDER BY cup_id")]
+    names = _player_names(conn)
     box_scores = []
     for cup_id in cup_ids:
         for gender, group in GROUP_BY_GENDER.items():
@@ -510,7 +513,13 @@ def _box_scores_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], d
             box_scores.append({
                 "cup_id": cup_id,
                 "group": group,
-                "games": [{k: v for k, v in g.items() if k not in GAME_INTERNAL_KEYS} for g in ordered],
+                "games": [
+                    {
+                        **{k: v for k, v in g.items() if k not in GAME_INTERNAL_KEYS},
+                        "top_performers": compute_match_top((*g["home"], *g["away"]), names),
+                    }
+                    for g in ordered
+                ],
             })
     return {"box_scores": box_scores}
 

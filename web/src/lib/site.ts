@@ -227,7 +227,8 @@ export function pickLatestWeek(weeks: readonly RosterWeek[]): RosterWeek | undef
 }
 
 export function playerDisplayName(player: { player_id: number; name: string | null }): string {
-	return player.name ?? `球員 #${player.player_id}`;
+	const name = player.name?.trim();
+	return name ? name : `球員 #${player.player_id}`;
 }
 
 const POSITION_NAMES: Record<string, string> = {

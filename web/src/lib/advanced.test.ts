@@ -68,6 +68,7 @@ const game = (game_id: number, over: Partial<GameBoxScore> = {}): GameBoxScore =
 	home: [],
 	away: [],
 	golden_set: null,
+	top_performers: [],
 	...over
 });
 

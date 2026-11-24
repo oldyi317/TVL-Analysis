@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { findBoxScore, toBoxScoreView } from '#lib/boxScore.js';
+import { findBoxScore, toBoxScoreView, toMatchTopView } from '#lib/boxScore.js';
 import boxScoresJson from '#lib/data/box_scores.json';
 import teamAdvancedJson from '#lib/data/team_advanced.json';
 import type { BoxScoresData, TeamAdvancedData } from '#lib/data/types.js';
@@ -34,6 +34,7 @@ export const load: PageServerLoad = ({ params }) => {
 		match,
 		pregame,
 		postgame,
+		topPerformers: played && game ? toMatchTopView(game.top_performers, group, season.cup_id, players) : [],
 		boxScore: game ? toBoxScoreView(game, group, players) : null
 	};
 };

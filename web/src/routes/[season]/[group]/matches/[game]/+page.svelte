@@ -6,6 +6,7 @@
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import MatchCard from '#lib/components/MatchCard.svelte';
+	import MatchTopPerformers from '#lib/components/MatchTopPerformers.svelte';
 	import PostgameComparison from '#lib/components/PostgameComparison.svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import type { BoxRow } from '#lib/boxScore.js';
@@ -139,6 +140,11 @@
 	{#if data.postgame}
 		<h2>賽後對戰比較</h2>
 		<PostgameComparison comparison={data.postgame} homeName={names.home} awayName={names.away} />
+	{/if}
+
+	{#if data.topPerformers.length > 0}
+		<h2>單場前三名</h2>
+		<MatchTopPerformers boards={data.topPerformers} season={data.season.name} group={data.group} />
 	{/if}
 
 	<h2>單場數據</h2>

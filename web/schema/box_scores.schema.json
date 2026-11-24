@@ -23,7 +23,7 @@
               "title": "GameBoxScore",
               "type": "object",
               "additionalProperties": false,
-              "required": ["game_id", "home", "away", "golden_set"],
+              "required": ["game_id", "home", "away", "golden_set", "top_performers"],
               "properties": {
                 "game_id": { "type": "integer" },
                 "home": { "type": "array", "items": { "$ref": "#/$defs/StatRow" } },
@@ -31,6 +31,11 @@
                 "golden_set": {
                   "oneOf": [{ "$ref": "#/$defs/GoldenBoxScore" }, { "type": "null" }],
                   "description": "黃金決勝局單局數據；沒有則 null"
+                },
+                "top_performers": {
+                  "type": "array",
+                  "description": "單場前三名：正賽（不含黃金決勝局）兩隊合併排序的得分、攻擊得分、攔網得分、發球得分各自前三名；同值並列同名次、與第三名並列全列，值為 0 不列，全場皆 0 的項目省略",
+                  "items": { "$ref": "#/$defs/MatchTopBoard" }
                 }
               }
             }
@@ -48,6 +53,33 @@
       "properties": {
         "home": { "type": "array", "items": { "$ref": "#/$defs/StatRow" } },
         "away": { "type": "array", "items": { "$ref": "#/$defs/StatRow" } }
+      }
+    },
+    "MatchTopBoard": {
+      "title": "MatchTopBoard",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "rows"],
+      "properties": {
+        "key": { "type": "string", "enum": ["total_points", "attack_points", "block_points", "serve_points"] },
+        "label": { "type": "string" },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/MatchTopRow" }
+        }
+      }
+    },
+    "MatchTopRow": {
+      "title": "MatchTopRow",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rank", "player_id", "team_id", "value"],
+      "properties": {
+        "rank": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "player_id": { "type": "integer" },
+        "team_id": { "type": "integer" },
+        "value": { "type": "integer", "minimum": 1 }
       }
     },
     "StatRow": {
