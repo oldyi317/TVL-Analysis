@@ -1,9 +1,9 @@
 # 每日增量更新，跑在 GitHub 雲端 runner（cloud job，#292）。
-# 主要由筆電 WSL 的 user systemd timer 於台灣 09:23 以不帶輸入的 workflow_dispatch 觸發（scripts/setup_crawl_trigger.sh，#196）；
-# 不帶輸入時是整包、寫入。
+# 主要由比分服務（score/，部署在 Cloudflare Workers，名稱 tvl-score，#294）以 workflow_dispatch 觸發：每天台灣 09:23 整包，
+# 比賽日 15:30、18:30、21:15 帶 mode=slim 跑精簡版；不帶輸入時是整包、寫入。
 # 備援期間（#296 退役前）手動觸發可選 runner=laptop 改在筆電的 self-hosted runner 跑（laptop job），用法見 docs/ops/daily-crawl.md。
 # schedule 錯開整點——GitHub 高負載時整點 schedule 事件可能延遲甚至丟棄（2026-08-28 首次排程即未觸發），實際常晚 4–7 小時才觸發；
-# 它在雲端 runner 上跑整包、寫入，準時觸發漏掉的那天由它補上。
+# 它在雲端 runner 上跑整包、寫入，比分服務漏掉的那天由它補上。
 name: daily-crawl
 on:
   schedule:

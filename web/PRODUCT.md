@@ -26,7 +26,7 @@ web
 
 ## Operating Context
 
-- 資料來源：TVL 官網（cup 22 起唯一來源；cup ≤21 的單場數據來自已停用的外部統計系統，原樣保留）。每日更新跑在 GitHub 雲端 runner：台灣時間 09:23 由筆電的 timer 觸發（筆電沒開機那天不會觸發），GitHub 排程也會在當天補跑，爬蟲寫入 SQLite 並 commit；週末筆電沒開時，前一天賽果最晚當天下午進站。
+- 資料來源：TVL 官網（cup 22 起唯一來源；cup ≤21 的單場數據來自已停用的外部統計系統，原樣保留）。每日更新跑在 GitHub 雲端 runner，由比分服務準時觸發：每天台灣時間 09:23 整包更新，比賽日另在 15:30、18:30、21:15 抓當天賽果，爬蟲寫入 SQLite 並 commit，賽果當天進站。
 - 建置時由 Python 匯出器產 JSON，前端只讀 JSON；網站本身沒有執行期 API，也沒有帳號與登入。球迷的輸入只有通知頁的推播開關與組別，連同這台裝置的推播位址送到發送服務。
 - 部署在 GitHub Pages，正式網址 `https://vstat.tw`（網域根目錄），每次 push main 重建。
 - 推播發送服務放在 Cloudflare Workers（程式在 repo 根目錄 `push/`，正式環境 `https://push.vstat.tw`），由使用者手動部署（`docs/ops/push-service.md`）。它只讀站上公開的推播賽事檔；關於球迷，存的只有推播訂閱（ADR-0014、ADR-0015）。

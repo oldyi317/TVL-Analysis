@@ -2,6 +2,8 @@
 # 每日更新的本機觸發（#196）：GitHub 的 schedule 實際比 cron 晚 4–7 小時，改由 runner 所在的 WSL
 # 以 user 層級 systemd timer 每天台北 09:23 用 gh 觸發 daily-crawl（workflow_dispatch）；
 # 錯過（未開機）就在開機後補跑一次。daily-crawl.yml 的 schedule 留作備援。
+# 已停用（#294）：準時觸發改由比分服務（score/）負責，setup_runner.sh 不再呼叫本腳本；
+# 比分服務故障時可暫時重跑本腳本當臨時觸發，#296 與筆電 runner 一起移除。
 # 前置需求：gh 已登入且對 repo 有 push 權限、loginctl enable-linger（WSL 開機即啟動 user systemd）。
 # 不需要 sudo；重跑會覆蓋同名 unit。
 set -euo pipefail
