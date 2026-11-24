@@ -325,6 +325,75 @@ button.chip {
 	color: var(--text-muted);
 }
 
+/* 名次表：排行榜卡與單場前三名共用。選擇器包在 :where() 裡，元件自己的樣式一定蓋得過。
+   fixed layout 讓長名字截斷而不是撐寬表格；名次與數值欄給定寬，球員欄吃剩下的 */
+:where(.rank-table) {
+	inline-size: 100%;
+	table-layout: fixed;
+	border-collapse: collapse;
+	font-size: var(--text-md);
+}
+
+:where(.rank-table) thead th {
+	padding: var(--space-2);
+	border-block-end: 1px solid var(--line);
+	color: var(--text-muted);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	text-align: start;
+	white-space: nowrap;
+}
+
+:where(.rank-table) tbody :is(th, td) {
+	block-size: 3rem;
+	padding: 0 var(--space-2);
+	border-block-end: 1px solid var(--line);
+}
+
+:where(.rank-table) tbody tr:last-child :is(th, td) {
+	border-block-end: 0;
+}
+
+:where(.rank-table) .rank {
+	inline-size: 2.5rem;
+	text-align: center;
+}
+
+:where(.rank-table) .num {
+	inline-size: 4.5rem;
+	text-align: end;
+}
+
+:where(.rank-table) td.num {
+	font-weight: var(--weight-num);
+	font-variant-numeric: tabular-nums;
+}
+
+:where(.rank-table) .player {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	min-block-size: var(--tap);
+	min-inline-size: 0;
+	color: var(--text);
+}
+
+:where(.rank-table) .name {
+	line-height: 1.4;
+	min-inline-size: 0;
+	font-weight: 700;
+	color: var(--text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+:where(.rank-table) a.player:hover .name {
+	color: var(--accent);
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
+
 .stat-tile {
 	--tile: var(--series-1);
 	position: relative;

@@ -35,7 +35,7 @@
 		{#if board.rows.length === 0}
 			<EmptyState title="尚無球員達門檻" />
 		{:else}
-			<table id="{uid}-t">
+			<table class="rank-table" id="{uid}-t">
 				<thead>
 					<tr>
 						<th scope="col" class="rank">名次</th>
@@ -100,60 +100,10 @@
 		padding-inline: var(--space-3);
 	}
 
-	/* fixed layout 讓長名字截斷而不是撐寬表格；名次與數值欄給定寬，球員欄吃剩下的 */
-	table {
-		inline-size: 100%;
-		table-layout: fixed;
-		border-collapse: collapse;
-		font-size: var(--text-md);
-	}
-
-	th {
-		padding: var(--space-2) var(--space-2);
-		border-block-end: 1px solid var(--line);
-		color: var(--text-muted);
-		font-size: var(--text-sm);
-		font-weight: 600;
-		text-align: start;
-		white-space: nowrap;
-	}
-
-	td {
-		block-size: 3rem;
-		padding: 0 var(--space-2);
-		border-block-end: 1px solid var(--line);
-	}
-
-	tbody tr:last-child td {
-		border-block-end: 0;
-	}
-
-	.rank {
-		inline-size: 2.5rem;
-		text-align: center;
-	}
-
-	.num {
-		inline-size: 4.5rem;
-		text-align: end;
-	}
-
+	/* 表格本身的樣式是 app.css 的 .rank-table，這裡只放排行榜自己的差異。
+	   比率榜的項目名最長六個字（接發球到位率），數值欄表頭要能換行 */
 	th.num {
 		white-space: normal;
-	}
-
-	td.num {
-		font-weight: var(--weight-num);
-		font-variant-numeric: tabular-nums;
-	}
-
-	.player {
-		min-block-size: var(--tap);
-		color: var(--text);
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		min-inline-size: 0;
 	}
 
 	.identity {
@@ -163,22 +113,6 @@
 		column-gap: var(--space-1);
 		min-inline-size: 0;
 		flex: 1;
-	}
-
-	.name {
-		line-height: 1.4;
-		min-inline-size: 0;
-		font-weight: 700;
-		color: var(--text);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.player:hover .name {
-		color: var(--accent);
-		text-decoration: underline;
-		text-underline-offset: 0.2em;
 	}
 
 	.position {

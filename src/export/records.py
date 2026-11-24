@@ -1,10 +1,8 @@
-from src.export.leaders import COUNT_BOARDS, top_ranked
+from src.export.leaders import SCORING_BOARDS, top_ranked
 from src.export.player_seasons import has_played
 
 RECORD_LIMIT = 10
-RECORD_BOARDS = tuple(spec for spec in COUNT_BOARDS
-                      if spec.key in ("total_points", "attack_points", "block_points", "serve_points"))
-SCORING_KEYS = tuple(spec.key for spec in RECORD_BOARDS)
+SCORING_KEYS = tuple(spec.key for spec in SCORING_BOARDS)
 ROW_FIELDS = ("player_id", "name", "cup_id", "season", "games", "team_id", "team_short", "in_progress")
 CUMULATIVE_FIELDS = (*ROW_FIELDS, "season_count")
 LATEST_SEASON_FIELDS = tuple(f for f in ROW_FIELDS if f not in ("games", "in_progress"))
@@ -65,5 +63,5 @@ def compute_records(match_rows: list[dict]) -> list[dict]:
             "cumulative_records": _top(spec.key, cumulative, CUMULATIVE_FIELDS),
             "match_records": _top(spec.key, matches, MATCH_FIELDS),
         }
-        for spec in RECORD_BOARDS
+        for spec in SCORING_BOARDS
     ]

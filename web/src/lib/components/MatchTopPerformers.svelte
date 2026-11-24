@@ -36,7 +36,7 @@
 			<section aria-labelledby="{uid}-{board.key}">
 				<h3 id="{uid}-{board.key}">{board.label}</h3>
 				<div class="card">
-					<table aria-label="{board.label}單場前三名">
+					<table class="rank-table" aria-label="{board.label}單場前三名">
 						<thead>
 							<tr>
 								<th scope="col" class="rank">名次</th>
@@ -94,87 +94,20 @@
 		padding-inline: var(--space-3);
 	}
 
-	table {
-		inline-size: 100%;
-		table-layout: fixed;
-		border-collapse: collapse;
-		font-size: var(--text-md);
-	}
-
-	thead th {
-		padding: var(--space-2);
-		border-block-end: 1px solid var(--line);
-		color: var(--text-muted);
-		font-size: var(--text-sm);
-		font-weight: 600;
-		text-align: start;
-		white-space: nowrap;
-	}
-
-	tbody th,
-	tbody td {
-		block-size: 3rem;
-		padding: var(--space-1) var(--space-2);
-		border-block-end: 1px solid var(--line);
-		vertical-align: middle;
-	}
-
-	tbody tr:last-child th,
-	tbody tr:last-child td {
-		border-block-end: 0;
-	}
-
+	/* 表格本身的樣式是 app.css 的 .rank-table，這裡只放單場前三名自己的差異 */
 	tbody th[scope='row'] {
 		font-weight: 400;
 		text-align: start;
 	}
 
-	.rank {
-		inline-size: 2.5rem;
-		text-align: center;
-	}
-
-	.num {
-		inline-size: 5rem;
-		text-align: end;
-		white-space: nowrap;
-	}
-
 	td.num {
 		font-size: var(--text-lg);
-		font-weight: var(--weight-num);
-		font-variant-numeric: tabular-nums;
-		color: var(--text);
-	}
-
-	.player {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		min-block-size: var(--tap);
-		min-inline-size: 0;
-		color: var(--text);
 	}
 
 	.identity {
 		display: grid;
 		min-inline-size: 0;
 		flex: 1;
-	}
-
-	.name {
-		line-height: 1.35;
-		font-weight: 700;
-		color: var(--text);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	a.player:hover .name {
-		color: var(--accent);
-		text-decoration: underline;
-		text-underline-offset: 0.2em;
 	}
 
 	.team {
