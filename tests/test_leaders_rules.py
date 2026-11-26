@@ -97,23 +97,28 @@ def test_each_rate_board_uses_its_own_coefficient():
         "attack_success_rate": ("attack_total", 40), "serve_point_rate": ("serve_total", 35),
         "receive_excellent_rate": ("receive_total", 60), "dig_excellent_rate": ("dig_total", 20),
         "set_excellent_rate": ("set_total", 160), "points_per_game": ("attack_total", 60),
-        "blocks_per_set": ("attack_total", 60),
+        "points_per_set": ("attack_total", 60), "attack_points_per_set": ("attack_total", 40),
+        "blocks_per_set": ("attack_total", 60), "serve_points_per_set": ("serve_total", 35),
+        "receive_excellent_per_set": ("receive_total", 60),
     }
     for key, (field, needed) in thresholds.items():
         board = rate_board([rate_row(1, **{field: needed}), rate_row(2, **{field: needed - 1})], key, {1: 20})
         assert [r["player_id"] for r in board["rows"]] == [1], key
-    both = rate_board([rate_row(1, attack_total=30, serve_total=30), rate_row(2, attack_total=30, serve_total=29)],
-                      "points_per_game", {1: 20})
-    assert [r["player_id"] for r in both["rows"]] == [1]
+    for key in ("points_per_game", "points_per_set", "blocks_per_set"):
+        both = rate_board([rate_row(1, attack_total=30, serve_total=30), rate_row(2, attack_total=30, serve_total=29)],
+                          key, {1: 20})
+        assert [r["player_id"] for r in both["rows"]] == [1], key
 
 
-def test_all_seven_rates_use_their_own_denominators_and_match_player_page():
+def test_all_eleven_rates_use_their_own_denominators_and_match_player_page():
     from src.export.player_advanced import compute_ratios
 
     player = loaded(1)
     boards = [b for b in compute_leaders([player], {1: 10}) if b["kind"] == "rate"]
     assert [b["label"] for b in boards] == [
-        "攻擊成功率", "發球得分率", "接發球到位率", "防守到位率", "舉球到位率", "場均得分", "每局攔網"]
+        "攻擊成功率", "發球得分率", "接發球到位率", "防守到位率", "舉球到位率",
+        "場均得分", "每局得分", "每局攻擊得分", "每局攔網", "每局發球得分", "每局接發球到位",
+    ]
     assert [b["threshold"] for b in boards] == [
         "門檻：攻擊次數達所屬球隊已打局數 × 2（目前 20 次）",
         "門檻：發球次數達所屬球隊已打局數 × 1.75（目前 17 次）",
@@ -121,11 +126,72 @@ def test_all_seven_rates_use_their_own_denominators_and_match_player_page():
         "門檻：防守次數達所屬球隊已打局數 × 1（目前 10 次）",
         "門檻：舉球次數達所屬球隊已打局數 × 8（目前 80 次），只計舉球（S）",
         "門檻：攻擊＋發球次數達所屬球隊已打局數 × 3（目前 30 次）",
-        "門檻：攻擊＋發球次數達所屬球隊已打局數 × 3（目前 30 次）"]
-    assert [b["rows"][0]["value"] for b in boards] == [50, 50, 50, 50, 25, 2, 2]
-    assert [b["rows"][0]["denominator"] for b in boards] == [40, 40, 40, 40, 80, 10, 10]
+        "門檻：攻擊＋發球次數達所屬球隊已打局數 × 3（目前 30 次）",
+        "門檻：攻擊次數達所屬球隊已打局數 × 2（目前 20 次）",
+        "門檻：攻擊＋發球次數達所屬球隊已打局數 × 3（目前 30 次）",
+        "門檻：發球次數達所屬球隊已打局數 × 1.75（目前 17 次）",
+        "門檻：接發球次數達所屬球隊已打局數 × 3（目前 30 次）",
+    ]
+    assert [b["rows"][0]["value"] for b in boards] == [50, 50, 50, 50, 25, 2, 2, 2, 2, 2, 2]
+    assert [b["rows"][0]["denominator"] for b in boards] == [40, 40, 40, 40, 80, 10, 10, 10, 10, 10, 10]
     for board in boards[:6]:
         assert board["rows"][0]["value"] == compute_ratios(player)[board["key"]]
+
+
+def test_four_new_per_set_boards_use_distinct_numerators_team_sets_and_floor_text():
+    player = rate_row(
+        1, position="OH", games=3, sets_played=99,
+        total_points=36, attack_points=22, block_points=4, serve_points=10, receive_excellent=14,
+        attack_total=20, serve_total=15, receive_total=25,
+    )
+    boards = {b["key"]: b for b in compute_leaders([player], {1: 8})}
+    expected = {
+        "points_per_set": (4.5, 36, 8, "門檻：攻擊＋發球次數達所屬球隊已打局數 × 3（目前 24 次）"),
+        "attack_points_per_set": (2.75, 22, 8, "門檻：攻擊次數達所屬球隊已打局數 × 2（目前 16 次）"),
+        "serve_points_per_set": (1.25, 10, 8, "門檻：發球次數達所屬球隊已打局數 × 1.75（目前 14 次）"),
+        "receive_excellent_per_set": (1.75, 14, 8, "門檻：接發球次數達所屬球隊已打局數 × 3（目前 24 次）"),
+    }
+    for key, (val, num, den, text) in expected.items():
+        row_ = boards[key]["rows"][0]
+        assert (row_["value"], row_["numerator"], row_["denominator"], boards[key]["threshold"]) == (val, num, den, text), key
+    # 季初球隊已打 2 局：四榜門檻皆落在下限 10 次，且顯示「季初至少 10 次」；球隊已打局數為 0 時不出列
+    early_ok = rate_row(1, attack_total=10, serve_total=10, receive_total=10)
+    early_short = rate_row(2, attack_total=9, serve_total=0, receive_total=9)
+    early_serve_short = rate_row(3, attack_total=0, serve_total=9, receive_total=0)
+    early = {b["key"]: b for b in compute_leaders([early_ok, early_short, early_serve_short], {1: 2})}
+    for key in expected:
+        assert [r["player_id"] for r in early[key]["rows"]] == [1], key
+        assert "季初至少 10 次（目前 10 次）" in early[key]["threshold"], key
+        assert rate_board([early_ok], key, {})["rows"] == [], key
+
+
+def test_libero_with_zero_attack_and_serve_qualifies_for_receive_excellent_per_set():
+    libero = rate_row(
+        1, position="L", total_points=0, attack_points=0, serve_points=0, block_points=0,
+        attack_total=0, serve_total=0, receive_total=30, receive_excellent=18,
+    )
+    boards = {b["key"]: b for b in compute_leaders([libero], {1: 10})}
+    assert [(r["player_id"], r["value"], r["numerator"], r["denominator"])
+            for r in boards["receive_excellent_per_set"]["rows"]] == [(1, 1.8, 18, 10)]
+    for key in ("points_per_set", "attack_points_per_set", "serve_points_per_set"):
+        assert boards[key]["rows"] == [], key
+
+
+def test_new_per_set_boards_order_ties_by_numerator_with_shared_rank():
+    cases = {
+        "points_per_set": ("total_points", {"attack_total": 120}),
+        "attack_points_per_set": ("attack_points", {"attack_total": 80}),
+        "serve_points_per_set": ("serve_points", {"serve_total": 70}),
+        "receive_excellent_per_set": ("receive_excellent", {"receive_total": 120}),
+    }
+    for key, (num_field, counts) in cases.items():
+        rows = [
+            rate_row(1, name="甲", team_id=1, **{num_field: 15, **counts}),
+            rate_row(2, name="乙", team_id=2, **{num_field: 30, **counts}),
+        ]
+        board = rate_board(rows, key, {1: 20, 2: 40})
+        assert [(r["player_id"], r["rank"], r["value"], r["numerator"], r["denominator"])
+                for r in board["rows"]] == [(2, 1, 0.75, 30, 40), (1, 1, 0.75, 15, 20)], key
 
 
 def test_blocks_per_set_uses_team_sets_and_is_always_output():
@@ -354,12 +420,35 @@ def test_makeup_uses_each_players_team_threshold():
     assert [(r["player_id"], r["makeup"]) for r in attack_board(rows, {1: 20, 2: 20})["rows"]] == [(2, True), (1, False)]
 
 
-def test_makeup_not_applied_to_points_per_game_and_blocks_per_set():
-    rows = [rate_row(1, attack_total=60, block_points=20), rate_row(2, attack_total=59, block_points=29, total_points=29)]
-    for key in ("points_per_game", "blocks_per_set"):
-        board = rate_board(rows, key, {1: 20}, apply_makeup=True)
-        assert [r["player_id"] for r in board["rows"]] == [1]
-        assert not any(r["makeup"] for r in board["rows"])
+def test_makeup_not_applied_to_points_per_game_and_per_set_boards():
+    qualified = rate_row(
+        1, attack_total=60, serve_total=35, receive_total=60,
+        total_points=20, attack_points=20, block_points=20, serve_points=10, receive_excellent=20,
+    )
+    short = rate_row(
+        2, attack_total=39, serve_total=20, receive_total=59,
+        total_points=99, attack_points=39, block_points=99, serve_points=20, receive_excellent=59,
+    )
+    short_serve = rate_row(3, serve_total=34, serve_points=34)
+    for key in (
+        "points_per_game", "points_per_set", "attack_points_per_set",
+        "blocks_per_set", "serve_points_per_set", "receive_excellent_per_set",
+    ):
+        pool = [qualified, short_serve] if key == "serve_points_per_set" else [qualified, short]
+        board = rate_board(pool, key, {1: 20}, apply_makeup=True)
+        assert [r["player_id"] for r in board["rows"]] == [1], key
+        assert not any(r["makeup"] for r in board["rows"]), key
+
+
+def test_blocks_per_set_zero_ties_order_by_name_not_team_sets():
+    rows = [
+        rate_row(1, name="甲", team_id=1, block_points=0, attack_total=120),
+        rate_row(2, name="乙", team_id=2, block_points=0, attack_total=120),
+    ]
+    board = rate_board(rows, "blocks_per_set", {1: 40, 2: 20})
+    assert [(r["player_id"], r["rank"], r["value"], r["denominator"]) for r in board["rows"]] == [
+        (2, 1, 0.0, 20), (1, 1, 0.0, 40),
+    ]
 
 
 def test_count_boards_have_makeup_false():

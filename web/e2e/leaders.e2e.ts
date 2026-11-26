@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import { BASE, readJson, seasonsData, expect, test } from './helpers.js';
 
 const entries = readJson('leaders').leaders;
@@ -62,6 +63,21 @@ for (const group of ['men', 'women']) {
 			expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 			const columns = await page.locator('.boards').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
 			expect(columns).toBe(width < 640 ? 1 : width < 1024 ? 2 : 3);
+			await page.getByRole('button', { name: '比率榜', exact: true }).click();
+			await expect(page.getByRole('navigation', { name: '比率榜項目' }).getByRole('link')).toHaveCount(11);
+			const rateRows = data.boards.filter((b: { kind: string; rows: unknown[] }) => b.kind === 'rate' && b.rows.length > 0);
+			if (rateRows.length) {
+				const rateBoard = rateRows.at(-1)!;
+				const rateLongest = rateBoard.rows.reduce((a: { name: string }, b: { name: string }) => a.name.length >= b.name.length ? a : b);
+				const rateCard = page.locator(`#b-${rateBoard.key}`);
+				const rateExpand = rateCard.getByRole('button');
+				if (await rateExpand.count()) {
+					await rateExpand.click();
+					await expect(rateExpand).toHaveAttribute('aria-expanded', 'true');
+				}
+				await expect(rateCard.getByRole('link', { name: rateLongest.name, exact: true })).toBeVisible();
+			}
+			expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 		});
 	}
 }
@@ -118,11 +134,61 @@ test('比率榜錨點進站與歷史返回會選對分段並捲到卡片', async
 	await expect(page.locator('#b-serve_point_rate h2')).toBeInViewport();
 });
 
-test('每個賽季都有每局攔網榜，分母為球隊已打局數', async ({ page }) => {
-	expect(entries.every((e: typeof entry) => e.boards.some((b: { key: string }) => b.key === 'blocks_per_set'))).toBe(true);
+test('每個賽季都有每局攔網與四個新每局項目榜，項目列可跳轉且數值不帶百分比符號', async ({ page }) => {
+	const perSetKeys = [
+		['points_per_set', '每局得分'],
+		['attack_points_per_set', '每局攻擊得分'],
+		['blocks_per_set', '每局攔網'],
+		['serve_points_per_set', '每局發球得分'],
+		['receive_excellent_per_set', '每局接發球到位']
+	] as const;
+	for (const [key] of perSetKeys) {
+		expect(entries.every((e: typeof entry) => e.boards.some((b: { key: string }) => b.key === key))).toBe(true);
+	}
+	await page.setViewportSize({ width: 390, height: 844 });
 	await page.goto(`${url}#b-blocks_per_set`);
 	await expect(page.locator('#b-blocks_per_set')).toBeVisible();
-	await expect(page.getByRole('navigation', { name: '比率榜項目' }).getByRole('link', { name: '每局攔網', exact: true })).toBeVisible();
+	const nav = page.getByRole('navigation', { name: '比率榜項目' });
+	await expect(nav.getByRole('link', { name: '每局攔網', exact: true })).toBeVisible();
+	for (const [key, label] of perSetKeys.filter(([k]) => k !== 'blocks_per_set')) {
+		const chip = nav.getByRole('link', { name: label, exact: true });
+		await chip.click();
+		await expect(chip).toHaveAttribute('aria-current', 'location');
+		const card = page.locator(`#b-${key}`);
+		await expect(card.locator('h2')).toBeInViewport();
+		const navBox = (await nav.boundingBox())!;
+		expect((await card.locator('h2').boundingBox())!.y).toBeGreaterThanOrEqual(navBox.y + navBox.height);
+		const board = entry.boards.find((b: { key: string }) => b.key === key);
+		await expect(card.getByText(board.threshold, { exact: true })).toBeVisible();
+		if (board.rows.length) {
+			const firstCell = card.locator('tbody td.num').first();
+			await expect(firstCell).not.toContainText('%');
+			await expect(firstCell).toContainText(`${board.rows[0].numerator}／${board.rows[0].denominator}`);
+		}
+	}
+});
+
+test('比率榜項目列在 390 與 1440 寬度跳到最後一榜與第一榜時，當前項目完整落在項目列可視範圍內', async ({ page }) => {
+	const nav = page.getByRole('navigation', { name: '比率榜項目' });
+	const firstChip = nav.getByRole('link', { name: '攻擊成功率', exact: true });
+	const lastChip = nav.getByRole('link', { name: '每局接發球到位', exact: true });
+	const fullyInsideNav = async (chip: Locator) => {
+		const navBox = await nav.boundingBox();
+		const chipBox = await chip.boundingBox();
+		if (!navBox || !chipBox) return false;
+		return chipBox.x >= navBox.x - 0.5 && chipBox.x + chipBox.width <= navBox.x + navBox.width + 0.5;
+	};
+	for (const width of [390, 1440]) {
+		await page.setViewportSize({ width, height: 900 });
+		await page.goto(url);
+		await page.getByRole('button', { name: '比率榜', exact: true }).click();
+		await page.evaluate(() => { window.location.hash = '#b-receive_excellent_per_set'; });
+		await expect(lastChip).toHaveAttribute('aria-current', 'location');
+		await expect.poll(() => fullyInsideNav(lastChip)).toBe(true);
+		await page.evaluate(() => { window.location.hash = '#b-attack_success_rate'; });
+		await expect(firstChip).toHaveAttribute('aria-current', 'location');
+		await expect.poll(() => fullyInsideNav(firstChip)).toBe(true);
+	}
 });
 
 for (const cup of [20, 21, 22]) {
@@ -139,7 +205,7 @@ for (const cup of [20, 21, 22]) {
 		await rate.focus();
 		await page.keyboard.press('Enter');
 		await expect(rate).toHaveAttribute('aria-pressed', 'true');
-		await expect(page.getByRole('navigation', { name: '比率榜項目' }).getByRole('link')).toHaveCount(7);
+		await expect(page.getByRole('navigation', { name: '比率榜項目' }).getByRole('link')).toHaveCount(11);
 		await expect(page.getByRole('region', { name: '本季四王' })).toHaveCSS('animation-name', 'none');
 	});
 }

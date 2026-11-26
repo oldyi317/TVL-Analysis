@@ -343,7 +343,7 @@ def test_leaders_boards_and_pr_pools_agree_on_who_qualifies():
     boards = {b["key"]: {r["player_id"] for r in b["rows"]} for b in compute_leaders(named, team_sets, RATE_BOARDS)}
 
     for spec in RATE_BOARDS:
-        if spec.key in ("points_per_game", "blocks_per_set"):
+        if spec.key not in PR_KEYS or spec.key == "blocks_per_set":
             continue
         in_pool = {pid for pid, r in pr.items() if r["pr"][spec.key] is not None}
         assert boards[spec.key] == in_pool and in_pool, spec.key
