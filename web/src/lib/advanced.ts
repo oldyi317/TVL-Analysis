@@ -7,6 +7,7 @@ import type {
 	PositionDistribution,
 	StatRow
 } from '#lib/data/types.js';
+import { setsWon, winnerSide, type Side } from '#lib/match.js';
 import { displayPosition, type Group, type MatchView } from '#lib/site.js';
 import { STAT_LABELS } from '#lib/statLabels.js';
 
@@ -271,6 +272,16 @@ export type GameLogEntry = {
 	stats: GameStats;
 };
 
+export type PlayerGame = GameLogEntry & {
+	gameId: number;
+	opponent: string;
+	side: Side;
+	won: boolean | null;
+	score: [number, number] | null;
+	stage: string | null;
+	playedGoldenSet: boolean;
+};
+
 export const toGameStats = ({ player_id: _p, team_id: _t, jersey_number: _j, position: _pos, ...stats }: StatRow): GameStats =>
 	stats;
 
@@ -417,8 +428,9 @@ export function trendLineOption(points: TrendPoint[], metric: TrendMetric): obje
 	};
 }
 
-const inRows = (rows: StatRow[] | undefined, playerId: number) =>
-	rows?.some((r) => r.player_id === playerId) ?? false;
+function hasTechnicalStats({ sets_played: _sets, ...skills }: GameStats): boolean {
+	return Object.values(skills).some((value) => value !== 0);
+}
 
 export function playerGameLog(
 	boxScores: BoxScoresData,
@@ -426,18 +438,40 @@ export function playerGameLog(
 	cupId: number,
 	group: Group,
 	playerId: number
-): GameLogEntry[] {
+): PlayerGame[] {
 	const games = boxScores.box_scores.find((b) => b.cup_id === cupId && b.group === group)?.games ?? [];
-	const log: GameLogEntry[] = [];
+	const log: PlayerGame[] = [];
 	for (const game of games) {
 		const match = matches.find((m) => m.game_id === game.game_id);
 		if (!match) continue;
-		const row = [...game.home, ...game.away].find((r) => r.player_id === playerId);
+		const homeRow = game.home.find((r) => r.player_id === playerId);
+		const row = homeRow ?? game.away.find((r) => r.player_id === playerId);
 		if (!row) continue;
-		const golden = game.golden_set
-			? inRows(game.golden_set.home, playerId) || inRows(game.golden_set.away, playerId)
-			: false;
-		log.push({ date: match.date, golden, sets: match.sets.length || null, stats: toGameStats(row) });
+		const side = homeRow ? 'home' : 'away';
+		const winner = winnerSide(match.sets);
+		const [homeSets, awaySets] = setsWon(match.sets);
+		const goldenRow = game.golden_set?.home.find((r) => r.player_id === playerId)
+			?? game.golden_set?.away.find((r) => r.player_id === playerId);
+		log.push({
+			gameId: game.game_id,
+			date: match.date,
+			stage: match.stage,
+			side,
+			opponent: (homeRow ? match.away : match.home).name,
+			won: winner === null ? null : winner === side,
+			score: match.sets.length === 0 ? null : homeRow ? [homeSets, awaySets] : [awaySets, homeSets],
+			// 趨勢圖沿用名單標記，紀錄表只標有技術統計的黃金決勝局。
+			golden: goldenRow !== undefined,
+			playedGoldenSet: goldenRow !== undefined && hasTechnicalStats(toGameStats(goldenRow)),
+			sets: match.sets.length || null,
+			stats: toGameStats(row)
+		});
 	}
 	return log.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export function playerGameLogRows(log: readonly PlayerGame[]): PlayerGame[] {
+	return log
+		.filter((game) => hasTechnicalStats(game.stats))
+		.sort((a, b) => b.date.localeCompare(a.date) || b.gameId - a.gameId);
 }

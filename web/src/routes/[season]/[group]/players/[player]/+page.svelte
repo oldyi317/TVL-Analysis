@@ -5,6 +5,7 @@
 	import BigStat from '#lib/components/BigStat.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import PlayerGameLog from '#lib/components/PlayerGameLog.svelte';
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import { listHref } from '#lib/nav.js';
@@ -96,6 +97,10 @@
 {/if}
 
 <AdvancedStats position={displayPosition(stats)} advanced={data.advanced} distribution={data.distribution} gameLog={data.gameLog} />
+
+{#key data.gameLog}
+	<PlayerGameLog gameLog={data.gameLog} season={data.season.name} group={data.group} />
+{/key}
 
 <style>
 	.back {
