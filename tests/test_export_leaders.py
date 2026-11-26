@@ -123,11 +123,21 @@ def test_blocks_per_set_board_exists_for_official_source_season(export_json):
         seed_player(conn, 1, "王小明")
         seed_registration(conn, 1, 1, 1, position="MB")
         conn.execute(MATCH_SQL_ROUND, (1, "M", 21, "2025-11-01", "屏東台電", "雲林美津濃", 1, 2, "例行賽 Week 1", 3, 1))
-        seed_stat(conn, 1, (None, 20, 8, 3, 0, 0, 0, 0, 0, 0, 0, 0, 11), "2025-11-01", "雲林美津濃")
+        seed_stat(conn, 1, (None, 20, 8, 3, 10, 2, 12, 6, 0, 0, 0, 0, 13), "2025-11-01", "雲林美津濃")
 
     payload, _ = export_json(build_blocks, "leaders")
-    blocks = next(b for b in payload["leaders"][0]["boards"] if b["key"] == "blocks_per_set")
-    assert [(r["value"], r["denominator"]) for r in blocks["rows"]] == [(0.75, 4)]
+    rate_boards = [b for b in payload["leaders"][0]["boards"] if b["kind"] == "rate"]
+    assert [b["key"] for b in rate_boards] == [
+        "attack_success_rate", "serve_point_rate", "receive_excellent_rate", "dig_excellent_rate",
+        "set_excellent_rate", "points_per_game", "points_per_set", "attack_points_per_set",
+        "blocks_per_set", "serve_points_per_set", "receive_excellent_per_set",
+    ]
+    by_key = {b["key"]: b for b in rate_boards}
+    assert [(r["value"], r["numerator"], r["denominator"]) for r in by_key["points_per_set"]["rows"]] == [(3.25, 13, 4)]
+    assert [(r["value"], r["numerator"], r["denominator"]) for r in by_key["attack_points_per_set"]["rows"]] == [(2.0, 8, 4)]
+    assert [(r["value"], r["numerator"], r["denominator"]) for r in by_key["blocks_per_set"]["rows"]] == [(0.75, 3, 4)]
+    assert [(r["value"], r["numerator"], r["denominator"]) for r in by_key["serve_points_per_set"]["rows"]] == [(0.5, 2, 4)]
+    assert [(r["value"], r["numerator"], r["denominator"]) for r in by_key["receive_excellent_per_set"]["rows"]] == [(1.5, 6, 4)]
 
 
 def test_each_group_has_four_volume_rates_without_golden_set_rows(export_json):

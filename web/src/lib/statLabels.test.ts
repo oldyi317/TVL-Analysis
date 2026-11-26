@@ -14,7 +14,7 @@ describe('統計項目標籤表', () => {
 		]);
 	});
 
-	it('比率榜七項依詞彙表正式名稱', () => {
+	it('比率榜十一項依詞彙表正式名稱', () => {
 		expect(RATE_STAT_KEYS.map((k) => STAT_LABELS[k])).toEqual([
 			'攻擊成功率',
 			'發球得分率',
@@ -22,11 +22,15 @@ describe('統計項目標籤表', () => {
 			'防守到位率',
 			'舉球到位率',
 			'場均得分',
-			'每局攔網'
+			'每局得分',
+			'每局攻擊得分',
+			'每局攔網',
+			'每局發球得分',
+			'每局接發球到位'
 		]);
 	});
 
-	it('表裡只有這 14 個項目，鍵名對應匯出資料欄位', () => {
+	it('表裡只有這 18 個項目，鍵名對應匯出資料欄位', () => {
 		expect(Object.keys(STAT_LABELS).sort()).toEqual(
 			[
 				'total_points',
@@ -42,7 +46,11 @@ describe('統計項目標籤表', () => {
 				'dig_excellent_rate',
 				'set_excellent_rate',
 				'points_per_game',
-				'blocks_per_set'
+				'points_per_set',
+				'attack_points_per_set',
+				'blocks_per_set',
+				'serve_points_per_set',
+				'receive_excellent_per_set'
 			].sort()
 		);
 	});

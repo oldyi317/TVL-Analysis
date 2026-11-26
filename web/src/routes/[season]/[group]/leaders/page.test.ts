@@ -1,5 +1,6 @@
 import { render } from 'svelte/server';
 import { describe, expect, it } from 'vitest';
+import { load } from './+page.js';
 import LeadersPage from './+page.svelte';
 import LeaderBoard from '#lib/components/LeaderBoard.svelte';
 import { toVolumeRateView, type LeaderBoardView, type LeaderRowView, type VolumeRateView } from '#lib/leaders.js';
@@ -140,6 +141,42 @@ it('補算達標的列顯示標籤，卡底有一句說明；沒有補算列時�
 	const plain = render_({ ...board, rows: board.rows.slice(1) });
 	expect(plain).not.toContain('補算達標');
 	expect(plain).not.toContain('MLB 規則 9.22(a)');
+});
+
+it('比率榜共十一張卡，四張新每局項目顯示小數、不加百分比符號、附分子分母與門檻說明', async () => {
+	const loaded = (await load({ params: { season: season.name, group: 'men' } } as Parameters<typeof load>[0])) as PageProps['data'];
+	expect(loaded.boards.map((b) => b.key)).toEqual([...COUNT_STAT_KEYS, ...RATE_STAT_KEYS]);
+	const rateBoards = loaded.boards.filter((b) => b.kind === 'rate');
+	expect(rateBoards).toHaveLength(11);
+	expect(rateBoards.map((b) => b.label)).toEqual([
+		'攻擊成功率', '發球得分率', '接發球到位率', '防守到位率', '舉球到位率',
+		'場均得分', '每局得分', '每局攻擊得分', '每局攔網', '每局發球得分', '每局接發球到位'
+	]);
+	const newPerSetKeys = [
+		'points_per_set',
+		'attack_points_per_set',
+		'serve_points_per_set',
+		'receive_excellent_per_set'
+	] as const;
+	for (const key of newPerSetKeys) {
+		const threshold = '門檻：攻擊次數達所屬球隊已打局數 × 2（目前 32 次）';
+		const board: LeaderBoardView = {
+			key,
+			label: STAT_LABELS[key],
+			kind: 'rate',
+			threshold,
+			rows: [{ ...row(1, 1), value: 4.25, numerator: 68, denominator: 16, title: null }]
+		};
+		const html = render(LeaderBoard, { props: { board, season: season.name, group: 'men' }, context }).body;
+		expect(html).toContain(`id="b-${key}"`);
+		expect(html).toMatch(new RegExp(`<h2[^>]*>${STAT_LABELS[key]}</h2>`));
+		expect(html).toContain(threshold);
+		expect(html).toContain('4.25');
+		expect(html).not.toContain('%');
+		expect(html).toContain('68／16');
+		const empty = render(LeaderBoard, { props: { board: { ...board, rows: [] }, season: season.name, group: 'men' }, context }).body;
+		expect(empty).toContain('尚無球員達門檻');
+	}
 });
 
 it('只傳入計數榜與六個比率榜時，不產生每局攔網卡與 chip', () => {

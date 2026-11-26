@@ -13,7 +13,11 @@ export const STAT_LABELS = {
 	dig_excellent_rate: '防守到位率',
 	set_excellent_rate: '舉球到位率',
 	points_per_game: '場均得分',
-	blocks_per_set: '每局攔網'
+	points_per_set: '每局得分',
+	attack_points_per_set: '每局攻擊得分',
+	blocks_per_set: '每局攔網',
+	serve_points_per_set: '每局發球得分',
+	receive_excellent_per_set: '每局接發球到位'
 } as const;
 
 export type StatKey = keyof typeof STAT_LABELS;
@@ -35,7 +39,11 @@ export const RATE_STAT_KEYS = [
 	'dig_excellent_rate',
 	'set_excellent_rate',
 	'points_per_game',
-	'blocks_per_set'
+	'points_per_set',
+	'attack_points_per_set',
+	'blocks_per_set',
+	'serve_points_per_set',
+	'receive_excellent_per_set'
 ] as const satisfies readonly StatKey[];
 
 export type CountStatKey = (typeof COUNT_STAT_KEYS)[number];

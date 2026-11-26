@@ -2,9 +2,10 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from statistics import median
 from typing import Any, TypeVar
 
-from src.export.player_advanced import compute_ratios
 from src.export.player_seasons import STAT_FIELDS, has_played
-from src.export.thresholds import RATE_BOARDS, THRESHOLD_FLOOR, BoardSpec, attempts, threshold_for
+from src.export.thresholds import (
+    RATE_BOARDS, TEAM_SETS, THRESHOLD_FLOOR, BoardSpec, attempts, threshold_for,
+)
 
 T = TypeVar("T")
 
@@ -94,10 +95,14 @@ def makeup_candidate(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, 
         threshold = threshold_for(spec, team_sets.get(r["team_id"], 0))
         if not 0 < count < threshold:
             continue
-        makeup_rate = r[spec.numerator] / threshold * 100
+        makeup_rate = r[spec.numerator] / threshold * spec.scale
         if makeup_rate > leader_rate:
             candidates.append(((-makeup_rate, -count, r["name"]), r))
     return min(candidates, key=lambda c: c[0])[1] if candidates else None
+
+
+def _rate_value(row: Mapping, spec: BoardSpec, denominator: int) -> float:
+    return round(row[spec.numerator] / denominator * spec.scale, 2)
 
 
 def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int], apply_makeup: bool = False) -> dict:
@@ -111,22 +116,19 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int], appl
     makeup_ids: set[int] = set()
     candidate = None
     if spec.kind == "rate":
+        per_set = spec.denominator == TEAM_SETS
         qualified = []
         for r in rows:
             sets = team_sets.get(r["team_id"], 0)
             if attempts(r, spec) < threshold_for(spec, sets):
                 continue
-            if spec.key == "blocks_per_set":
-                if not sets:
-                    continue
-                qualified.append({**r, spec.key: round(compute_ratios(r, sets)[spec.key], 2), "_denominator": sets})
-                tiebreak[r["player_id"]] = r["block_points"]
-            elif r[spec.denominator]:
-                qualified.append({**r, spec.key: round(compute_ratios(r)[spec.key], 2),
-                                  "_denominator": r[spec.denominator]})
-                tiebreak[r["player_id"]] = r[spec.denominator]
+            denom = sets if per_set else r[spec.denominator]
+            if not denom:
+                continue
+            qualified.append({**r, spec.key: _rate_value(r, spec, denom), "_denominator": denom})
+            tiebreak[r["player_id"]] = r[spec.numerator] if per_set else denom
         if spec.makeup and apply_makeup and qualified:
-            leader_rate = max(r[spec.numerator] / r[spec.denominator] * 100 for r in qualified)
+            leader_rate = max(r[spec.numerator] / r[spec.denominator] * spec.scale for r in qualified)
         else:
             leader_rate = None
         candidate = makeup_candidate(spec, rows, team_sets, leader_rate) if spec.makeup and apply_makeup else None
@@ -136,8 +138,8 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int], appl
     ordered = sorted(rows, key=lambda r: (-r[spec.key], -tiebreak.get(r["player_id"], 0), r["name"]))
     ranks = rank_ordered([r[spec.key] for r in ordered])
     if candidate:
-        ordered.insert(0, {**candidate, spec.key: round(compute_ratios(candidate)[spec.key], 2),
-                           "_denominator": candidate[spec.denominator]})
+        denom = candidate[spec.denominator]
+        ordered.insert(0, {**candidate, spec.key: _rate_value(candidate, spec, denom), "_denominator": denom})
         ranks = [1] + [rank + 1 for rank in ranks]
     leaders = []
     for r, rank in zip(ordered, ranks):

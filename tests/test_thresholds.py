@@ -47,3 +47,24 @@ def test_set_excellent_rate_only_for_setters():
     assert "set_excellent_rate" not in eligible_metrics(counts(position="OH", set_total=100), 10)
     assert "set_excellent_rate" not in eligible_metrics(counts(position=None, set_total=100), 10)
     assert "set_excellent_rate" in eligible_metrics(counts(position="S", set_total=100), 10)
+
+
+def test_eligible_metrics_unchanged_by_per_set_leader_boards():
+    from src.export.thresholds import RATE_BOARDS
+
+    assert [s.key for s in RATE_BOARDS] == [
+        "attack_success_rate", "serve_point_rate", "receive_excellent_rate", "dig_excellent_rate",
+        "set_excellent_rate", "points_per_game", "points_per_set", "attack_points_per_set",
+        "blocks_per_set", "serve_points_per_set", "receive_excellent_per_set",
+    ]
+    full = {"attack_total": 200, "serve_total": 200, "receive_total": 200, "dig_total": 200, "set_total": 200}
+    expected_oh = {
+        "attack_success_rate", "serve_point_rate", "receive_excellent_rate", "dig_excellent_rate",
+        "points_per_game", "blocks_per_set", "blocks_per_game", "defense_load", "defense_efficiency",
+    }
+    assert eligible_metrics(counts(position="OH", **full), 10) == expected_oh
+    assert eligible_metrics(counts(position="S", **full), 10) == expected_oh | {"set_excellent_rate"}
+    assert eligible_metrics(counts(position="L", receive_total=30), 10) == {
+        "receive_excellent_rate", "defense_efficiency",
+    }
+    assert eligible_metrics(counts(position="OH", **full), 0) == expected_oh - {"blocks_per_set"}

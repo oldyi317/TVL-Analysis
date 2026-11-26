@@ -38,7 +38,23 @@
 	});
 
 	let current = $state<string>();
+	let itemNav = $state<HTMLElement>();
 	let sections = $state<HTMLElement[]>([]);
+	$effect(() => {
+		const key = current ?? visibleBoards[0]?.key;
+		const el = key ? itemNav?.querySelector<HTMLElement>(`[href="#b-${key}"]`) : null;
+		if (!itemNav || !el) return;
+		const navRect = itemNav.getBoundingClientRect();
+		const elRect = el.getBoundingClientRect();
+		const left = elRect.left - navRect.left + itemNav.scrollLeft;
+		const right = left + elRect.width;
+		const pad = 16;
+		if (left - pad < itemNav.scrollLeft) {
+			itemNav.scrollLeft = Math.max(0, left - pad);
+		} else if (right + pad > itemNav.scrollLeft + itemNav.clientWidth) {
+			itemNav.scrollLeft = Math.ceil(right + pad - itemNav.clientWidth);
+		}
+	});
 	function track() {
 		// 分段更換卡片時，bind:this 會短暫清空舊節點，待新卡綁定後再追蹤。
 		if (!sections[0]?.isConnected) return;
@@ -93,7 +109,7 @@
 		<button type="button" aria-pressed={kind === 'count'} onclick={() => select('count')}>計數榜</button>
 		<button type="button" aria-pressed={kind === 'rate'} onclick={() => select('rate')}>比率榜</button>
 	</div>
-	<nav class="items" aria-label="{segmentLabel}項目">
+	<nav class="items" aria-label="{segmentLabel}項目" bind:this={itemNav}>
 		{#each visibleBoards as board (board.key)}
 			<a class="chip" href="#b-{board.key}" aria-current={(current ?? visibleBoards[0]?.key) === board.key ? 'location' : undefined} onclick={() => (current = board.key)}>{board.label}</a>
 		{/each}
@@ -198,10 +214,21 @@
 		z-index: 1;
 		display: flex;
 		gap: var(--space-1);
-		padding-block: var(--space-2);
+		margin-inline: calc(-1 * var(--space-4));
+		padding: var(--space-2) var(--space-4);
 		margin-block-end: var(--space-4);
 		overflow-x: auto;
+		scrollbar-width: thin;
+		scrollbar-color: var(--line) transparent;
 		background: var(--bg);
+	}
+	@media (hover: none) {
+		.items {
+			scrollbar-width: none;
+		}
+		.items::-webkit-scrollbar {
+			display: none;
+		}
 	}
 	.items a { flex: none; }
 	.board-anchor { min-inline-size: 0; scroll-margin-block-start: calc(var(--shell-top) + var(--tap) + 2 * var(--space-2) + var(--space-4)); }
@@ -237,6 +264,10 @@
 	}
 
 	@media (min-width: 64rem) {
+		.items {
+			margin-inline: 0;
+			padding-inline: 0;
+		}
 		.boards {
 			grid-template-columns: repeat(3, minmax(0, 1fr));
 		}
