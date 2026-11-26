@@ -392,6 +392,26 @@ describe('pregameBarOption', () => {
 		expect(h.data[5].value).toBeNull();
 	});
 
+	it('圖寬 480px 以下指標名稱移到長條上方、兩側各留 64px 放數值標籤；更寬時名稱在左、兩側依比例留空間', () => {
+		expect(option().media).toEqual([
+			{
+				query: { maxWidth: 480 },
+				option: {
+					grid: { left: 64, right: 64 },
+					xAxis: { min: -100, max: 100 },
+					yAxis: { axisLabel: { inside: true, margin: 0, verticalAlign: 'bottom', padding: [0, 0, 12, 0] } }
+				}
+			},
+			{
+				option: {
+					grid: { left: 8, right: 16 },
+					xAxis: { min: -170, max: 170 },
+					yAxis: { axisLabel: { inside: false, margin: 8, verticalAlign: 'middle', padding: 0 } }
+				}
+			}
+		]);
+	});
+
 	it('tooltip 顯示兩隊數值', () => {
 		const text = option().tooltip.formatter([{ dataIndex: 0 }]);
 		expect(text).toContain('攻擊成功率');

@@ -292,13 +292,31 @@ export function pregameBarOption(m: PregameComparison, names: Pair<string>, colo
 	return {
 		legend: { data: [names.home, names.away] },
 		grid: { top: 8 },
+		// 長條兩端的數值標籤最寬約 56px。手機寬度放不下「名稱、數值、長條、數值」一列，
+		// 名稱移到長條上方、兩側各留 64px 給數值；更寬時名稱在左，橫軸多留 70% 給數值
+		media: [
+			{
+				query: { maxWidth: 480 },
+				option: {
+					grid: { left: 64, right: 64 },
+					xAxis: { min: -100, max: 100 },
+					yAxis: { axisLabel: { inside: true, margin: 0, verticalAlign: 'bottom', padding: [0, 0, 12, 0] } }
+				}
+			},
+			{
+				option: {
+					grid: { left: 8, right: 16 },
+					xAxis: { min: -170, max: 170 },
+					yAxis: { axisLabel: { inside: false, margin: 8, verticalAlign: 'middle', padding: 0 } }
+				}
+			}
+		],
 		tooltip: {
 			trigger: 'axis',
 			axisPointer: { type: 'shadow' },
 			formatter: (params: { dataIndex: number }[]) => tooltipText(params[0].dataIndex)
 		},
-		// 兩側多留空間給長條末端的數值標籤，手機寬度下不與指標名稱重疊
-		xAxis: { type: 'value', min: -170, max: 170, show: false },
+		xAxis: { type: 'value', show: false },
 		yAxis: { type: 'category', inverse: true, data: TEAM_METRIC_KEYS.map(metricLabel), axisTick: { show: false } },
 		series: sides.map(({ side, bars }) => ({
 			type: 'bar',

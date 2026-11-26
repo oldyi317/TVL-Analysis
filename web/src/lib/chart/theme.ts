@@ -2,6 +2,8 @@
 const FONT =
 	"system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif";
 
+export const LEGEND_FONT_SIZE = 14;
+
 export const CHART_COLORS = {
 	light: {
 		bg: '#f3f4f9',
@@ -33,7 +35,7 @@ export function chartTheme(mode: 'light' | 'dark'): object {
 		color: [...c.series],
 		backgroundColor: 'transparent',
 		textStyle: { fontFamily: FONT, color: c.text },
-		legend: { icon: 'circle', textStyle: { color: c.muted, fontSize: 14, fontFamily: FONT } },
+		legend: { icon: 'circle', textStyle: { color: c.muted, fontSize: LEGEND_FONT_SIZE, fontFamily: FONT } },
 		tooltip: {
 			backgroundColor: c.surface,
 			borderWidth: 0,

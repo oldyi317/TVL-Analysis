@@ -93,6 +93,22 @@ describe('量率散點', () => {
 		expect(option.legend.data).not.toContain(medians.name);
 	});
 
+	it('圖例隨圖寬折行時底部跟著多留高度，不蓋到橫軸軸名；橫軸刻度標籤放不下就隱藏', () => {
+		const names = ['屏東台電', '雲林美津濃', '臺北國北獅', '桃園臺產', '獅子王'];
+		const teams = names.map((name, i) => ({ team_id: i + 1, name, color: '#123456' }));
+		const points = teams.map((t) => ({ ...view.points[0], team_id: t.team_id, team: t.name }));
+		const option = volumeRateOption({ ...view, teams, points }) as any;
+		expect(option.grid.bottom).toBeUndefined();
+		const byMinWidth = (minWidth: number) => option.media.find((m: any) => m.query?.minWidth === minWidth).option;
+		expect(option.legend.data).toEqual(names);
+		expect([466, 272, 196].map(byMinWidth)).toEqual([
+			{ grid: { bottom: 64 } },
+			{ grid: { bottom: 86 } },
+			{ grid: { bottom: 108 } }
+		]);
+		expect(option.xAxis.axisLabel.hideOverlap).toBe(true);
+	});
+
 	it('點的提示顯示球員、隊名、次數與率', () => {
 		const option = volumeRateOption(view) as any;
 		const tip = option.tooltip.formatter({ data: option.series[0].data[0] });
