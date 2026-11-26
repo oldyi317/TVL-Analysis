@@ -26,20 +26,56 @@ const advancedEntry = (over: { below_threshold?: boolean; team_sets?: number; bl
 		pr: {}
 	}) as unknown as PageProps['data']['advanced'];
 
-function renderPage(games: number, advanced: PageProps['data']['advanced'] = null) {
+function renderPage(games: number, advanced: PageProps['data']['advanced'] = null, gameLog: PageProps['data']['gameLog'] = []) {
 	const props: PageProps = {
 		params: { season: season.name, group: player.group, player: String(player.player_id) },
 		form: null,
 		data: {
 			season, group: player.group, player, team: found.team,
 			stats: { ...stats, position: 'MB', games, sets_played: null },
-			advanced, distribution: null, gameLog: []
+			advanced, distribution: null, gameLog
 		}
 	};
 	return render(PlayerPage, { props, context });
 }
 
 const page = (games: number, advanced: PageProps['data']['advanced'] = null) => renderPage(games, advanced).body;
+
+describe('球員頁逐場紀錄', () => {
+	it('有紀錄就顯示欄列標頭、單場連結、季後賽與黃金決勝局標記', () => {
+		const game: PageProps['data']['gameLog'][number] = {
+			gameId: 310, date: '2026-03-21', stage: '總決賽', side: 'away', opponent: '對手隊',
+			won: false, score: [2, 3], golden: true, playedGoldenSet: true, sets: 5,
+			stats: {
+				sets_played: null, total_points: 9, attack_points: 7, block_points: 1, serve_points: 1,
+				attack_total: 22, serve_total: 11, receive_excellent: 6, receive_total: 13,
+				dig_excellent: 3, dig_total: 5, set_excellent: 0, set_total: 0
+			}
+		};
+		const regular = { ...game, gameId: 300, date: '2026-02-01', stage: '例行賽', playedGoldenSet: false };
+		const html = renderPage(2, null, [regular, game]).body.replace(/<!--[\s\S]*?-->/g, '');
+		expect(html).toContain('逐場紀錄');
+		const table = html.match(/<table[^>]*>[\s\S]*?<\/table>/)![0];
+		const headers = Array.from(table.matchAll(/<th scope="col"[^>]*>([^<]*)<\/th>/g), (m) => m[1]);
+		expect(headers).toEqual([
+			'日期', '對手', '勝敗', '得分', '攻擊', '攔網', '發球', '攻擊次數', '發球次數', '接發球', '防守', '舉球'
+		]);
+		expect(table).toContain('scope="row"');
+		expect(table).toContain(`href="/${season.name}/${player.group}/matches/310/"`);
+		expect(table).toContain(`href="/${season.name}/${player.group}/matches/300/"`);
+		expect(table).not.toContain('例行賽');
+		for (const text of ['客場', '對手隊', '敗', '2 : 3', '總決賽', '黃金決勝局']) expect(table).toContain(text);
+		expect(table).toMatch(/>6／13<\/td>[\s\S]*?>3／5<\/td>[\s\S]*?>—<\/td>/);
+		expect(table).not.toMatch(/出賽局數|合計|<tfoot/);
+		expect(html).toContain('不含黃金決勝局');
+	});
+
+	it('沒有場次時連區塊標題與表下說明都不顯示', () => {
+		const html = page(0);
+		expect(html).not.toContain('逐場紀錄');
+		expect(html).not.toContain('不含黃金決勝局');
+	});
+});
 
 describe('球員頁 head', () => {
 	it('title 維持原格式，並帶 Open Graph 與絕對網址', () => {

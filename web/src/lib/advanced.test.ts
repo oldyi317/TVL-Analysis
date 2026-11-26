@@ -24,6 +24,7 @@ import {
 	inPrPool,
 	noPrReason,
 	playerGameLog,
+	playerGameLogRows,
 	toGameStats,
 	trendOption,
 	trendPoints,
@@ -58,8 +59,8 @@ const match = (game_id: number, date: string, home: number, away: number, sets: 
 	({
 		game_id,
 		date,
-		home: { team_id: home },
-		away: { team_id: away },
+		home: { team_id: home, name: `球隊${home}` },
+		away: { team_id: away, name: `球隊${away}` },
 		sets
 	}) as MatchView;
 
@@ -121,11 +122,56 @@ describe('playerGameLog', () => {
 		expect(playerGameLog(data, withSets, 21, 'men', 7).map((e) => e.sets)).toEqual([null, 3]);
 	});
 
+	it('逐場紀錄同日以場次編號較大者在前，保留趨勢原有的同日順序', () => {
+		const schedule = [
+			match(27, '2026-01-10', 10, 20),
+			match(29, '2026-01-03', 30, 10),
+			match(14, '2026-01-10', 10, 40)
+		];
+		const data = boxes(schedule.map((m) => game(m.game_id, { home: [stat(7)] })));
+		const log = playerGameLog(data, schedule, 21, 'men', 7);
+		expect(playerGameLogRows(log).map((g) => g.gameId)).toEqual([27, 14, 29]);
+		expect(log.map((g) => g.gameId)).toEqual([29, 27, 14]);
+	});
+
+	it('季中換隊以每場統計所在的一方判對手、勝敗與局數比', () => {
+		const straightSets: [number, number][] = [[25, 21], [25, 18], [25, 22]];
+		const schedule = [
+			{ ...match(3, '2026-01-17', 10, 30, straightSets), stage: '例行賽' },
+			{ ...match(8, '2026-03-14', 10, 20, straightSets), stage: '總決賽' }
+		];
+		const data = boxes([game(3, { home: [stat(7)] }), game(8, { away: [stat(7)] })]);
+		expect(playerGameLog(data, schedule, 21, 'men', 7)).toMatchObject([
+			{ gameId: 3, opponent: '球隊30', side: 'home', won: true, score: [3, 0], stage: '例行賽' },
+			{ gameId: 8, opponent: '球隊10', side: 'away', won: false, score: [0, 3], stage: '總決賽' }
+		]);
+	});
+
 	it('別人的列、別的賽季與組別不算', () => {
 		const data = boxes([game(1, { home: [stat(8)] })]);
 		expect(playerGameLog(data, matches, 21, 'men', 7)).toEqual([]);
 		expect(playerGameLog(data, matches, 99, 'men', 8)).toEqual([]);
 		expect(playerGameLog(data, matches, 21, 'women', 8)).toEqual([]);
+	});
+
+	it('逐場紀錄依日期倒序，只有局數的全零列略過，逐場趨勢仍保留原序與零分', () => {
+		const zero = stat(7, {
+			attack_total: 0, attack_points: 0, block_points: 0, serve_total: 0, serve_points: 0,
+			receive_total: 0, receive_excellent: 0, dig_total: 0, dig_excellent: 0,
+			set_total: 0, set_excellent: 0, total_points: 0
+		});
+		const data = boxes([
+			game(1, { home: [zero] }),
+			game(2, { away: [{ ...zero, dig_total: 1 }], golden_set: { home: [], away: [zero] } }),
+			game(3, { home: [stat(7)], golden_set: { home: [{ ...zero, serve_total: 1 }], away: [] } })
+		]);
+		const log = playerGameLog(data, matches, 21, 'men', 7);
+		expect(playerGameLogRows(log).map((e) => e.gameId)).toEqual([3, 2]);
+		expect(playerGameLogRows(log).map((e) => e.playedGoldenSet)).toEqual([true, false]);
+		expect(log.map((e) => e.golden)).toEqual([true, false, true]);
+		expect(trendPoints(log, 'points').map((p) => [p.date, p.value])).toEqual([
+			['2026-01-03', 0], ['2026-01-10', 0], ['2026-01-17', 13]
+		]);
 	});
 
 	it('黃金局名單含這位球員才標 golden，且黃金局數據不併入', () => {
