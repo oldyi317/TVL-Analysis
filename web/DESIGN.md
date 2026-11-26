@@ -322,7 +322,7 @@ components:
 
 斷點只有三個：
 - **≥40rem**：球隊列表變兩欄；數據磚內距從 12px 升到 16px、數字從 `--num-md` 升到 `--num-lg`。
-- **≥48rem**（單場數據表）／**容器 ≥44rem**（戰績表，用 `@container standings`）：隱藏「詳細」展開鈕，直接顯示寬欄。
+- **≥48rem**（單場數據表）／**容器 ≥44rem**（戰績表，用 `@container standings`）：隱藏「詳細」展開鈕，直接顯示寬欄。球員頁逐場紀錄同樣是 48rem，但看容器寬度（`container-type: inline-size`，見「展開式明細表」）。
 - **≥64rem**：頂部列與分頁列隱藏；`body` 變成 `grid-template-columns: var(--sidebar) minmax(0, 1fr)`（`--sidebar: 17rem`）；SiteHeader 的 `<header>` 變成 sticky、`100dvh` 高、可捲的左側 sidebar（內距 24px，右側 1px `--card-edge` 邊線，淺色模式透明）；內容欄 `.wrap` 內距 32px／48px、`max-inline-size: 72rem`、靠左貼 sidebar 不置中，頁尾隨內容欄落在 sidebar 右側。卡片內距升到 24px，h1 升到 1.75rem。首頁雙欄 `minmax(0,1fr) 22rem`（左：最新比分＋下一場；右：戰績摘要）、賽事列表雙欄、球隊列表三欄。
 
 導覽在兩種版型各輸出一套，CSS 只顯示其中一套（斷點 64rem，`+layout.svelte`）：<64rem 顯示頂部列 TopBar 與分頁列 TabBar，SiteHeader（側欄）`display: none`；≥64rem 顯示 SiteHeader（站名、非官方註記、組別 SegmentNav、賽季 SeasonSwitch、七項 SiteNav），TopBar 與 TabBar `display: none`。兩套共用 `nav.ts` 的 `NAV_ITEMS`（導覽項定義）、`SegmentNav` 與 `SeasonSwitch`；桌面 sidebar 的賽季 chip 改 `auto-fit minmax(3.75rem,1fr)` 網格，導覽項顯示圖示。
@@ -440,6 +440,11 @@ h2 同列右側，`--text-sm` 700 靛藍；hover `accent-strong` + underline。�
 
 ### 名次表 `.rank-table`
 排行榜卡與單場前三名的表格共用 `app.css` 的 `.rank-table`，表頭、列、名次欄、數值欄、球員入口與姓名的規格同下方排行榜卡，另外定下那一段沒寫的三個值：數值欄 72px 寬、表頭不換行、姓名行高 1.4。元件裡只寫與它不同的部分：排行榜卡的數值欄表頭可換行（比率榜項目名最長六個字）；單場前三名的數值大一級（`--text-lg`），球員欄是列標題（`th scope="row"`，字重 400），姓名下方放球隊簡稱。歷史紀錄的表格（RecordBoard）還是自己的一份，尚未改用。
+
+### 展開式明細表 `.expand-table`
+單場數據表（BoxScoreTable）與球員頁逐場紀錄（PlayerGameLog）共用 `app.css` 的 `.expand-table`（加在 `<table>` 上，緊接在 `.rank-table` 之後）：窄版只顯示主要欄位，其餘五欄（攻擊次數、發球次數、接發球、防守、舉球）收進每列的展開列，寬版全部顯示。共用的部分：表格骨架、表頭與儲存格內距、表頭字級、數字欄與得分格（`td.points`）、寬欄的顯示與隱藏（`.wide`、`.toggle`、`.detail`）、展開鈕的尺寸與置中、展開列底色與 `dl` 骨架、視覺隱藏文字 `.sr`。選擇器包在 `:where()` 裡，元件自己的樣式一定蓋得過。元件各自留的是兩邊值不同的部分：展開列內距與 `dl` 間距、`dt`／`dd` 字級字重、列分隔線畫在 `tr` 還是 `td`、展開鈕圖示與 hover，以及各自獨有的欄位（單場數據表的背號與球員欄；逐場紀錄的日期連結、對手格標記、勝敗與局數比、表下說明）。五欄的定義與「到位／總數」組字只有一份（`boxScore.ts` 的 `detailCols`）：接發球欄名預設「接發球」，單場數據表覆寫成「接發」；分母為 0 時單場數據表顯示「0／0」、逐場紀錄顯示「—」。
+
+何時算寬由元件決定：共用樣式只提供開關 `--wide-cols`（寬欄的 display）與 `--expander`（展開鈕與展開列的 display），元件在自己的查詢裡對 `table` 設 `--wide-cols: table-cell; --expander: none`。單場數據表用 `@media (min-width: 48rem)`；逐場紀錄用 `@container (min-width: 48rem)`，因為球員頁在 1024px 出現側欄，表格可用寬度比 900px 時還小，要看容器而不是視窗。
 
 ### 排行榜卡 LeaderBoard
 每個統計項目一張卡，h2（項目名）在卡外。白卡內距縮為 8px／12px（≥64rem 12px／16px）讓表格貼邊；表頭「名次／球員／<項目>」14px 600 附註灰、底線 1px `--line`。列 48px、列線 1px `--line`（最後一列不畫）：名次欄 40px 寬置中放 RankDot；球員欄為 32px 隊徽圓標（sm）+ 姓名 700 `text` 連到球員頁（hover 靛藍 + underline offset 0.2em，過長省略）+ 位置 14px 附註灰；數值欄右對齊 800 tabular。球員入口涵蓋隊徽、姓名與位置，至少 44px 高；連結名稱為姓名，讀屏描述補當季隊名、位置與稱號。比率榜數值沿用進階數據格式，數值下附 14px／600／附註灰的「分子／分母」；h2 下附同樣字級的匯出門檻文字。門檻為出賽局數 ≥5（無局數時出賽場數 ≥2）且該項分母 ≥10；同值依分母較大者優先。單榜空狀態保留標題、門檻與項目 chip，卡內使用 EmptyState。預設只列前 10 名，第 10 名並列時全部顯示；超過時卡底加一顆 44px 全寬展開鈕（上緣 1px `--line`、透明底、14px 700 靛藍，同區塊連結樣式，hover `accent-strong` + underline），文案「展開全部（N 人）」／「收合」，`aria-expanded` + `aria-controls` 指向表格；收合時把該卡捲回吸頂項目列下方（`scroll-margin-block-start: calc(var(--tap) + 2 * var(--space-2) + var(--space-4))`，即 44px 列高 + 16px 上下留白 + 16px 間距）。頁面層：h1 下一行 14px 附註灰「統計至 X 月 X 日 · 共 N 場」，其後本季四王與榜單類型分段。格線間距 24px，≥40rem 兩欄、≥64rem 三欄。缺位置就省略位置；隊名與隊徽均依當季資料，由 TeamBadge 處理無圖退回；榜單提供隊名 label，隊徽圖片 alt 或退回圓標的 `role="img"`／`aria-label` 承載當季簡稱。整組無數據時只顯示 EmptyState「本季尚無單場數據」，不顯示四王、分段與 chip。
