@@ -3,7 +3,7 @@ import BoxScoreTable from './components/BoxScoreTable.svelte';
 import { describe, expect, it } from 'vitest';
 import type { BoxScoresData, MatchTopBoard, PlayerEntry, StatRow } from '#lib/data/types.js';
 import { seasons, seasonTeam, teams } from '#lib/site.js';
-import { findBoxScore, toBoxScoreView, toMatchTopView } from './boxScore.js';
+import { detailCols, findBoxScore, goodOverTotal, toBoxScoreView, toMatchTopView } from './boxScore.js';
 
 const stat = (player_id: number, over: Partial<StatRow> = {}): StatRow => ({
 	player_id,
@@ -117,6 +117,46 @@ it('單場數據表不顯示出賽局數欄與相關提示', () => {
 	expect(html).not.toContain('局數');
 	expect(html).not.toContain('官網單場數據不提供出賽局數');
 	expect(html).not.toContain('>null<');
+});
+
+it('單場數據表其餘五欄的欄名用「接發」，總數為 0 顯示「0／0」', () => {
+	const view = toBoxScoreView(
+		{ game_id: 9, home: [stat(1)], away: [], golden_set: null, top_performers: [] },
+		'men',
+		[]
+	);
+	const html = render(BoxScoreTable, { props: { rows: view.home, label: '測試' } }).body.replace(/<!--[\s\S]*?-->/g, '');
+	const headers = Array.from(html.matchAll(/<th scope="col" class="num wide[^"]*">([^<]*)<\/th>/g), (m) => m[1]);
+	expect(headers).toEqual(['攻擊次數', '發球次數', '接發', '防守', '舉球']);
+	expect(html).toContain('6／12');
+	expect(html).toContain('4／9');
+	expect(html).toContain('0／0');
+});
+
+describe('goodOverTotal 與 detailCols', () => {
+	const s = {
+		attack_total: 20, serve_total: 8,
+		receive_excellent: 6, receive_total: 12,
+		dig_excellent: 4, dig_total: 9,
+		set_excellent: 0, set_total: 0
+	};
+
+	it('五欄順序與預設欄名，接發球欄名用 CONTEXT 的用詞', () => {
+		const cols = detailCols();
+		expect(cols.map((c) => c.label)).toEqual(['攻擊次數', '發球次數', '接發球', '防守', '舉球']);
+		expect(cols.map((c) => c.value(s))).toEqual(['20', '8', '6／12', '4／9', '0／0']);
+	});
+
+	it('receiveLabel 只改接發球那一欄', () => {
+		expect(detailCols({ receiveLabel: '接發' }).map((c) => c.label)).toEqual(['攻擊次數', '發球次數', '接發', '防守', '舉球']);
+	});
+
+	it('zeroTotal 只在總數為 0 時取代顯示，不給就照樣組成「0／0」', () => {
+		expect(detailCols({ zeroTotal: '—' }).map((c) => c.value(s))).toEqual(['20', '8', '6／12', '4／9', '—']);
+		expect(goodOverTotal(0, 0)).toBe('0／0');
+		expect(goodOverTotal(0, 0, '—')).toBe('—');
+		expect(goodOverTotal(3, 5, '—')).toBe('3／5');
+	});
 });
 
 describe('toMatchTopView', () => {

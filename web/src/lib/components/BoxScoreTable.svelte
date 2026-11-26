@@ -1,16 +1,8 @@
 <script module lang="ts">
-	import type { BoxRow } from '#lib/boxScore.js';
+	import { detailCols, type BoxRow } from '#lib/boxScore.js';
 	import { positionLabel } from '#lib/site.js';
 
-	const goodOverTotal = (good: number, total: number) => `${good}／${total}`;
-
-	const DETAIL_COLS: { label: string; value: (r: BoxRow) => string }[] = [
-		{ label: '攻擊次數', value: (r) => String(r.attack_total) },
-		{ label: '發球次數', value: (r) => String(r.serve_total) },
-		{ label: '接發', value: (r) => goodOverTotal(r.receive_excellent, r.receive_total) },
-		{ label: '防守', value: (r) => goodOverTotal(r.dig_excellent, r.dig_total) },
-		{ label: '舉球', value: (r) => goodOverTotal(r.set_excellent, r.set_total) }
-	];
+	const DETAIL_COLS = detailCols({ receiveLabel: '接發' });
 </script>
 
 <script lang="ts">
@@ -24,7 +16,7 @@
 </script>
 
 <div class="scroll">
-	<table aria-label={label}>
+	<table class="expand-table" aria-label={label}>
 		<thead>
 			<tr>
 				<th scope="col" class="num">背號</th>
@@ -49,7 +41,7 @@
 							<span class="pos">{positionLabel(row.position)}</span>
 						</div>
 					</td>
-					<td class="num strong">{row.total_points}</td>
+					<td class="num points">{row.total_points}</td>
 					<td class="num">{row.attack_points}</td>
 					<td class="num">{row.block_points}</td>
 					<td class="num">{row.serve_points}</td>
@@ -91,23 +83,11 @@
 	}
 
 	table {
-		inline-size: 100%;
-		border-collapse: collapse;
 		font-size: var(--text-md);
 	}
 
 	th {
-		padding: var(--space-2) var(--space-1);
-		font-size: var(--text-sm);
-		font-weight: 600;
-		color: var(--text-muted);
-		text-align: start;
-		white-space: nowrap;
 		border-block-end: 1px solid var(--line);
-	}
-
-	td {
-		padding: var(--space-2) var(--space-1);
 	}
 
 	.main td {
@@ -119,22 +99,9 @@
 		border-block-start: 0;
 	}
 
-	.num {
-		text-align: end;
-	}
-
 	td.num {
-		font-size: var(--text-md);
-		font-weight: 600;
 		line-height: 1;
-		color: var(--text-muted);
 		white-space: nowrap;
-	}
-
-	td.strong {
-		font-size: var(--num-md);
-		font-weight: var(--weight-num);
-		color: var(--text);
 	}
 
 	td.player {
@@ -163,25 +130,6 @@
 		color: var(--text-muted);
 	}
 
-	.toggle {
-		inline-size: var(--tap);
-		padding: 0;
-	}
-
-	button {
-		display: flex;
-		border-radius: var(--radius-full);
-		align-items: center;
-		justify-content: center;
-		inline-size: var(--tap);
-		block-size: var(--tap);
-		padding: 0;
-		background: none;
-		border: 0;
-		color: var(--text-muted);
-		cursor: pointer;
-	}
-
 	.chevron {
 		inline-size: 0.5rem;
 		block-size: 0.5rem;
@@ -195,37 +143,16 @@
 		transform: translateY(25%) rotate(-135deg);
 	}
 
-	.detail {
-		display: none;
-	}
-
-	.detail.open {
-		display: table-row;
-	}
-
 	.detail td {
-		background: var(--surface-2);
 		padding: var(--space-2) var(--space-4) var(--space-4);
 	}
 
 	dl {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
 		gap: var(--space-3);
-		margin: 0;
 	}
 
 	dl > div {
 		min-inline-size: 0;
-	}
-
-	dt {
-		font-size: var(--text-sm);
-		color: var(--text-muted);
-	}
-
-	dd {
-		margin: 0;
 	}
 
 	dd b {
@@ -234,28 +161,10 @@
 		line-height: 1.2;
 	}
 
-	.sr {
-		position: absolute;
-		inline-size: 1px;
-		block-size: 1px;
-		overflow: hidden;
-		clip-path: inset(50%);
-		white-space: nowrap;
-	}
-
-	.wide {
-		display: none;
-	}
-
 	@media (min-width: 48rem) {
-		.wide {
-			display: table-cell;
-		}
-
-		.toggle,
-		.detail,
-		.detail.open {
-			display: none;
+		table {
+			--wide-cols: table-cell;
+			--expander: none;
 		}
 	}
 </style>

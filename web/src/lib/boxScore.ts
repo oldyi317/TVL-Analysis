@@ -20,6 +20,34 @@ export type BoxRow = {
 	set_total: number;
 };
 
+type DetailStats = Pick<
+	BoxRow,
+	| 'attack_total'
+	| 'serve_total'
+	| 'receive_excellent'
+	| 'receive_total'
+	| 'dig_excellent'
+	| 'dig_total'
+	| 'set_excellent'
+	| 'set_total'
+>;
+
+type DetailCol ={ label: string; value: (s: DetailStats) => string };
+
+// zeroTotal：總數為 0 時顯示的字；不給就照樣組成「0／0」
+export const goodOverTotal = (good: number, total: number, zeroTotal?: string): string =>
+	total === 0 && zeroTotal !== undefined ? zeroTotal : `${good}／${total}`;
+
+export function detailCols({ receiveLabel = '接發球', zeroTotal }: { receiveLabel?: string; zeroTotal?: string } = {}): DetailCol[] {
+	return [
+		{ label: '攻擊次數', value: (s) => String(s.attack_total) },
+		{ label: '發球次數', value: (s) => String(s.serve_total) },
+		{ label: receiveLabel, value: (s) => goodOverTotal(s.receive_excellent, s.receive_total, zeroTotal) },
+		{ label: '防守', value: (s) => goodOverTotal(s.dig_excellent, s.dig_total, zeroTotal) },
+		{ label: '舉球', value: (s) => goodOverTotal(s.set_excellent, s.set_total, zeroTotal) }
+	];
+}
+
 export type BoxScoreView = {
 	home: BoxRow[];
 	away: BoxRow[];

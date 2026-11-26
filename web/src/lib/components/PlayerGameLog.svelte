@@ -1,14 +1,7 @@
 <script module lang="ts">
-	import type { GameStats } from '#lib/advanced.js';
+	import { detailCols } from '#lib/boxScore.js';
 
-	const pair = (good: number, total: number) => total === 0 ? '—' : `${good}／${total}`;
-	const details = [
-		{ label: '攻擊次數', value: (s: GameStats) => s.attack_total },
-		{ label: '發球次數', value: (s: GameStats) => s.serve_total },
-		{ label: '接發球', value: (s: GameStats) => pair(s.receive_excellent, s.receive_total) },
-		{ label: '防守', value: (s: GameStats) => pair(s.dig_excellent, s.dig_total) },
-		{ label: '舉球', value: (s: GameStats) => pair(s.set_excellent, s.set_total) }
-	];
+	const details = detailCols({ zeroTotal: '—' });
 </script>
 
 <script lang="ts">
@@ -27,7 +20,7 @@
 	<section aria-labelledby="{uid}-title">
 		<h2 id="{uid}-title">逐場紀錄</h2>
 		<div class="card log-card">
-			<table aria-labelledby="{uid}-title" aria-describedby="{uid}-note">
+			<table class="expand-table" aria-labelledby="{uid}-title" aria-describedby="{uid}-note">
 				<thead>
 					<tr>
 						<th scope="col">日期</th>
@@ -115,30 +108,20 @@
 		padding: var(--space-2);
 	}
 
-	table {
-		width: 100%;
-		border-collapse: collapse;
-	}
-
-	th, td {
-		text-align: start;
-		padding: var(--space-2) var(--space-1);
-	}
-
-	thead th, small, dt, p {
+	small, p {
 		font-size: var(--text-sm);
 		font-weight: 600;
 		color: var(--text-muted);
 	}
 
-	thead th {
-		white-space: nowrap;
+	dt {
+		font-weight: 600;
 	}
 
 	.main {
 		position: relative;
 		border-block-start: 1px solid var(--line);
-		height: 3rem;
+		block-size: 3rem;
 	}
 
 	.main:hover, .main:focus-within {
@@ -175,37 +158,8 @@
 		white-space: nowrap;
 	}
 
-	.num {
-		text-align: end;
-	}
-
-	td.num {
-		color: var(--text-muted);
-		font-weight: 600;
-	}
-
-	td.points {
-		color: var(--text);
-		font-weight: var(--weight-num);
-		font-size: var(--num-md);
-	}
-
-	.toggle {
-		width: var(--tap);
-		padding: 0;
-	}
-
 	button {
 		position: relative;
-		display: grid;
-		place-items: center;
-		width: var(--tap);
-		height: var(--tap);
-		border: 0;
-		border-radius: var(--radius-full);
-		background: transparent;
-		color: var(--text-muted);
-		cursor: pointer;
 	}
 
 	button:hover {
@@ -216,28 +170,19 @@
 		transform: rotate(180deg);
 	}
 
-	.wide, .year, .detail {
+	.year {
 		display: none;
 	}
 
-	.detail.open {
-		display: table-row;
-	}
-
 	.detail td {
-		background: var(--surface-2);
 		padding: var(--space-3);
 	}
 
 	dl {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
 		gap: var(--space-2);
-		margin: 0;
 	}
 
 	dd {
-		margin: 0;
 		font-weight: var(--weight-num);
 	}
 
@@ -247,19 +192,11 @@
 		border-block-start: 1px solid var(--line);
 	}
 
-	.sr {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		overflow: hidden;
-		clip-path: inset(50%);
-	}
-
 	@container (min-width: 21rem) and (max-width: 26rem) {
 		.log-card {
 			padding-inline: var(--space-1);
 		}
-		th, td {
+		th:where(:not(.toggle)), td:where(:not(.toggle)) {
 			padding-inline: 2px;
 		}
 		.opponent {
@@ -271,17 +208,15 @@
 	}
 
 	@container (min-width: 48rem) {
+		table {
+			--wide-cols: table-cell;
+			--expander: none;
+		}
 		.log-card {
 			padding: var(--space-3) var(--space-4);
 		}
-		.wide {
-			display: table-cell;
-		}
 		.year {
 			display: inline;
-		}
-		.toggle, .detail.open {
-			display: none;
 		}
 	}
 </style>

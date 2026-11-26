@@ -394,6 +394,101 @@ button.chip {
 	text-underline-offset: 0.2em;
 }
 
+/* 展開式明細表：單場數據表與球員頁逐場紀錄共用。窄版只顯示主要欄位，其餘欄收進每列的展開列；
+   寬版全部顯示、不要展開鈕。何時算寬由元件決定：元件在自己的 @media／@container 裡對 table 設
+   --wide-cols: table-cell 與 --expander: none，顯示與隱藏的規則只在這裡。
+   選擇器包在 :where() 裡，元件自己的樣式一定蓋得過；同一屬性兩邊值不同的宣告留在元件 */
+:where(.expand-table) {
+	inline-size: 100%;
+	border-collapse: collapse;
+}
+
+:where(.expand-table) :is(th, td) {
+	padding: var(--space-2) var(--space-1);
+	text-align: start;
+}
+
+:where(.expand-table) thead th {
+	color: var(--text-muted);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+:where(.expand-table) .num {
+	text-align: end;
+}
+
+:where(.expand-table td.num) {
+	color: var(--text-muted);
+	font-weight: 600;
+}
+
+:where(.expand-table td.points) {
+	color: var(--text);
+	font-size: var(--num-md);
+	font-weight: var(--weight-num);
+}
+
+:where(.expand-table) .wide {
+	display: var(--wide-cols, none);
+}
+
+:where(.expand-table) .toggle {
+	display: var(--expander, table-cell);
+	inline-size: var(--tap);
+	padding: 0;
+}
+
+:where(.expand-table) button {
+	display: grid;
+	place-items: center;
+	inline-size: var(--tap);
+	block-size: var(--tap);
+	padding: 0;
+	border: 0;
+	border-radius: var(--radius-full);
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+:where(.expand-table) .detail {
+	display: none;
+}
+
+:where(.expand-table) .detail:where(.open) {
+	display: var(--expander, table-row);
+}
+
+:where(.expand-table .detail) td {
+	background: var(--surface-2);
+}
+
+:where(.expand-table) dl {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	margin: 0;
+}
+
+:where(.expand-table) dt {
+	color: var(--text-muted);
+	font-size: var(--text-sm);
+}
+
+:where(.expand-table) dd {
+	margin: 0;
+}
+
+:where(.expand-table) .sr {
+	position: absolute;
+	inline-size: 1px;
+	block-size: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
 .stat-tile {
 	--tile: var(--series-1);
 	position: relative;
