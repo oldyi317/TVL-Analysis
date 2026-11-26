@@ -1,3 +1,5 @@
+import { fromBase64Url } from './webpush';
+
 const GROUPS = ['men', 'women', 'both'] as const;
 
 type GroupPref = (typeof GROUPS)[number];
@@ -38,6 +40,17 @@ function parseKey(value: unknown, length: number): string | null {
 	return key.length === length && /^[A-Za-z0-9_-]+$/.test(key) ? key : null;
 }
 
+// 長度與字元都對，也可能不是 P-256 曲線上的點：發送時匯入會失敗，那一筆送不出去也不會被刪，一直佔著上限。
+// 所以登記時就照發送時的參數匯入一次，匯不進去的不收。
+async function isP256PublicKey(p256dh: string): Promise<boolean> {
+	try {
+		await crypto.subtle.importKey('raw', fromBase64Url(p256dh), { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 // 同一個推播位址的不同寫法（主機大小寫、:443、#片段）正規化成同一個字串，才不會各佔一筆。
 function normalizeEndpoint(endpoint: string): URL | null {
 	try {
@@ -54,7 +67,7 @@ function isAllowedEndpoint(url: URL): boolean {
 	return EXACT_HOSTS.has(url.hostname) || HOST_SUFFIXES.some((suffix) => url.hostname.endsWith(suffix));
 }
 
-export function parseSubscribe(body: unknown): Parsed<Subscription> {
+export async function parseSubscribe(body: unknown): Promise<Parsed<Subscription>> {
 	if (!isRecord(body) || !isRecord(body.keys)) return { ok: false, error: 'invalid_body' };
 	const { endpoint, results, today, group } = body;
 	const p256dh = parseKey(body.keys.p256dh, 87);
@@ -65,6 +78,7 @@ export function parseSubscribe(body: unknown): Parsed<Subscription> {
 	if (!isGroupPref(group)) return { ok: false, error: 'invalid_body' };
 	const url = normalizeEndpoint(endpoint);
 	if (!url || !isAllowedEndpoint(url)) return { ok: false, error: 'endpoint_not_allowed' };
+	if (!(await isP256PublicKey(p256dh))) return { ok: false, error: 'invalid_body' };
 	return { ok: true, value: { endpoint: url.href, p256dh, auth, wantResults: results, wantToday: today, group } };
 }
 

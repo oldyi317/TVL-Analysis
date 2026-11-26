@@ -57,7 +57,7 @@ curl "http://localhost:8787/cdn-cgi/local/scheduled?cron=*+*+*+*+*&time=17952264
 | 欄位 | 型別 | 說明 |
 |---|---|---|
 | `endpoint` | 字串，1–2,048 字 | 推播位址。必須是 `https`、不帶帳號密碼與連接埠、主機在「推播服務網域」清單內 |
-| `keys.p256dh` | 字串 | base64url，解開是 65 bytes（無填充 87 字）；結尾的 `=` 填充可有可無 |
+| `keys.p256dh` | 字串 | base64url，解開是 65 bytes（無填充 87 字），而且要是 P-256 曲線上的未壓縮公鑰（瀏覽器給的都是）；結尾的 `=` 填充可有可無 |
 | `keys.auth` | 字串 | base64url，解開是 16 bytes（無填充 22 字） |
 | `results` | 布林 | 收不收賽果摘要 |
 | `today` | 布林 | 收不收今日賽事 |
@@ -83,7 +83,7 @@ curl "http://localhost:8787/cdn-cgi/local/scheduled?cron=*+*+*+*+*&time=17952264
 |---|---|---|
 | 200 | `{"ok": true}` | 登記、改偏好或退訂成功 |
 | 204 | （無） | 預檢（`OPTIONS`）通過 |
-| 400 | `{"error": "invalid_body"}` | 不是 JSON、結構不對、型別不對、長度不對、兩種都不收、組別不認得 |
+| 400 | `{"error": "invalid_body"}` | 不是 JSON、結構不對、型別不對、長度不對、`p256dh` 不是曲線上的公鑰、兩種都不收、組別不認得 |
 | 400 | `{"error": "endpoint_not_allowed"}` | 推播位址不是 `https`、主機不在清單內、帶帳號密碼或連接埠 |
 | 403 | `{"error": "origin_not_allowed"}` | 沒帶 `Origin`，或 `Origin` 不是允許的網站 origin（預檢也一樣，且不帶 CORS 標頭） |
 | 404 | `{"error": "not_found"}` | 路徑不是上面兩個 |

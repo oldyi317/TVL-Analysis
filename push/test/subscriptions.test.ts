@@ -4,7 +4,8 @@ import worker from '../src/index';
 
 const ORIGIN = 'https://vstat.tw';
 const ENDPOINT = 'https://fcm.googleapis.com/fcm/send/abc123';
-const P256DH = 'B' + 'x'.repeat(86);
+// RFC 8291 附錄 A 測試向量的接收端公鑰：登記入口只收 P-256 曲線上的點
+const P256DH = 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4';
 const AUTH = 'y'.repeat(22);
 
 function subscription(overrides: Record<string, unknown> = {}) {
@@ -255,6 +256,9 @@ describe('請求內容不合就拒絕且不寫入', () => {
 		['是陣列', [subscription()]],
 		['少了 keys', { ...subscription(), keys: undefined }],
 		['p256dh 長度不對', subscription({ keys: { p256dh: P256DH.slice(1), auth: AUTH } })],
+		['p256dh 解開全是 0', subscription({ keys: { p256dh: 'A'.repeat(87), auth: AUTH } })],
+		['p256dh 開頭是 0x04 但不在曲線上', subscription({ keys: { p256dh: 'B' + 'A'.repeat(86), auth: AUTH } })],
+		['p256dh 開頭不是 0x04', subscription({ keys: { p256dh: 'B' + 'x'.repeat(86), auth: AUTH } })],
 		['auth 有非 base64url 字元', subscription({ keys: { p256dh: P256DH, auth: 'y'.repeat(21) + '+' } })],
 		['推播位址不是字串', subscription({ endpoint: 42 })],
 		['推播位址超過 2048 字', subscription({ endpoint: 'https://fcm.googleapis.com/fcm/send/' + 'a'.repeat(2048) })],
