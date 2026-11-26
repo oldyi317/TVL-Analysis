@@ -59,7 +59,7 @@ async function readJson(request: Request): Promise<{ body: unknown } | { status:
 }
 
 async function subscribe(body: unknown, env: Env): Promise<Response> {
-	const parsed = parseSubscribe(body);
+	const parsed = await parseSubscribe(body);
 	if (!parsed.ok) return json(400, { error: parsed.error });
 	const saved = await upsertSubscription(env.DB, parsed.value, new Date());
 	return saved ? json(200, { ok: true }) : json(503, { error: 'subscription_limit_reached' });
