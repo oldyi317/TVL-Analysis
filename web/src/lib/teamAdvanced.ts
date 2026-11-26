@@ -177,7 +177,12 @@ export function sourcesBarOption(c: TeamComparison, teamName: (id: number) => st
 		].join('<br/>');
 	return {
 		legend: { data: SCORE_SOURCES.map((s) => s.label) },
-		grid: { top: 36, bottom: 8, left: 8, right: 16, containLabel: true },
+		grid: { top: 8 },
+		// 四個圖例項目排成一行約 406px；圖更窄時折成兩行，底部多留一行的高度，橫軸標籤也減到不互相重疊
+		media: [
+			{ query: { maxWidth: 480 }, option: { grid: { bottom: 64 }, xAxis: { interval: 50 } } },
+			{ option: { grid: { bottom: 40 }, xAxis: { interval: 20 } } }
+		],
 		tooltip: {
 			trigger: 'axis',
 			axisPointer: { type: 'shadow' },
