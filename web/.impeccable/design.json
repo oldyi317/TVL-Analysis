@@ -214,22 +214,6 @@
       },
       "series-4": {
         "role": "secondary",
-        "displayName": "序列淡靛（圖表限定）",
-        "canonical": "#6b72d4",
-        "dark": "#5f66b8",
-        "tonalRamp": [
-          "#11143b",
-          "#1d2163",
-          "#282f8a",
-          "#343cb2",
-          "#4d56cb",
-          "#757bd7",
-          "#b0b4e8",
-          "#ebecf9"
-        ]
-      },
-      "series-5": {
-        "role": "secondary",
         "displayName": "序列青（圖表限定）",
         "canonical": "#0b9279",
         "dark": "#3fd2b6",
@@ -242,6 +226,22 @@
           "#59f2d6",
           "#a0f8e8",
           "#e7fdf9"
+        ]
+      },
+      "series-5": {
+        "role": "secondary",
+        "displayName": "序列淡靛（圖表限定）",
+        "canonical": "#6b72d4",
+        "dark": "#5f66b8",
+        "tonalRamp": [
+          "#11143b",
+          "#1d2163",
+          "#282f8a",
+          "#343cb2",
+          "#4d56cb",
+          "#757bd7",
+          "#b0b4e8",
+          "#ebecf9"
         ]
       },
       "win": {

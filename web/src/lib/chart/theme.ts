@@ -9,7 +9,7 @@ export const CHART_COLORS = {
 		text: '#262b4a',
 		muted: '#5f6788',
 		line: '#c9cde2',
-		series: ['#5258da', '#e2457f', '#cc6a00', '#6b72d4', '#0b9279']
+		series: ['#5258da', '#e2457f', '#cc6a00', '#0b9279', '#6b72d4']
 	},
 	dark: {
 		bg: '#12141f',
@@ -17,7 +17,7 @@ export const CHART_COLORS = {
 		text: '#eceef8',
 		muted: '#9ba1bc',
 		line: '#3a405a',
-		series: ['#7b82f0', '#f66fa0', '#f8b36a', '#5f66b8', '#3fd2b6']
+		series: ['#7b82f0', '#f66fa0', '#f8b36a', '#3fd2b6', '#5f66b8']
 	}
 } as const;
 

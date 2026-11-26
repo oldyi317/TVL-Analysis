@@ -249,6 +249,8 @@ type BarOption = {
 	yAxis: { data: string[]; inverse: boolean };
 	xAxis: { min: number; max: number };
 	legend: { data: string[] };
+	grid: object;
+	media: object[];
 	series: { name: string; stack: string; data: { value: number; itemStyle: { opacity: number } }[] }[];
 	tooltip: { formatter: (p: { dataIndex: number }[]) => string };
 };
@@ -273,6 +275,15 @@ describe('sourcesBarOption', () => {
 		expect(o.series[0].data.map((d) => d.itemStyle.opacity)).toEqual([1, 0.35]);
 		expect(o.xAxis).toMatchObject({ min: 0, max: 100 });
 		expect(o.legend.data).toHaveLength(4);
+	});
+
+	it('圖例在圖的下方：寬 480px 以下替折成兩行的圖例留高度、橫軸只標 0／50／100，更寬時留一行、每 20 標一次', () => {
+		const o = option();
+		expect(o.grid).toEqual({ top: 8 });
+		expect(o.media).toEqual([
+			{ query: { maxWidth: 480 }, option: { grid: { bottom: 64 }, xAxis: { interval: 50 } } },
+			{ option: { grid: { bottom: 40 }, xAxis: { interval: 20 } } }
+		]);
 	});
 
 	it('tooltip 顯示四項得分數與佔比，並註明推算值', () => {

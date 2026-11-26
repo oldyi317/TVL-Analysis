@@ -15,8 +15,8 @@ colors:
   series-1: "#5258da"
   series-2: "#e2457f"
   series-3: "#cc6a00"
-  series-4: "#6b72d4"
-  series-5: "#0b9279"
+  series-4: "#0b9279"
+  series-5: "#6b72d4"
   tile-1: "#5258da"
   tile-2: "#e2457f"
   tile-3: "#cc6a00"
@@ -40,8 +40,8 @@ colors:
   series-1-dark: "#7b82f0"
   series-2-dark: "#f66fa0"
   series-3-dark: "#f8b36a"
-  series-4-dark: "#5f66b8"
-  series-5-dark: "#3fd2b6"
+  series-4-dark: "#3fd2b6"
+  series-5-dark: "#5f66b8"
   win-dark: "#3ed48e"
   win-tint-dark: "#153a2a"
   loss-dark: "#f2728a"
@@ -268,7 +268,7 @@ components:
 
 ### Secondary（資料序列）
 - **序列靛**（`series-1`）、**序列粉**（`series-2`）、**序列橘**（`series-3`）：數據磚底色（勝／敗／積分、三大項）與圖表前三條序列。深色模式整組換成更亮的對應色。
-- **序列淡靛**（`series-4`）、**序列青**（`series-5`）：只在 ECharts 圖表第四、五條序列出現，介面上不使用。
+- **序列青**（`series-4`）、**序列淡靛**（`series-5`）：只在 ECharts 圖表第四、五條序列出現，介面上不使用。序列淡靛與序列靛太接近，排在最後；目前沒有圖畫到第五條。
 - **數據磚底**（`tile-1/2/3`）：與淺色序列靛／粉／橘同值，但**兩種模式同值**——它是彩色面，白字對比在深色模式也要固定；`BigStat` 與球隊頁的磚只讀這三個 token，不讀 `series-*`。
 
 ### Tertiary（語意）
@@ -288,7 +288,7 @@ components:
 
 **榮耀標籤規則：勝與王用警示黃。** 賽事卡勝方旁的「勝」與排行榜的「得分王、攻擊王、攔網王、發球王」標籤用 `warn-tint`／`warn-ink`；王的稱號只出現在四個稱號榜的第一名列（並列都加）與本季四王卡。戰績表近五場的 W／L 仍用 `win`／`loss` 語意色。兩者不互換。
 
-**The Contrast Gate Rule.** `src/lib/tokens.test.ts` 直接解析 `app.css`，淺深兩套各自檢查：`text`、`text-muted`、`win`、`loss`、`warn`、`focus` 對 `bg` 與 `surface`、`on-accent` 對 `accent`、`warn-ink` 對 `warn-tint` 皆 ≥4.5:1；`line` 對 `surface` ≥1.5:1；每條 `series` 對 `bg` ≥3:1；兩套模式必須定義同一組鍵名。`text-muted`、`line`、`series-*`、`win`、`loss` 的值都是為了過這道門而比原始規格更深的，改色先跑 `npm run test:unit`。
+**The Contrast Gate Rule.** `src/lib/tokens.test.ts` 直接解析 `app.css`，淺深兩套各自檢查：`text`、`text-muted`、`win`、`loss`、`warn`、`focus` 對 `bg` 與 `surface`、`on-accent` 對 `accent`、`warn-ink` 對 `warn-tint` 皆 ≥4.5:1；`line` 對 `surface` ≥1.5:1；每條 `series` 對 `bg` ≥3:1；前四條 `series` 兩兩 OKLab ΔE ≥15（目前圖表最多同時畫四條）；兩套模式必須定義同一組鍵名。`text-muted`、`line`、`series-*`、`win`、`loss` 的值都是為了過這道門而比原始規格更深的，改色先跑 `npm run test:unit`。
 
 **The Two Copies Rule.** 色值只准在三處出現：`src/app.css`（唯一來源）、`src/lib/chart/theme.ts`（ECharts 不吃 CSS 變數）、`src/lib/color.ts` 的 `SURFACE`（隊色對比計算）。後兩處由 `tokens.test.ts` 鎖住必須與 `app.css` 相同；其他檔案一律 `var(--token)`。
 
