@@ -1,6 +1,7 @@
 import leadersJson from '#lib/data/leaders.json';
 import type { GroupLeaders, LeaderBoard, LeaderRow, LeadersData, VolumeRate, VolumeRatePoint } from '#lib/data/types.js';
 import { escapeHtml } from '#lib/advanced.js';
+import { bottomLegendMedia } from '#lib/chart/legend.js';
 import { teamPalette } from '#lib/color.js';
 import { teamOf, teams as allTeams, type Group, type SeasonTeam } from '#lib/site.js';
 import { STAT_LABELS } from '#lib/statLabels.js';
@@ -86,15 +87,25 @@ export function volumeRateOption(v: VolumeRateView): object | null {
 			data: [{ xAxis: v.median_count }, { yAxis: v.median_rate }]
 		}
 	};
+	const names = v.teams.map((t) => t.name);
 	return {
-		legend: { data: v.teams.map((t) => t.name) },
-		grid: { top: 32, right: 24, bottom: 64 },
+		legend: { data: names },
+		grid: { top: 32, right: 24 },
+		// 圖例與繪圖區之間留 40 放橫軸軸名
+		media: bottomLegendMedia(names, 40),
 		tooltip: {
 			trigger: 'item',
 			formatter: ({ data: d }: { data: VolumeRateDatum }) =>
 				`${escapeHtml(d.name)}（${escapeHtml(d.team)}）<br/>${v.countLabel}：${d.value[0]}<br/>${v.rateLabel}：${d.value[1]}%`
 		},
-		xAxis: { type: 'value', name: v.countLabel, nameLocation: 'middle', nameGap: 28, scale: true },
+		xAxis: {
+			type: 'value',
+			name: v.countLabel,
+			nameLocation: 'middle',
+			nameGap: 28,
+			scale: true,
+			axisLabel: { hideOverlap: true }
+		},
 		yAxis: { type: 'value', name: `${v.rateLabel}（%）`, nameTextStyle: { align: 'left' }, scale: true },
 		series: [...byTeam, medians]
 	};

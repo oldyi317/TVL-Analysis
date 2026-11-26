@@ -125,7 +125,7 @@ JS 端需要色值的只有兩處：`color.ts` 的 `SURFACE`（算隊色變體�
 
 - 字級：軸標籤與圖例 14px、tooltip 16px；手機不縮小。
 - 配色：軸線與格線用 `--line`、文字用 `--text-muted`、tooltip 底用 `--surface`。序列有隊伍語意時，呼叫端用 `teamPalette()` 的 `inkLight`/`inkDark` 自己設 series 顏色（主題沒有隊伍概念）；沒有隊伍語意時用主題的中性序列，每色對背景 ≥ 3:1（`tokens.test.ts` 守著）。
-- tooltip `confine: true`，不會超出手機畫面；圖例放底部，`Chart.svelte` 會自動把 grid 底部留給圖例（`legend.show: false` 時不留）。
+- tooltip `confine: true`，不會超出手機畫面；圖例放底部，`Chart.svelte` 會自動把 grid 底部留給圖例（`legend.show: false` 時不留）。自動留的是一行的高度；圖例項目是隊名這類數量與長度不固定的內容時，呼叫端用 `chart/legend.ts` 的 `bottomLegendMedia()` 依圖寬留出折行後的高度。
 - 類別軸標籤不抽稀（`interval: 0`），類別多於手機放得下時由呼叫端自己縮減或改橫向長條。
 - 只驗容器存在，不驗圖內容（父 spec 的接縫決定）。
 
