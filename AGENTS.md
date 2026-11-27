@@ -47,11 +47,7 @@ npm 一律在 `web/` 執行：shell 呼叫明確指定 workdir 為 `web/`，檔�
   只供 cup 21 以前的歷史補抓，已自每日更新停用（ADR 0009）；cup 13–19 的回填只走
   `season_backfill`（隔離 DB、`--db` 必填，見 `docs/ops/season-backfill.md`）；其格式不可從程式碼推斷，
   改爬蟲前先實際抓一頁看回應。
-- **每週登錄名單會變動**：企業排球每週登錄球員可能不同。`match_stats_writer` 與歷史工具 `stats_crawler` 遇到
-  週登錄外的球員分兩路：該賽季有賽季報名名單時，依「同隊姓名 → 同隊背號」比對，
-  對不上就略過並 warning，不插入 `players`；整季沒有報名名單（legacy）時才以全域
-  姓名比對、查無就動態新增。比對到人但查無登錄時補一筆 `source='backfill'`
-  登錄（背號/位置先取自 `season_rosters`，查無才 NULL），下游計算仍須對缺值防禦。
+- **週登錄每週會變動**：企業排球每週登錄球員可能不同。把一列單場數據對到球員、寫週登錄與統計列的程式在 `src/etl/player_stats_store.py`，三個寫入者共用：官網寫入器 `match_stats_writer`、歷史工具 `season_backfill` 與 `stats_crawler`。它只認賽季報名名單（同隊姓名 → 同隊背號），不插入 `players`、不 commit；對不上時官網寫入器整場不寫，歷史工具略過該列並 warning。整季沒有賽季報名名單時，官網寫入器整季不寫；歷史工具才以全域姓名比對、查無就動態新增（這一段留在 `stats_crawler` 的 `PlayerResolver`）。球員有單場數據卻查無該週週登錄時補一筆 `source='backfill'` 的補登錄（只有 `stats_crawler` 的統計路徑會寫；背號/位置先取自 `season_rosters`，查無才 NULL），下游計算仍須對缺值防禦。
 - **daily-crawl 失敗或排程異常先讀 `docs/ops/daily-crawl.md`**：每日更新跑在 GitHub 雲端 runner，先看 run log 哪一步失敗、官網是否回封鎖頁；備援期可手動改用筆電 runner。
 - **要撤掉 service worker、訪客卡在舊版，或要回答更新多久到使用者手上，先讀 `docs/ops/service-worker.md`**：裝進訪客瀏覽器的
   service worker 靠 revert 撤不掉，要部署自我移除版（建置時設 `VITE_SW_REMOVE=1`）。

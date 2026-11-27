@@ -15,6 +15,10 @@ from bs4 import BeautifulSoup
 
 from pathlib import Path
 
+from src.etl.player_stats_store import (
+    NoSeasonRoster, Registration, SeasonRosterMatcher, StatLine, fill_missing_registration,
+    normalize_name, write_page_registration, write_stat_lines,
+)
 from src.utils.db_config import DB_PATH, get_connection
 from src.utils.logger import get_logger
 from src.utils.seasons import Season, get_season, resolve_date_in_season
@@ -28,11 +32,6 @@ from src.utils.teams import UnknownTeamError, resolve_team
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
 
 logger = get_logger(__name__)
-
-
-def normalize_name(name: str) -> str:
-    """正規化姓名：去除全形/半形空白、轉小寫、去除不間斷空白。"""
-    return re.sub(r"[\s\u3000\xa0]+", "", name).lower()
 
 
 def safe_int(val: str) -> int | None:
@@ -98,53 +97,21 @@ class PlayerResolver:
     def __init__(self, conn: sqlite3.Connection, cup_id: int):
         self.conn = conn
         self.cup_id = cup_id
-        self.legacy = conn.execute(
-            "SELECT 1 FROM season_rosters WHERE cup_id = ? LIMIT 1", (cup_id,)
-        ).fetchone() is None
-        self.name_map = build_name_to_pid(conn) if self.legacy else {}
-        if self.legacy:
-            logger.warning("cup_id=%d 無賽季報名名單，沿用現行姓名比對與動態新增", cup_id)
         self.new_players = 0
-        self.matched_by_jersey: dict[str, None] = {}
-        self.skipped: dict[str, None] = {}
-        self._rosters: dict[tuple[int, str], list[tuple[int, str, int | None]]] = {}
-
-    def _roster(self, team_id: int, gender: str) -> list[tuple[int, str, int | None]]:
-        key = (team_id, gender)
-        if key not in self._rosters:
-            self._rosters[key] = self.conn.execute(
-                """SELECT p.player_id, p.name, sr.jersey_number
-                   FROM season_rosters sr JOIN players p ON p.player_id = sr.player_id
-                   WHERE sr.team_id = ? AND sr.gender = ? AND sr.cup_id = ?""",
-                (team_id, gender, self.cup_id),
-            ).fetchall()
-        return self._rosters[key]
-
-    def _team_label(self, team_id: int, gender: str) -> str:
-        row = self.conn.execute(
-            "SELECT team_name FROM teams WHERE team_id = ? AND gender = ?", (team_id, gender)
-        ).fetchone()
-        return row[0] if row else f"team_id={team_id}"
+        try:
+            self._matcher = SeasonRosterMatcher(conn, cup_id)
+        except NoSeasonRoster:
+            self._matcher = None
+            logger.warning("cup_id=%d 無賽季報名名單，沿用現行姓名比對與動態新增", cup_id)
+        self.legacy = self._matcher is None
+        self.name_map = build_name_to_pid(conn) if self.legacy else {}
+        self.matched_by_jersey = {} if self.legacy else self._matcher.matched_by_jersey
+        self.skipped = {} if self.legacy else self._matcher.skipped
 
     def resolve(self, team_id: int, gender: str, name: str, jersey_number: int | None) -> int | None:
-        if self.legacy:
+        if self._matcher is None:
             return self._resolve_legacy(gender, name)
-        roster = self._roster(team_id, gender)
-        norm = normalize_name(name)
-        for pid, local_name, _ in roster:
-            if normalize_name(local_name) == norm:
-                return pid
-        team = self._team_label(team_id, gender)
-        if jersey_number is not None:
-            for pid, local_name, jersey in roster:
-                if jersey == jersey_number:
-                    self.matched_by_jersey[
-                        f"  外部 {name}　本地 {local_name}　{team}　背號 {jersey_number}"
-                    ] = None
-                    return pid
-        logger.warning("[略過] %s 背號 %s 外部球員 %s 對不上賽季報名名單", team, jersey_number, name)
-        self.skipped[f"  {team}　背號 {jersey_number}　外部姓名 {name}"] = None
-        return None
+        return self._matcher.match(team_id, gender, name, jersey_number)
 
     def _resolve_legacy(self, gender: str, name: str) -> int:
         key = (normalize_name(name), gender)
@@ -160,14 +127,11 @@ class PlayerResolver:
         return pid
 
     def log_reports(self) -> None:
-        if self.matched_by_jersey:
-            logger.warning("姓名不同、以背號對上（%d 筆）：\n%s", len(self.matched_by_jersey), "\n".join(self.matched_by_jersey))
-        else:
-            logger.info("姓名不同、以背號對上：無")
-        if self.skipped:
-            logger.warning("略過（對不上賽季報名名單，%d 筆）：\n%s", len(self.skipped), "\n".join(self.skipped))
-        else:
-            logger.info("略過：無")
+        if self._matcher is not None:
+            self._matcher.log_reports()
+            return
+        logger.info("姓名不同、以背號對上：無")
+        logger.info("略過：無")
 
 
 def fetch_player_stats(season: Season, team_id: int, ext_player_id: int) -> list[dict]:
@@ -302,7 +266,7 @@ def collect_player_rows(
     db_team_id: int,
     gender: str,
     player: dict,
-) -> tuple[list[tuple], int]:
+) -> tuple[list[tuple[int, StatLine]], int]:
     """單一球員：解析身分 → 抓單場數據 → 去重 → 反查登錄，回傳 (待寫入 rows, 已存在而跳過的筆數)。"""
     name = player["name"]
     player_id = resolver.resolve(db_team_id, gender, name, player.get("jersey_number"))
@@ -332,32 +296,17 @@ def collect_player_rows(
         except WeekLabelUnresolved as e:
             logger.warning("球員 [%s] %s，該筆統計不寫", name, e)
             continue
-        rows.append((
-            rid, r["match_date"], r["opponent"], r["sets_played"],
-            r["attack_total"], r["attack_points"], r["block_points"],
-            r["serve_total"], r["serve_points"],
-            r["receive_total"], r["receive_excellent"],
-            r["dig_total"], r["dig_excellent"],
-            r["set_total"], r["set_excellent"], r["total_points"],
-            r["is_golden_set"],
-        ))
+        line = StatLine(
+            match_date=r["match_date"], opponent=r["opponent"], sets_played=r["sets_played"],
+            attack_total=r["attack_total"], attack_points=r["attack_points"], block_points=r["block_points"],
+            serve_total=r["serve_total"], serve_points=r["serve_points"],
+            receive_total=r["receive_total"], receive_excellent=r["receive_excellent"],
+            dig_total=r["dig_total"], dig_excellent=r["dig_excellent"],
+            set_total=r["set_total"], set_excellent=r["set_excellent"], total_points=r["total_points"],
+            is_golden_set=r["is_golden_set"],
+        )
+        rows.append((rid, line))
     return rows, skipped
-
-
-def insert_stat_rows(conn: sqlite3.Connection, rows: list[tuple]) -> None:
-    """批次寫入 player_match_stats（17 欄，第一欄為 registration_id）。"""
-    conn.executemany(
-        """INSERT INTO player_match_stats
-           (registration_id, match_date, opponent, sets_played,
-            attack_total, attack_points, block_points,
-            serve_total, serve_points,
-            receive_total, receive_excellent,
-            dig_total, dig_excellent,
-            set_total, set_excellent, total_points,
-            is_golden_set)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        rows,
-    )
 
 
 def print_summary(
@@ -444,7 +393,7 @@ def main(incremental: bool = False, cup_id: int = CUP_ID):
             if not rows:
                 continue
 
-            insert_stat_rows(conn, rows)
+            write_stat_lines(conn, rows)
             total_inserted += len(rows)
 
             time.sleep(0.5)
@@ -657,68 +606,17 @@ def resolve_week_label(
     )
 
 
-def upsert_roster_registration(
-    conn: sqlite3.Connection, player_id: int, row: dict,
-    week_label: str, week_start_date: str, source: str = "match_page",
-    cup_id: int = CUP_ID,
-) -> None:
-    """upsert 一筆 roster_registrations。source 預設 'match_page'（真實出賽名單）；
-    統計寫入路徑查無登錄時會傳入 source='backfill'，補一筆背號/位置皆 NULL 的登錄。
-    cup_id 為賽季限定鍵：不同賽季的同名週次是不同登錄，不互相覆寫。"""
-    conn.execute(
-        """
-        INSERT INTO roster_registrations
-            (player_id, team_id, gender, cup_id, week_label, week_start_date, jersey_number, position, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (player_id, team_id, gender, cup_id, week_label) DO UPDATE SET
-            jersey_number = excluded.jersey_number,
-            position = excluded.position,
-            week_start_date = excluded.week_start_date,
-            source = excluded.source
-        """,
-        (player_id, row["team_id"], row["team_gender"], cup_id, week_label,
-         week_start_date, row["jersey_number"], row["position"], source),
-    )
-
-
 def resolve_registration_for_stats(
     conn: sqlite3.Connection, player_id: int, team_id: int, gender: str, match_date: str,
-    cup_id: int = CUP_ID,
+    cup_id: int,
 ) -> int:
-    """
-    統計寫入路徑（Player.ashx 逐場數值統計，無背號/位置資訊）解析 registration_id。
-    解析順序：match_date -> resolve_week_label() 取 week_label -> 以含 cup_id 的
-    五元鍵查 roster_registrations -> 查無則以 source='backfill' 補一筆
-    （背號/位置取自該賽季 season_rosters，查無才 NULL，不得用其他資料推測填入）。
-    """
+    """依比賽日期決定週次，查無該週週登錄時補登錄。"""
     week_label, week_start_date = resolve_week_label(conn, match_date, "", cup_id)
-
-    rid = find_registration_id(conn, player_id, team_id, gender, cup_id, week_label)
-    if rid is not None:
-        return rid
-
-    sr = conn.execute(
-        "SELECT jersey_number, position FROM season_rosters WHERE player_id = ? AND gender = ? AND cup_id = ?",
-        (player_id, gender, cup_id),
-    ).fetchone()
-    jersey, position = sr if sr else (None, None)
-    upsert_roster_registration(
-        conn, player_id,
-        {"team_id": team_id, "team_gender": gender, "jersey_number": jersey, "position": position},
-        week_label, week_start_date, source="backfill", cup_id=cup_id,
+    reg = Registration(
+        player_id=player_id, team_id=team_id, gender=gender, cup_id=cup_id,
+        week_label=week_label, week_start_date=week_start_date,
     )
-    return find_registration_id(conn, player_id, team_id, gender, cup_id, week_label)
-
-
-def find_registration_id(
-    conn: sqlite3.Connection, player_id: int, team_id: int, gender: str, cup_id: int, week_label: str,
-) -> int | None:
-    row = conn.execute(
-        """SELECT registration_id FROM roster_registrations
-           WHERE player_id = ? AND team_id = ? AND gender = ? AND cup_id = ? AND week_label = ?""",
-        (player_id, team_id, gender, cup_id, week_label),
-    ).fetchone()
-    return row[0] if row else None
+    return fill_missing_registration(conn, reg)
 
 
 def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
@@ -760,7 +658,11 @@ def crawl_all_rosters(conn: sqlite3.Connection, cup_id: int = CUP_ID) -> dict:
             )
             if player_id is None:
                 continue
-            upsert_roster_registration(conn, player_id, row, week_label, week_start_date, cup_id=cup_id)
+            reg = Registration(
+                player_id=player_id, team_id=row["team_id"], gender=row["team_gender"], cup_id=cup_id,
+                week_label=week_label, week_start_date=week_start_date,
+            )
+            write_page_registration(conn, reg, jersey_number=row["jersey_number"], position=row["position"])
             stats["registrations_upserted"] += 1
 
         conn.commit()

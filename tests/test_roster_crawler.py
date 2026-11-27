@@ -10,7 +10,7 @@ from src.utils.seasons import Season, get_season
 from tests.conftest import connect_seeded
 from src.etl.stats_crawler import (
     WeekLabelUnresolved, crawl_all_rosters, fetch_match_roster, fetch_player_stats,
-    resolve_week_label, upsert_roster_registration,
+    resolve_week_label,
     build_name_to_pid,
 )
 
@@ -160,25 +160,6 @@ def test_resolve_week_label_scopes_week_start_date_by_season(tmp_db_path):
     week_label, week_start = resolve_week_label(conn, "2026-01-04", "", 21)
     assert week_label == "例行賽 Week 1"
     assert week_start == "2026-01-04"
-    conn.close()
-
-
-def test_upsert_roster_registration_is_idempotent(tmp_db_path):
-    from pathlib import Path as _P
-    schema_sql = (_P(__file__).resolve().parents[1] / "sql" / "schema.sql").read_text(encoding="utf-8")
-    conn = sqlite3.connect(tmp_db_path)
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.executescript(schema_sql)
-    conn.execute("INSERT INTO teams (team_id, team_name, gender) VALUES (5, '新北中纖', 'F')")
-    conn.execute("INSERT INTO players (name, gender) VALUES ('張瓈文', 'F')")
-    pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
-
-    row = {"team_id": 5, "team_gender": "F", "jersey_number": 2, "position": "OP"}
-    upsert_roster_registration(conn, pid, row, "例行賽 Week 1", "2025-11-01")
-    upsert_roster_registration(conn, pid, row, "例行賽 Week 1", "2025-11-01")  # 重跑一次
-
-    rows = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()
-    assert rows[0] == 1, "重跑 upsert 不應產生重複列"
     conn.close()
 
 

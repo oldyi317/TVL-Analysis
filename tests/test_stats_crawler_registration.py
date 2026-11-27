@@ -33,7 +33,7 @@ def test_resolve_registration_reuses_existing_match_page_row(tmp_db_path):
         )
         conn.commit()
 
-        rid = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01")
+        rid = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01", cup_id=21)
 
         row = conn.execute(
             "SELECT source, jersey_number FROM roster_registrations WHERE registration_id = ?",
@@ -49,7 +49,7 @@ def test_resolve_registration_creates_backfill_when_missing(tmp_db_path):
     try:
         pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
 
-        rid = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01")
+        rid = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01", cup_id=21)
 
         row = conn.execute(
             "SELECT source, jersey_number, position, week_label FROM roster_registrations WHERE registration_id = ?",
@@ -65,8 +65,8 @@ def test_resolve_registration_is_idempotent(tmp_db_path):
     try:
         pid = conn.execute("SELECT player_id FROM players").fetchone()[0]
 
-        rid_first = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01")
-        rid_second = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01")
+        rid_first = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01", cup_id=21)
+        rid_second = resolve_registration_for_stats(conn, pid, 5, "F", "2025-11-01", cup_id=21)
 
         assert rid_first == rid_second
         count = conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone()[0]
@@ -103,7 +103,7 @@ def test_resolve_registration_scopes_by_cup_id(tmp_db_path):
 
 
 def test_collect_player_rows_drops_records_without_round_name_and_writes_no_registration(tmp_db_path, monkeypatch, caplog):
-    """#61：統計路徑遇到 matches 尚無 round_name 的場次，該筆不寫、也不補 backfill 登錄。"""
+    """#61：統計路徑遇到 matches 尚無 round_name 的場次，該筆不寫、也不寫補登錄。"""
     conn = _make_conn(tmp_db_path)
     try:
         def record(match_date):
@@ -121,7 +121,7 @@ def test_collect_player_rows_drops_records_without_round_name_and_writes_no_regi
         with caplog.at_level("WARNING", logger="src.etl.stats_crawler"):
             rows, skipped = collect_player_rows(None, resolver, 1, 5, "F", {"ext_player_id": 1, "name": "張瓈文"})
 
-        assert [r[1] for r in rows] == ["2025-11-01"]
+        assert [line.match_date for _, line in rows] == ["2025-11-01"]
         assert skipped == 0
         labels = [r[0] for r in conn.execute("SELECT week_label FROM roster_registrations").fetchall()]
         assert labels == ["例行賽 Week 1"]

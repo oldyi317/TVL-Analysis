@@ -1,0 +1,169 @@
+{
+  "player_match_stats": {
+    "count": 4,
+    "rows": [
+      {
+        "attack_points": 5,
+        "attack_total": 13,
+        "block_points": 2,
+        "cup_id": 21,
+        "dig_excellent": 9,
+        "dig_total": 18,
+        "is_golden_set": 0,
+        "match_date": "2025-11-01",
+        "opponent": "義力營造",
+        "player_gender": "F",
+        "player_name": "名單新球員",
+        "receive_excellent": 3,
+        "receive_total": 7,
+        "serve_points": 1,
+        "serve_total": 16,
+        "set_excellent": 34,
+        "set_total": 88,
+        "sets_played": 4,
+        "team_id": 5,
+        "total_points": 8,
+        "week_label": "例行賽 Week 1"
+      },
+      {
+        "attack_points": 16,
+        "attack_total": 35,
+        "block_points": 4,
+        "cup_id": 21,
+        "dig_excellent": 11,
+        "dig_total": 20,
+        "is_golden_set": 0,
+        "match_date": "2025-11-01",
+        "opponent": "義力營造",
+        "player_gender": "F",
+        "player_name": "張瓈文",
+        "receive_excellent": 12,
+        "receive_total": 24,
+        "serve_points": 2,
+        "serve_total": 18,
+        "set_excellent": 5,
+        "set_total": 7,
+        "sets_played": 4,
+        "team_id": 5,
+        "total_points": 22,
+        "week_label": "例行賽 Week 1"
+      },
+      {
+        "attack_points": 10,
+        "attack_total": 26,
+        "block_points": 3,
+        "cup_id": 21,
+        "dig_excellent": 9,
+        "dig_total": 17,
+        "is_golden_set": 0,
+        "match_date": "2025-11-08",
+        "opponent": "義力營造",
+        "player_gender": "F",
+        "player_name": "張瓈文",
+        "receive_excellent": 8,
+        "receive_total": 19,
+        "serve_points": 1,
+        "serve_total": 14,
+        "set_excellent": 4,
+        "set_total": 6,
+        "sets_played": 3,
+        "team_id": 5,
+        "total_points": 15,
+        "week_label": "例行賽 Week 2"
+      },
+      {
+        "attack_points": 19,
+        "attack_total": 42,
+        "block_points": 6,
+        "cup_id": 21,
+        "dig_excellent": 15,
+        "dig_total": 27,
+        "is_golden_set": 0,
+        "match_date": "2025-11-08",
+        "opponent": "義力營造",
+        "player_gender": "F",
+        "player_name": "統計新球員",
+        "receive_excellent": 14,
+        "receive_total": 31,
+        "serve_points": 3,
+        "serve_total": 20,
+        "set_excellent": 4,
+        "set_total": 12,
+        "sets_played": 5,
+        "team_id": 5,
+        "total_points": 28,
+        "week_label": "例行賽 Week 2"
+      }
+    ]
+  },
+  "players": {
+    "count": 3,
+    "rows": [
+      {
+        "gender": "F",
+        "name": "名單新球員"
+      },
+      {
+        "gender": "F",
+        "name": "張瓈文"
+      },
+      {
+        "gender": "F",
+        "name": "統計新球員"
+      }
+    ]
+  },
+  "roster_registrations": {
+    "count": 4,
+    "rows": [
+      {
+        "cup_id": 21,
+        "gender": "F",
+        "jersey_number": 11,
+        "player_gender": "F",
+        "player_name": "名單新球員",
+        "position": "S",
+        "source": "match_page",
+        "team_id": 5,
+        "week_label": "例行賽 Week 1",
+        "week_start_date": "2025-11-01"
+      },
+      {
+        "cup_id": 21,
+        "gender": "F",
+        "jersey_number": 2,
+        "player_gender": "F",
+        "player_name": "張瓈文",
+        "position": "OP",
+        "source": "match_page",
+        "team_id": 5,
+        "week_label": "例行賽 Week 1",
+        "week_start_date": "2025-11-01"
+      },
+      {
+        "cup_id": 21,
+        "gender": "F",
+        "jersey_number": null,
+        "player_gender": "F",
+        "player_name": "張瓈文",
+        "position": null,
+        "source": "backfill",
+        "team_id": 5,
+        "week_label": "例行賽 Week 2",
+        "week_start_date": "2025-11-08"
+      },
+      {
+        "cup_id": 21,
+        "gender": "F",
+        "jersey_number": null,
+        "player_gender": "F",
+        "player_name": "統計新球員",
+        "position": null,
+        "source": "backfill",
+        "team_id": 5,
+        "week_label": "例行賽 Week 2",
+        "week_start_date": "2025-11-08"
+      }
+    ]
+  }
+}

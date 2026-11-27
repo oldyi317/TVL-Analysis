@@ -12,8 +12,8 @@ from collections.abc import Callable
 import requests
 
 from src.etl.official_box_score import fetch_page, parse_box_score
-from src.etl.stats_crawler import (
-    PlayerResolver, find_registration_id, insert_stat_rows, upsert_roster_registration,
+from src.etl.player_stats_store import (
+    NoSeasonRoster, Registration, SeasonRosterMatcher, StatLine, write_page_registration, write_stat_lines,
 )
 from src.utils.constants import OFFICIAL_BOX_SCORE_FROM_CUP
 from src.utils.db_config import get_connection
@@ -96,13 +96,13 @@ def _week_start(conn: sqlite3.Connection, match: dict) -> str:
 
 
 def _resolve_players(
-    resolver: PlayerResolver, team_id: int, gender: str, team: dict,
+    resolver: SeasonRosterMatcher, team_id: int, gender: str, team: dict,
 ) -> tuple[list[tuple[int, dict]], list[str]]:
     resolved, unresolved, seen = [], [], set()
     for row in team["unresolved_rows"]:
         unresolved.append(f"{team['name']} #{row['jersey_number']}（姓名空白、數值非零）")
     for player in team["players"]:
-        pid = resolver.resolve(team_id, gender, player["name"], player["jersey_number"])
+        pid = resolver.match(team_id, gender, player["name"], player["jersey_number"])
         if pid is None:
             unresolved.append(f"{team['name']} #{player['jersey_number']} {player['name']}（對不上賽季報名名單）")
         elif pid in seen:
@@ -118,30 +118,28 @@ def _write_side(conn: sqlite3.Connection, match: dict, team_id: int, resolved: l
     opponent = match["away_team"] if team_id == match["home_team_id"] else match["home_team"]
     rows = []
     for pid, p in resolved:
-        upsert_roster_registration(
-            conn, pid,
-            {"team_id": team_id, "team_gender": gender,
-             "jersey_number": p["jersey_number"], "position": p["position"]},
-            match["round_name"], week_start, source="match_page", cup_id=match["cup_id"],
+        reg = Registration(
+            player_id=pid, team_id=team_id, gender=gender, cup_id=match["cup_id"],
+            week_label=match["round_name"], week_start_date=week_start,
         )
+        rid = write_page_registration(conn, reg, jersey_number=p["jersey_number"], position=p["position"])
         if p["all_zero"] and not p["total_points"]:
             continue
-        rows.append((
-            find_registration_id(conn, pid, team_id, gender, match["cup_id"], match["round_name"]),
-            match["match_date"], opponent, None,
-            p["attack_total"], p["attack_points"], p["block_points"],
-            p["serve_total"], p["serve_points"],
-            p["receive_total"], p["receive_excellent"],
-            p["dig_total"], p["dig_excellent"],
-            p["set_total"], p["set_excellent"], p["total_points"],
-            match["is_golden_set"],
-        ))
-    insert_stat_rows(conn, rows)
+        line = StatLine(
+            match_date=match["match_date"], opponent=opponent, is_golden_set=match["is_golden_set"],
+            attack_total=p["attack_total"], attack_points=p["attack_points"], block_points=p["block_points"],
+            serve_total=p["serve_total"], serve_points=p["serve_points"],
+            receive_total=p["receive_total"], receive_excellent=p["receive_excellent"],
+            dig_total=p["dig_total"], dig_excellent=p["dig_excellent"],
+            set_total=p["set_total"], set_excellent=p["set_excellent"], total_points=p["total_points"],
+        )
+        rows.append((rid, line))
+    write_stat_lines(conn, rows)
     return len(rows)
 
 
 def write_match(
-    conn: sqlite3.Connection, match: dict, result: dict, resolver: PlayerResolver, allow_partial: bool = False,
+    conn: sqlite3.Connection, match: dict, result: dict, resolver: SeasonRosterMatcher, allow_partial: bool = False,
 ) -> tuple[int, int]:
     """單場寫入（呼叫端負責 transaction）。回傳 (統計列數, 登錄數)。"""
     label = _match_label(match)
@@ -180,7 +178,7 @@ def write_match_stats(
         raise RuntimeError("呼叫端有未提交的交易，寫入器的 rollback 會連帶丟掉它")
     _warn_unresolved_teams(conn)
     summary = {"written": [], "skipped": []}
-    resolvers: dict[int, PlayerResolver] = {}
+    matchers: dict[int, SeasonRosterMatcher] = {}
     for index, match in enumerate(candidate_matches(conn)):
         key = (match["gender"], match["game_id"])
         label = _match_label(match)
@@ -188,12 +186,14 @@ def write_match_stats(
             time.sleep(delay)
         conn.execute("BEGIN")
         try:
-            resolver = resolvers.get(match["cup_id"]) or PlayerResolver(conn, match["cup_id"])
-            resolvers[match["cup_id"]] = resolver
-            if resolver.legacy:
-                raise SkipMatch(f"cup_id={match['cup_id']} 無賽季報名名單，官網來源不動態新增球員")
+            cup_id = match["cup_id"]
+            try:
+                matcher = matchers.get(cup_id) or SeasonRosterMatcher(conn, cup_id)
+            except NoSeasonRoster:
+                raise SkipMatch(f"cup_id={cup_id} 無賽季報名名單，官網來源不動態新增球員") from None
+            matchers[cup_id] = matcher
             result = parse_box_score(fetch(match["gender"], match["game_id"]))
-            stats, registrations = write_match(conn, match, result, resolver, force_partial == key)
+            stats, registrations = write_match(conn, match, result, matcher, force_partial == key)
         except Exception as exc:  # 任一場失敗只記 log，其餘候選照常處理
             conn.rollback()
             expected = isinstance(exc, (requests.RequestException, ValueError, SkipMatch, sqlite3.Error))
@@ -204,8 +204,8 @@ def write_match_stats(
         conn.commit()
         logger.info("%s 寫入統計 %d 筆、週登錄 %d 筆", label, stats, registrations)
         summary["written"].append(key)
-    for resolver in resolvers.values():
-        resolver.log_reports()
+    for matcher in matchers.values():
+        matcher.log_reports()
     return summary
 
 
