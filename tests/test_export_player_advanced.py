@@ -1,7 +1,6 @@
 import pytest
 
 from src.export.player_advanced import compute_ratios
-from src.export.thresholds import eligible_metrics
 from tests.conftest import seed_player, seed_registration, seed_season_roster, seed_stat
 
 
@@ -115,10 +114,11 @@ def test_player_below_every_threshold_gets_null_pr_with_flag_and_stays_out_of_po
     assert short["pr"] == dict.fromkeys(PR_KEYS)
     assert short["ratios"]["attack_success_rate"]["value"] == 100.0
     full = next(p for p in players if p["player_id"] == 1)
-    totals = {"position": "OH", "attack_total": 20, "serve_total": 10, "receive_total": 10,
-              "dig_total": 10, "set_total": 4}
-    eligible = eligible_metrics(totals, full["team_sets"])
-    assert full["eligible"] == [key for key in RATIO_KEYS if key in eligible]
+    # 球隊已打 10 局：攻擊 20 次達標、防守 10 次達標、攻擊加發球 30 次達標；發球、接發球未達，舉球只計位置 S
+    assert full["eligible"] == [
+        "attack_success_rate", "dig_excellent_rate", "points_per_game", "blocks_per_set",
+        "blocks_per_game", "defense_load", "defense_efficiency",
+    ]
     assert full["below_threshold"] is False
     assert full["pr"]["attack_success_rate"] == 100.0
 

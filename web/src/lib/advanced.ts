@@ -75,6 +75,11 @@ export type HeadlineStat = {
 
 type HeadlineAdvanced = Pick<PlayerAdvancedEntry, 'below_threshold' | 'team_sets' | 'ratios'>;
 
+const SCORING_RATES: ReadonlySet<string> = new Set(['attack_success_rate', 'serve_point_rate']);
+
+const rateDetail = (key: string, numerator: number | null, denominator: number | null) =>
+	`${SCORING_RATES.has(key) ? '得分' : '到位'} ${numerator}／${denominator}`;
+
 const metricHeadline = (key: MetricKey, advanced?: HeadlineAdvanced): HeadlineStat => {
 	const metric = advanced?.ratios[key];
 	const value = metric?.value ?? null;
@@ -82,7 +87,7 @@ const metricHeadline = (key: MetricKey, advanced?: HeadlineAdvanced): HeadlineSt
 	if (metric && value !== null) {
 		detail = key === 'blocks_per_set'
 			? `攔網 ${metric.numerator}／球隊 ${metric.denominator} 局`
-			: `${key === 'attack_success_rate' ? '得分' : '到位'} ${metric.numerator}／${metric.denominator}`;
+			: rateDetail(key, metric.numerator, metric.denominator);
 	}
 	return { label: METRIC_LABELS[key], value: formatMetricValue(key, value), detail };
 };
@@ -312,7 +317,7 @@ function trendValue(entry: GameLogEntry, key: TrendMetric): TrendValue {
 	if (value === null) return { value, detail: null };
 	const detail = key === 'blocks_per_set'
 		? `攔網 ${numerator}／${denominator} 局`
-		: `${key === 'attack_success_rate' || key === 'serve_point_rate' ? '得分' : '到位'} ${numerator}／${denominator}`;
+		: rateDetail(key, numerator, denominator);
 	return { value, detail };
 }
 
