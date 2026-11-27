@@ -78,6 +78,8 @@ def scan_text(label, text, formal, avoid, english=()):
     results = []
     in_fence = False
     for no, line in enumerate(text.splitlines(), 1):
+        if AVOID.match(line):
+            continue
         if english and is_fence(line):
             in_fence = not in_fence
         if not CJK.search(line) or line.rstrip().endswith(RAW_MARK) or line.rstrip().endswith(RAW_MARK + " -->"):
@@ -132,6 +134,14 @@ def test_scan_text_reports_avoided_term_with_line_number():
     hits = scan_text("草稿", f"{formal[0]}\n這一行用了{word}\n", formal, avoid)
     assert ("草稿", 2, word, f"這一行用了{word}") in hits
     assert all(no == 2 for _, no, _, _ in hits)
+
+
+def test_scan_text_skips_avoid_lines():
+    formal, avoid = parse_glossary()
+    word = next(iter(avoid))
+    prose = f"這一行用了{word}"
+    hits = scan_text("草稿", f"_Avoid_: {word}\n{prose}", formal, avoid)
+    assert hits == [("草稿", 2, word, prose)]
 
 
 def test_main_exit_code_follows_hits(tmp_path, capsys):
