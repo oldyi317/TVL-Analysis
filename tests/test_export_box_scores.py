@@ -21,11 +21,30 @@ def _points(n):
     return (1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, n)
 
 
-def _row(player_id, team_id, jersey, position, total_points):
+def _raw_row(player_id, team_id, jersey, position, total_points):
     return {
         "player_id": player_id, "team_id": team_id, "jersey_number": jersey, "position": position,
         **dict.fromkeys(STAT_COLUMNS, 0), "sets_played": 1, "total_points": total_points,
     }
+
+
+def _row(player_id, team_id, jersey, position, total_points):
+    row = _raw_row(player_id, team_id, jersey, position, total_points)
+    row["metrics"] = {
+        key: [0, None if key == "blocks_per_set" else 0, None]
+        for key in EXPECTED_METRICS
+    }
+    return row
+
+
+EXPECTED_METRICS = {
+    "attack_success_rate": [5, 12, 41.67],
+    "serve_point_rate": [0, 9, 0],
+    "blocks_per_set": [2, 4, 0.5],
+    "receive_excellent_rate": [0, 0, None],
+    "dig_excellent_rate": [3, 5, 60],
+    "set_excellent_rate": [2, 3, 66.67],
+}
 
 
 @pytest.fixture
@@ -92,8 +111,8 @@ def test_golden_set_stat_rows_attach_to_parent_match_golden_set(export):
     assert game["home"] == [_row(1, 1, 7, "OH", 5)]
     assert game["away"] == []
     assert game["golden_set"] == {
-        "home": [_row(1, 1, 7, "OH", 1)],
-        "away": [_row(3, 2, 3, "MB", 2)],
+        "home": [_raw_row(1, 1, 7, "OH", 1)],
+        "away": [_raw_row(3, 2, 3, "MB", 2)],
     }
 
 
@@ -107,7 +126,7 @@ def test_golden_set_stat_rows_attach_even_when_matches_has_no_golden_row(export)
 
     [game] = next(b["games"] for b in box_scores if (b["cup_id"], b["group"]) == (21, "men"))
     assert game["home"] == [] and game["away"] == []
-    assert game["golden_set"] == {"home": [], "away": [_row(3, 2, 3, "MB", 2)]}
+    assert game["golden_set"] == {"home": [], "away": [_raw_row(3, 2, 3, "MB", 2)]}
 
 
 def test_unmatched_rows_are_excluded_with_warning_and_export_continues(export, caplog):
@@ -249,3 +268,16 @@ def test_top_performers_is_empty_when_only_golden_set_has_stats(export):
     box_scores, _ = export(build)
     [game] = next(b["games"] for b in box_scores if (b["cup_id"], b["group"]) == (21, "men"))
     assert game["top_performers"] == []
+
+
+def test_regular_metrics_use_match_sets_and_preserve_zero_denominators(export):
+    def build(conn):
+        _season_with_one_game(conn)
+        conn.execute("UPDATE matches SET home_sets_won=3, away_sets_won=1 WHERE game_id=101")
+        seed_stat(conn, 1, (1, 12, 5, 2, 9, 0, 0, 0, 5, 3, 3, 2, 7), opponent="雲林美津濃")
+
+    boxes, _ = export(build)
+    [game] = next(b["games"] for b in boxes if (b["cup_id"], b["group"]) == (21, "men"))
+    metrics = game["home"][0]["metrics"]
+    assert list(metrics) == list(EXPECTED_METRICS)
+    assert metrics == EXPECTED_METRICS

@@ -1,11 +1,11 @@
 import { render } from 'svelte/server';
 import BoxScoreTable from './components/BoxScoreTable.svelte';
 import { describe, expect, it } from 'vitest';
-import type { BoxScoresData, MatchTopBoard, PlayerEntry, StatRow } from '#lib/data/types.js';
+import type { BoxScoresData, MatchTopBoard, PlayerEntry, RegularStatRow, StatRow } from '#lib/data/types.js';
 import { seasons, seasonTeam, teams } from '#lib/site.js';
 import { detailCols, findBoxScore, goodOverTotal, toBoxScoreView, toMatchTopView } from './boxScore.js';
 
-const stat = (player_id: number, over: Partial<StatRow> = {}): StatRow => ({
+const rawStat = (player_id: number, over: Partial<StatRow> = {}): StatRow => ({
 	player_id,
 	team_id: 1,
 	jersey_number: player_id,
@@ -24,6 +24,18 @@ const stat = (player_id: number, over: Partial<StatRow> = {}): StatRow => ({
 	set_excellent: 0,
 	total_points: 13,
 	...over
+});
+
+const stat = (player_id: number, over: Partial<StatRow> = {}): RegularStatRow => ({
+	...rawStat(player_id, over),
+	metrics: {
+		attack_success_rate: [10, 20, 50],
+		serve_point_rate: [1, 8, 12.5],
+		blocks_per_set: [2, null, null],
+		receive_excellent_rate: [6, 12, 50],
+		dig_excellent_rate: [4, 9, 44.44],
+		set_excellent_rate: [0, 0, null]
+	}
 });
 
 const player = (player_id: number, group: 'men' | 'women', name: string | null): PlayerEntry => ({
@@ -96,7 +108,7 @@ describe('toBoxScoreView', () => {
 			game_id: 9,
 			home: [stat(1)],
 			away: [stat(3)],
-			golden_set: { home: [stat(1, { total_points: 4 })], away: [stat(2, { total_points: 2 })] },
+			golden_set: { home: [rawStat(1, { total_points: 4 })], away: [rawStat(2, { total_points: 2 })] },
 			top_performers: []
 		};
 		const view = toBoxScoreView(game, 'men', players);

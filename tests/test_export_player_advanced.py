@@ -1,6 +1,7 @@
 import pytest
 
 from src.export.player_advanced import compute_ratios
+from src.export.thresholds import eligible_metrics
 from tests.conftest import seed_player, seed_registration, seed_season_roster, seed_stat
 
 
@@ -109,10 +110,15 @@ def test_player_below_every_threshold_gets_null_pr_with_flag_and_stays_out_of_po
     players = export(build)["players"]
 
     short = next(p for p in players if p["player_id"] == 2)
+    assert short["eligible"] == []
     assert short["below_threshold"] is True
     assert short["pr"] == dict.fromkeys(PR_KEYS)
     assert short["ratios"]["attack_success_rate"] == 100.0
     full = next(p for p in players if p["player_id"] == 1)
+    totals = {"position": "OH", "attack_total": 20, "serve_total": 10, "receive_total": 10,
+              "dig_total": 10, "set_total": 4}
+    eligible = eligible_metrics(totals, full["team_sets"])
+    assert full["eligible"] == [key for key in RATIO_KEYS if key in eligible]
     assert full["below_threshold"] is False
     assert full["pr"]["attack_success_rate"] == 100.0
 

@@ -5,6 +5,7 @@ import type {
 	PlayerAdvancedEntry,
 	PlayerSeason,
 	PositionDistribution,
+	RegularStatRow,
 	StatRow
 } from '#lib/data/types.js';
 import type { MatchView } from '#lib/site.js';
@@ -63,13 +64,27 @@ const match = (game_id: number, date: string, home: number, away: number, sets: 
 		sets
 	}) as MatchView;
 
-const game = (game_id: number, over: Partial<GameBoxScore> = {}): GameBoxScore => ({
+const regularRow = (row: StatRow): RegularStatRow => ({
+	...row,
+	metrics: {
+		attack_success_rate: [10, 20, 50],
+		serve_point_rate: [1, 8, 12.5],
+		blocks_per_set: [2, null, null],
+		receive_excellent_rate: [6, 12, 50],
+		dig_excellent_rate: [4, 9, 44.44],
+		set_excellent_rate: [0, 0, null]
+	}
+});
+
+const game = (
+	game_id: number,
+	{ home = [], away = [], golden_set = null }: { home?: StatRow[]; away?: StatRow[]; golden_set?: GameBoxScore['golden_set'] } = {}
+): GameBoxScore => ({
 	game_id,
-	home: [],
-	away: [],
-	golden_set: null,
-	top_performers: [],
-	...over
+	home: home.map(regularRow),
+	away: away.map(regularRow),
+	golden_set,
+	top_performers: []
 });
 
 const boxes = (games: GameBoxScore[]): BoxScoresData => ({

@@ -6,6 +6,7 @@ import type {
 	PlayerAdvancedEntry,
 	PlayerSeason,
 	PositionDistribution,
+	RegularStatRow,
 	StatRow
 } from '#lib/data/types.js';
 import { setsWon, winnerSide, type Side } from '#lib/match.js';
@@ -263,7 +264,7 @@ export function noPrReason(advanced: PoolFields | null): string | null {
 	return '本季無登錄位置，不計算 PR 值與分佈';
 }
 
-export type GameStats = Omit<StatRow, 'player_id' | 'team_id' | 'jersey_number' | 'position'>;
+export type GameStats = Omit<RegularStatRow, 'player_id' | 'team_id' | 'jersey_number' | 'position' | 'metrics'>;
 
 export type GameLogEntry = {
 	date: string;
@@ -282,7 +283,9 @@ export type PlayerGame = GameLogEntry & {
 	playedGoldenSet: boolean;
 };
 
-export const toGameStats = ({ player_id: _p, team_id: _t, jersey_number: _j, position: _pos, ...stats }: StatRow): GameStats =>
+export const toGameStats = ({
+	player_id: _p, team_id: _t, jersey_number: _j, position: _pos, metrics: _metrics, ...stats
+}: StatRow & Partial<Pick<RegularStatRow, 'metrics'>>): GameStats =>
 	stats;
 
 type TrendValue = { value: number | null; detail: string | null };
