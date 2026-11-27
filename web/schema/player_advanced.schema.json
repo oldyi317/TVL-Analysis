@@ -7,6 +7,17 @@
   "additionalProperties": false,
   "required": ["players", "distributions"],
   "$defs": {
+    "PlayerSeasonMetric": {
+      "title": "PlayerSeasonMetric",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator", "value"],
+      "properties": {
+        "numerator": { "type": "integer", "minimum": 0 },
+        "denominator": { "type": ["integer", "null"], "minimum": 0, "description": "防守負荷沒有分母，為 null" },
+        "value": { "type": ["number", "null"], "description": "率類為百分比，其餘為次數或平均次數，四捨五入到小數 2 位；分母為 0 時為 null，防守負荷等於分子" }
+      }
+    },
     "Ratios": {
       "title": "AdvancedRatios",
       "type": "object",
@@ -16,16 +27,16 @@
         "points_per_game", "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_load", "defense_efficiency"
       ],
       "properties": {
-        "attack_success_rate": { "type": "number", "description": "攻擊成功率（%）" },
-        "receive_excellent_rate": { "type": "number", "description": "好球率：接發到位率（%）" },
-        "serve_point_rate": { "type": "number", "description": "發球得分率（%）" },
-        "dig_excellent_rate": { "type": "number", "description": "防守到位率（%）" },
-        "points_per_game": { "type": "number", "description": "場均得分" },
-        "set_excellent_rate": { "type": "number", "description": "舉球到位率（%）" },
-        "blocks_per_set": { "type": ["number", "null"], "description": "每局攔網：攔網得分除以球隊已打局數，球隊已打局數為 0 時為空" },
-        "blocks_per_game": { "type": "number", "description": "場均攔網" },
-        "defense_load": { "type": "number", "description": "防守負荷：接發加防守次數" },
-        "defense_efficiency": { "type": "number", "description": "防守效率：接發加防守的到位率（%）" }
+        "attack_success_rate": { "$ref": "#/$defs/PlayerSeasonMetric", "description": "攻擊成功率（%）" },
+        "receive_excellent_rate": { "$ref": "#/$defs/PlayerSeasonMetric", "description": "好球率：接發到位率（%）" },
+        "serve_point_rate": { "$ref": "#/$defs/PlayerSeasonMetric", "description": "發球得分率（%）" },
+        "dig_excellent_rate": { "$ref": "#/$defs/PlayerSeasonMetric", "description": "防守到位率（%）" },
+        "points_per_game": { "$ref": "#/$defs/PlayerSeasonMetric", "description": "場均得分" },
+        "set_excellent_rate": { "$ref": "#/$defs/PlayerSeasonMetric", "description": "舉球到位率（%）" },
+        "blocks_per_set": { "$ref": "#/$defs/PlayerSeasonMetric", "description": "每局攔網：攔網得分除以球隊已打局數，球隊已打局數為 0 時為空" },
+        "blocks_per_game": { "$ref": "#/$defs/PlayerSeasonMetric", "description": "場均攔網" },
+        "defense_load": { "$ref": "#/$defs/PlayerSeasonMetric", "description": "防守負荷：接發加防守次數" },
+        "defense_efficiency": { "$ref": "#/$defs/PlayerSeasonMetric", "description": "防守效率：接發加防守的到位率（%）" }
       }
     },
     "PercentileRanks": {
@@ -65,7 +76,7 @@
         "title": "PlayerAdvancedEntry",
         "type": "object",
         "additionalProperties": false,
-        "required": ["player_id", "cup_id", "group", "position", "games", "team_sets", "below_threshold", "ratios", "pr"],
+        "required": ["player_id", "cup_id", "group", "position", "games", "team_sets", "below_threshold", "eligible", "ratios", "pr"],
         "properties": {
           "player_id": { "type": "integer" },
           "cup_id": { "type": "integer" },
@@ -73,7 +84,19 @@
           "position": { "type": ["string", "null"], "description": "該季主要位置（週登錄最多次的位置，同數取最近）；為空者不計算 PR 值" },
           "games": { "type": "integer", "minimum": 1, "description": "出賽場數：該季任一項技術統計不為 0 的單場數據數（全 0 列不算），有數據的黃金決勝局列也算一場" },
           "team_sets": { "type": "integer", "minimum": 0, "description": "所屬球隊已打局數（例行賽、非黃金決勝局、已有單場數據的場次總局數）；浮動門檻與每局攔網的分母，查無為 0" },
-          "below_threshold": { "type": "boolean", "description": "八項 PR 指標的次數全部未達浮動門檻：PR 值皆為空、不進分佈，比率照常輸出；單項未達門檻時只有該項 PR 值為空" },
+          "below_threshold": { "type": "boolean", "description": "八項 PR 指標的次數全部未達浮動門檻：PR 值皆為空、不進分佈，指標值仍依分子與分母決定；單項未達門檻時只有該項 PR 值為空" },
+          "eligible": {
+            "type": "array",
+            "description": "達浮動門檻的指標，只有這些項目納入 PR 值與分佈計算",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
+                "points_per_game", "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_load", "defense_efficiency"
+              ]
+            }
+          },
           "ratios": { "$ref": "#/$defs/Ratios" },
           "pr": { "$ref": "#/$defs/PercentileRanks" }
         }

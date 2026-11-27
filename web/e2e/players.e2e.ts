@@ -1,3 +1,4 @@
+import type { PlayerAdvancedEntry } from '../src/lib/data/types.js';
 import { type Page } from '@playwright/test';
 import {
 	BASE,
@@ -84,10 +85,13 @@ test('舉球員的主卡顯示舉球到位率等匯出值，位置顯示中文�
 	const s = seasonOf(player!, currentCup) as Season & Record<string, number>;
 	const position = page.locator('dl.profile div', { hasText: '位置' }).locator('dd');
 	await expect(position).toHaveText('舉球（S）');
-	const setRate = `${((s.set_excellent / s.set_total) * 100).toFixed(1)}%`;
+	const advanced: PlayerAdvancedEntry[] = readJson('player_advanced').players;
+	const { value: setRate, numerator, denominator } = advanced.find(
+		(a) => a.player_id === player!.player_id && a.group === player!.group && a.cup_id === currentCup
+	)!.ratios.set_excellent_rate;
 	const stats = page.locator('.stats');
 	for (const [label, value, detail] of [
-		['舉球到位率', setRate, `到位 ${s.set_excellent}／${s.set_total}`],
+		['舉球到位率', `${setRate}%`, `到位 ${numerator}／${denominator}`],
 		['攔網得分', String(s.block_points), null]
 	] as const) {
 		const cell = stats.locator('div', { has: page.getByText(label, { exact: true }) });

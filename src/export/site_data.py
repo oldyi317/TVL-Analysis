@@ -10,11 +10,13 @@ from zoneinfo import ZoneInfo
 from src.export.leaders import (
     compute_leaders, compute_match_top, compute_volume_rates, count_team_sets, regular_totals,
 )
+from src.export.metrics import measure
 from src.export.records import compute_records
 from src.export.player_advanced import compute_advanced, distributions
 from src.export.player_seasons import PLAY_FIELDS, STAT_FIELDS, Registration, SeasonRoster, SeasonTotals, compute_player_seasons
 from src.export.standings import compute_standings
 from src.export.team_advanced import compute_team_advanced
+from src.export.thresholds import RATIO_KEYS
 from src.utils.db_config import DB_PATH, PROJECT_ROOT, get_connection
 from src.utils.match_status import HAS_RESULT_WHERE
 from src.utils.teams import UnknownTeamError, resolve_team
@@ -336,7 +338,12 @@ def _advanced_entry(cup_id: int, group: str, result: dict) -> dict:
         "games": result["games"],
         "team_sets": result["team_sets"],
         "below_threshold": result["below_threshold"],
-        "ratios": {key: round(value, 2) if value is not None else None for key, value in result["ratios"].items()},
+        "eligible": [key for key in RATIO_KEYS if key in result["eligible"]],
+        "ratios": {
+            key: {"numerator": metric.numerator, "denominator": metric.denominator,
+                  "value": round(metric.value, 2) if metric.value is not None else None}
+            for key, metric in result["ratios"].items()
+        },
         "pr": result["pr"],
     }
 
@@ -503,6 +510,20 @@ def _box_score_games(conn: sqlite3.Connection) -> dict[tuple[int, str], dict[int
 GAME_INTERNAL_KEYS = {"date", "home_team_id", "away_team_id", "round_name", "sets"}
 
 
+PLAYER_GAME_METRICS = (
+    "attack_success_rate", "serve_point_rate", "blocks_per_set",
+    "receive_excellent_rate", "dig_excellent_rate", "set_excellent_rate",
+)
+
+
+def _regular_stat_row(row: dict, sets: int | None) -> dict:
+    metrics = {}
+    for key in PLAYER_GAME_METRICS:
+        numerator, denominator, value = measure(key, row, sets=sets)
+        metrics[key] = [numerator, denominator, round(value, 2) if value is not None else None]
+    return {**row, "metrics": metrics}
+
+
 def _box_scores_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], dict[int, dict]]) -> dict:
     cup_ids = [r[0] for r in conn.execute("SELECT cup_id FROM seasons ORDER BY cup_id")]
     names = _player_names(conn)
@@ -516,6 +537,8 @@ def _box_scores_payload(conn: sqlite3.Connection, games: dict[tuple[int, str], d
                 "games": [
                     {
                         **{k: v for k, v in g.items() if k not in GAME_INTERNAL_KEYS},
+                        "home": [_regular_stat_row(row, g["sets"]) for row in g["home"]],
+                        "away": [_regular_stat_row(row, g["sets"]) for row in g["away"]],
                         "top_performers": compute_match_top((*g["home"], *g["away"]), names),
                     }
                     for g in ordered

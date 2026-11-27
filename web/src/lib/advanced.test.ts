@@ -5,6 +5,7 @@ import type {
 	PlayerAdvancedEntry,
 	PlayerSeason,
 	PositionDistribution,
+	RegularStatRow,
 	StatRow
 } from '#lib/data/types.js';
 import type { MatchView } from '#lib/site.js';
@@ -63,13 +64,27 @@ const match = (game_id: number, date: string, home: number, away: number, sets: 
 		sets
 	}) as MatchView;
 
-const game = (game_id: number, over: Partial<GameBoxScore> = {}): GameBoxScore => ({
+const regularRow = (row: StatRow): RegularStatRow => ({
+	...row,
+	metrics: {
+		attack_success_rate: [10, 20, 50],
+		serve_point_rate: [1, 8, 12.5],
+		blocks_per_set: [2, null, null],
+		receive_excellent_rate: [6, 12, 50],
+		dig_excellent_rate: [4, 9, 44.44],
+		set_excellent_rate: [0, 0, null]
+	}
+});
+
+const game = (
+	game_id: number,
+	{ home = [], away = [], golden_set = null }: { home?: StatRow[]; away?: StatRow[]; golden_set?: GameBoxScore['golden_set'] } = {}
+): GameBoxScore => ({
 	game_id,
-	home: [],
-	away: [],
-	golden_set: null,
-	top_performers: [],
-	...over
+	home: home.map(regularRow),
+	away: away.map(regularRow),
+	golden_set,
+	top_performers: []
 });
 
 const boxes = (games: GameBoxScore[]): BoxScoresData => ({
@@ -112,13 +127,14 @@ describe('playerGameLog', () => {
 		});
 	});
 
-	it('每場帶該場比分的局數，沒有比分記為 null', () => {
+	it('每場保留匯出的每局攔網分母，缺局數記為 null', () => {
 		const withSets = [
 			match(1, '2026-01-10', 10, 20, [[25, 20], [20, 25], [15, 10]]),
 			match(2, '2026-01-03', 30, 10, [])
 		];
 		const data = boxes([game(1, { home: [stat(7)] }), game(2, { away: [stat(7)] })]);
-		expect(playerGameLog(data, withSets, 21, 'men', 7).map((e) => e.sets)).toEqual([null, 3]);
+		data.box_scores[0].games[0].home[0].metrics.blocks_per_set = [2, 3, 0.67];
+		expect(playerGameLog(data, withSets, 21, 'men', 7).map((e) => e.metrics.blocks_per_set[1])).toEqual([null, 3]);
 	});
 
 	it('逐場紀錄同日以場次編號較大者在前，保留趨勢原有的同日順序', () => {
@@ -249,16 +265,18 @@ describe('distributionOption', () => {
 describe('trendLineOption', () => {
 	const lineOption = (entries: Parameters<typeof trendPoints>[0], metric: TrendMetric) =>
 		trendLineOption(trendPoints(entries, metric), metric);
-	const entry = (date: string, over: Partial<StatRow> = {}, golden = false, sets: number | null = 3): GameLogEntry => ({
+	const entry = (
+		date: string, over: Partial<StatRow> = {}, golden = false, metrics: Partial<RegularStatRow['metrics']> = {}
+	): GameLogEntry => ({
 		date,
 		golden,
-		sets,
+		metrics: { ...regularRow(stat(7)).metrics, ...metrics },
 		stats: toGameStats(stat(7, over))
 	});
 	const log = [
-		entry('2026-01-03', { total_points: 8, attack_points: 3, attack_total: 12 }),
-		entry('2026-01-10', { total_points: 15, attack_points: 0, attack_total: 0 }, true),
-		entry('2026-01-17', { total_points: 4, attack_points: 1, attack_total: 1 })
+		entry('2026-01-03', { total_points: 8, attack_points: 3, attack_total: 12 }, false, { attack_success_rate: [3, 12, 25] }),
+		entry('2026-01-10', { total_points: 15, attack_points: 0, attack_total: 0 }, true, { attack_success_rate: [0, 0, null] }),
+		entry('2026-01-17', { total_points: 4, attack_points: 1, attack_total: 1 }, false, { attack_success_rate: [1, 1, 100] })
 	];
 	type Fmt = (p: { dataIndex: number }[]) => string;
 	type O = {
@@ -276,11 +294,17 @@ describe('trendLineOption', () => {
 		expect(o.series.map((s) => s.name)).toEqual(['得分']);
 	});
 
-	it('比率指標取一位小數、y 軸固定 0–100；分母為 0 的場次是空點、不連線', () => {
+	it('比率指標顯示匯出值、y 軸固定 0–100；分母為 0 的場次是空點、不連線', () => {
 		const o = build('attack_success_rate');
 		expect(o.yAxis).toMatchObject({ min: 0, max: 100, name: '%' });
 		expect(o.series[0].connectNulls).toBe(false);
 		expect(o.series[0].data).toEqual([25, null, 100]);
+	});
+
+	it('逐場提示保留匯出的兩位小數與分子分母', () => {
+		const entries = [entry('2026-01-03', {}, false, { attack_success_rate: [5, 12, 41.67] })];
+		const o = lineOption(entries, 'attack_success_rate').option as O;
+		expect(o.tooltip.formatter([{ dataIndex: 0 }])).toBe('2026-01-03<br/>攻擊成功率：41.67%（得分 5／12）');
 	});
 
 	it('計數指標 y 軸從 0 起、不設上限', () => {
@@ -297,28 +321,22 @@ describe('trendLineOption', () => {
 		expect(o.yAxis.minInterval).toBe(1);
 	});
 
-	it('每局攔網以該場比分局數為分母，取兩位小數；沒有比分的場次沒有值', () => {
+	it('每局攔網顯示匯出的局數與值；沒有比分的場次沒有值', () => {
 		const blocks = [
-			entry('2026-01-03', { block_points: 2 }, false, 3),
-			entry('2026-01-10', { block_points: 6 }, false, 4),
-			entry('2026-01-17', { block_points: 1 }, false, null)
+			entry('2026-01-03', { block_points: 2 }, false, { blocks_per_set: [2, 3, 0.67] }),
+			entry('2026-01-10', { block_points: 6 }, false, { blocks_per_set: [6, 4, 1.5] }),
+			entry('2026-01-17', { block_points: 1 }, false, { blocks_per_set: [1, null, null] })
 		];
 		const o = lineOption(blocks, 'blocks_per_set').option as O;
 		expect(o.series[0].data).toEqual([0.67, 1.5, null]);
 		expect(o.tooltip.formatter([{ dataIndex: 1 }])).toBe('2026-01-10<br/>每局攔網：1.5（攔網 6／4 局）');
 	});
 
-	it('其餘到位率與發球得分率各取對應的分子分母', () => {
+	it('其餘到位率與發球得分率讀取匯出的值', () => {
 		const one = [
-			entry('2026-01-03', {
-				serve_points: 1,
-				serve_total: 4,
-				receive_excellent: 3,
-				receive_total: 4,
-				dig_excellent: 1,
-				dig_total: 8,
-				set_excellent: 7,
-				set_total: 10
+			entry('2026-01-03', {}, false, {
+				serve_point_rate: [1, 4, 25], receive_excellent_rate: [3, 4, 75],
+				dig_excellent_rate: [1, 8, 12.5], set_excellent_rate: [7, 10, 70]
 			})
 		];
 		const value = (m: TrendMetric) => (lineOption(one, m).option as O).series[0].data[0];
@@ -350,7 +368,7 @@ describe('defaultTrendMetric', () => {
 		expect(defaultTrendMetric('S', 0)).toBe('set_excellent_rate');
 		expect(defaultTrendMetric('L', 0)).toBe('receive_excellent_rate');
 		expect(defaultTrendMetric('OH', 0)).toBe('attack_success_rate');
-		expect(defaultTrendMetric('MB', 0)).toBe('blocks_per_set');
+		expect(defaultTrendMetric('MB', 36)).toBe('blocks_per_set');
 		expect(defaultTrendMetric('OP', 0)).toBe('attack_success_rate');
 		expect(defaultTrendMetric(null, 0)).toBe('points');
 		expect(defaultTrendMetric('X', 0)).toBe('points');
@@ -435,34 +453,54 @@ const season = (over: Partial<PlayerSeason> = {}): PlayerSeason => ({
 	...over
 });
 
+const seasonMetric = (numerator: number, denominator: number | null, value: number | null) =>
+	({ numerator, denominator, value });
+
 const advancedFor = (over: { below_threshold?: boolean; team_sets?: number; blocks_per_set?: number | null } = {}) => ({
 	below_threshold: over.below_threshold ?? false,
 	team_sets: over.team_sets ?? 36,
-	ratios: { blocks_per_set: over.blocks_per_set === undefined ? 0.17 : over.blocks_per_set }
+	ratios: {
+		attack_success_rate: seasonMetric(18, 40, 45),
+		serve_point_rate: seasonMetric(5, 90, 5.56),
+		set_excellent_rate: seasonMetric(312, 480, 65),
+		dig_excellent_rate: seasonMetric(30, 80, 37.5),
+		receive_excellent_rate: seasonMetric(9, 20, 45),
+		blocks_per_set: seasonMetric(6, over.team_sets ?? 36, over.blocks_per_set === undefined ? 0.17 : over.blocks_per_set),
+		blocks_per_game: seasonMetric(6, 10, 0.6),
+		points_per_game: seasonMetric(29, 10, 2.9),
+		defense_load: seasonMetric(100, null, 100),
+		defense_efficiency: seasonMetric(39, 100, 39)
+	}
 });
 
 describe('headlineStats', () => {
 	it('舉球：舉球到位率、防守到位率、攔網得分，率類附分子／分母', () => {
-		expect(headlineStats(season()).items).toEqual([
-			{ label: '舉球到位率', value: '65.0%', detail: '到位 312／480' },
+		expect(headlineStats(season({ set_total: 0 }), advancedFor()).items).toEqual([
+			{ label: '舉球到位率', value: '65%', detail: '到位 312／480' },
 			{ label: '防守到位率', value: '37.5%', detail: '到位 30／80' },
 			{ label: '攔網得分', value: '6', detail: null }
 		]);
 	});
 
 	it('分母為 0 的率顯示「—」，不顯示 0%', () => {
-		const [, dig] = headlineStats(season({ dig_total: 0, dig_excellent: 0 })).items;
+		const advanced = advancedFor();
+		advanced.ratios.dig_excellent_rate = seasonMetric(0, 0, null);
+		const [, dig] = headlineStats(season(), advanced).items;
 		expect(dig).toEqual({ label: '防守到位率', value: '—', detail: null });
+	});
+
+	it('本季沒有進階數據，率類頭條沒有值和說明文字', () => {
+		expect(headlineStats(season(), null).items[0]).toEqual({ label: '舉球到位率', value: '—', detail: null });
 	});
 
 	const attackRate = {
 		label: '攻擊成功率',
-		value: '45.0%',
+		value: '45%',
 		detail: '得分 18／40'
 	};
 	const receiveRate = {
 		label: '接發球到位率',
-		value: '45.0%',
+		value: '45%',
 		detail: '到位 9／20'
 	};
 
@@ -489,7 +527,7 @@ describe('headlineStats', () => {
 			]
 		]
 	])('%s 的主卡指標', (position, expected) => {
-		expect(headlineStats(season({ position })).items).toEqual(expected);
+		expect(headlineStats(season({ position }), advancedFor({ team_sets: 0, blocks_per_set: null })).items).toEqual(expected);
 	});
 
 	it.each(['S', 'OH', 'OP'])('%s 的攔網卡不受球隊已打局數影響，照樣顯示攔網得分', (position) => {
@@ -499,7 +537,7 @@ describe('headlineStats', () => {
 	});
 
 	it('沒有主要位置時依賽季報名名單位置選主卡', () => {
-		expect(headlineStats(season({ position: null, season_roster_position: 'L' })).items[0]).toEqual(
+		expect(headlineStats(season({ position: null, season_roster_position: 'L' }), advancedFor()).items[0]).toEqual(
 			receiveRate
 		);
 	});
@@ -512,7 +550,7 @@ describe('headlineStats', () => {
 		]);
 	});
 
-	it('攔網得分除以球隊已打局數，詳情寫攔網與球隊 N 局', () => {
+	it('每局攔網讀取匯出值，詳情寫攔網與球隊 N 局', () => {
 		const items = headlineStats(season({ position: 'MB' }), advancedFor({ team_sets: 36, blocks_per_set: 0.17 })).items;
 		expect(items[0]).toEqual({ label: '每局攔網', value: '0.17', detail: '攔網 6／球隊 36 局' });
 	});
@@ -533,23 +571,23 @@ describe('headlineStats', () => {
 
 it('每局攔網在球隊已打局數無值時，分佈、PR 與趨勢選項移除它，MB 預設改看攔網得分', () => {
 	for (const keys of [METRIC_KEYS, PR_METRICS, TREND_METRICS]) {
-		expect(availableMetrics(keys, null)).not.toContain('blocks_per_set');
-		expect(availableMetrics(keys, 0.17)).toContain('blocks_per_set');
+		expect(availableMetrics(keys, 0)).not.toContain('blocks_per_set');
+		expect(availableMetrics(keys, 36)).toContain('blocks_per_set');
 	}
-	expect(defaultTrendMetric('MB', null)).toBe('block_points');
-	expect(defaultTrendMetric('MB', 0.17)).toBe('blocks_per_set');
+	expect(defaultTrendMetric('MB', 0)).toBe('block_points');
+	expect(defaultTrendMetric('MB', 36)).toBe('blocks_per_set');
 });
 
 it('場均攔網與攔網得分不需球隊已打局數，沒有每局攔網時仍可選', () => {
-	expect(availableMetrics(METRIC_KEYS, null)).toContain('blocks_per_game');
-	expect(availableMetrics(PR_METRICS, null)).toContain('blocks_per_game');
-	expect(availableMetrics(TREND_METRICS, null)).toContain('block_points');
+	expect(availableMetrics(METRIC_KEYS, 0)).toContain('blocks_per_game');
+	expect(availableMetrics(PR_METRICS, 0)).toContain('blocks_per_game');
+	expect(availableMetrics(TREND_METRICS, 0)).toContain('block_points');
 });
 
 it('自由（L）的進階數據不出現任何攔網指標', () => {
 	const blockKeys = ['blocks_per_set', 'blocks_per_game', 'block_points'];
 	for (const keys of [METRIC_KEYS, PR_METRICS, TREND_METRICS] as readonly string[][]) {
-		for (const sets of [0.17, null]) {
+		for (const sets of [36, 0]) {
 			expect(availableMetrics(keys, sets, 'L').filter((k) => blockKeys.includes(k))).toEqual([]);
 			expect(availableMetrics(keys, sets, 'MB').some((k) => blockKeys.includes(k))).toBe(true);
 		}
@@ -593,8 +631,8 @@ it('分佈摘要區分缺值、零值與空分佈', () => {
 
 it('趨勢摘要包含場數與最新一場，不以舊有效值代替最新缺值', () => {
 	const log: GameLogEntry[] = [
-		{ date: '2026-01-01', golden: false, sets: 3, stats: toGameStats(stat(1)) },
-		{ date: '2026-01-02', golden: true, sets: 3, stats: toGameStats(stat(1, { attack_total: 0, attack_points: 0 })) }
+		{ date: '2026-01-01', golden: false, metrics: regularRow(stat(1)).metrics, stats: toGameStats(stat(1)) },
+		{ date: '2026-01-02', golden: true, metrics: { ...regularRow(stat(1)).metrics, attack_success_rate: [0, 0, null] }, stats: toGameStats(stat(1, { attack_total: 0, attack_points: 0 })) }
 	];
 	const points = trendPoints(log, 'attack_success_rate');
 	expect(points.map((p) => p.value)).toEqual([50, null]);
@@ -616,14 +654,17 @@ describe('分佈指標與比較人數', () => {
 			METRIC_KEYS.map((k) => [k, { median: 1, values: counts[k] ?? [] }])
 		) as PositionDistribution['metrics']
 	});
-	const adv = (pr: Record<string, number | null>, ratios: Record<string, number | null>) =>
-		({ position: 'OH', pr, ratios }) as unknown as PlayerAdvancedEntry;
+	const adv = (eligible: MetricKey[]): PlayerAdvancedEntry => ({
+		...advancedFor(), cup_id: 21, group: 'men', player_id: 1, games: 10,
+		position: 'OH', eligible, pr: {
+			attack_success_rate: 80, dig_excellent_rate: null, receive_excellent_rate: null,
+			serve_point_rate: null, blocks_per_set: null, blocks_per_game: null,
+			set_excellent_rate: null, defense_efficiency: null
+		}
+	});
 
-	it('只列本人有值、且該項分佈有人納入比較的指標', () => {
-		const advanced = adv(
-			{ attack_success_rate: 80, dig_excellent_rate: null },
-			{ attack_success_rate: 45, dig_excellent_rate: 30, points_per_game: 5, defense_load: 9, blocks_per_set: null }
-		);
+	it('只列本人達標、且該項分佈有人納入比較的指標', () => {
+		const advanced = adv(['attack_success_rate', 'points_per_game', 'defense_load']);
 		const d = dist({
 			attack_success_rate: [30, 45],
 			dig_excellent_rate: [20, 30],
@@ -633,12 +674,11 @@ describe('分佈指標與比較人數', () => {
 		expect(distributionMetricKeys(advanced, d, 'OH')).toEqual(['attack_success_rate', 'points_per_game']);
 	});
 
-	it('場均得分與防守負荷以 blocks_per_game 的 PR 是否達標為準', () => {
-		const ratios = { attack_success_rate: 45, points_per_game: 5, defense_load: 9, blocks_per_set: null };
+	it('場均得分與防守負荷依匯出的達標清單顯示', () => {
 		const d = dist({ points_per_game: [5], defense_load: [9] });
-		const unmet = adv({ blocks_per_game: null }, ratios);
+		const unmet = adv([]);
 		expect(distributionMetricKeys(unmet, d, 'OH')).toEqual([]);
-		const met = adv({ blocks_per_game: 50 }, ratios);
+		const met = adv(['points_per_game', 'defense_load']);
 		expect(distributionMetricKeys(met, d, 'OH')).toEqual(['points_per_game', 'defense_load']);
 	});
 

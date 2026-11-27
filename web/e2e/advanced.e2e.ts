@@ -8,7 +8,7 @@ type Adv = {
 	position: string | null;
 	below_threshold: boolean;
 	pr: Record<string, number | null> | null;
-	ratios: { blocks_per_set: number | null };
+	team_sets: number;
 };
 type Player = { player_id: number; group: string; seasons: { cup_id: number; games: number }[] };
 // 開季初當季還沒有進階數據，退回最近一個有進階數據的賽季
@@ -96,7 +96,7 @@ test('逐場趨勢預設依主要位置選指標，可切換其他指標', async
 		S: '舉球到位率',
 		L: '接發球到位率',
 		OH: '攻擊成功率',
-		MB: a!.ratios.blocks_per_set === null ? '攔網得分' : '每局攔網',
+		MB: a!.team_sets === 0 ? '攔網得分' : '每局攔網',
 		OP: '攻擊成功率'
 	};
 	const group = page.getByRole('group', { name: '選擇逐場趨勢指標' });

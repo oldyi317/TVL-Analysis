@@ -135,7 +135,7 @@ def test_all_eleven_rates_use_their_own_denominators_and_match_player_page():
     assert [b["rows"][0]["value"] for b in boards] == [50, 50, 50, 50, 25, 2, 2, 2, 2, 2, 2]
     assert [b["rows"][0]["denominator"] for b in boards] == [40, 40, 40, 40, 80, 10, 10, 10, 10, 10, 10]
     for board in boards[:6]:
-        assert board["rows"][0]["value"] == compute_ratios(player)[board["key"]]
+        assert board["rows"][0]["value"] == compute_ratios(player)[board["key"]].value
 
 
 def test_four_new_per_set_boards_use_distinct_numerators_team_sets_and_floor_text():
