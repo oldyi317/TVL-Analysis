@@ -46,11 +46,11 @@ const BLOCK_METRICS: ReadonlySet<string> = new Set(['blocks_per_set', 'blocks_pe
 
 export const availableMetrics = <T extends string>(
 	keys: readonly T[],
-	blocksPerSet: number | null,
+	teamSets: number,
 	position: string | null = null
 ): T[] =>
 	keys.filter(
-		(key) => (blocksPerSet !== null || key !== 'blocks_per_set') && (position !== 'L' || !BLOCK_METRICS.has(key))
+		(key) => (teamSets > 0 || key !== 'blocks_per_set') && (position !== 'L' || !BLOCK_METRICS.has(key))
 	);
 
 const RATE_METRICS: ReadonlySet<string> = new Set([
@@ -73,17 +73,19 @@ export type HeadlineStat = {
 	detail: string | null;
 };
 
-const rate = (label: string, good: number, total: number, goodWord: string): HeadlineStat =>
-	total === 0
-		? { label, value: '—', detail: null }
-		: {
-				label,
-				value: `${((good / total) * 100).toFixed(1)}%`,
-				detail: `${goodWord} ${good}／${total}`
-			};
+type HeadlineAdvanced = Pick<PlayerAdvancedEntry, 'below_threshold' | 'team_sets' | 'ratios'>;
 
-const excellentRate = (label: string, good: number, total: number) =>
-	rate(label, good, total, '到位');
+const metricHeadline = (key: MetricKey, advanced?: HeadlineAdvanced): HeadlineStat => {
+	const metric = advanced?.ratios[key];
+	const value = metric?.value ?? null;
+	let detail = null;
+	if (metric && value !== null) {
+		detail = key === 'blocks_per_set'
+			? `攔網 ${metric.numerator}／球隊 ${metric.denominator} 局`
+			: `${key === 'attack_success_rate' ? '得分' : '到位'} ${metric.numerator}／${metric.denominator}`;
+	}
+	return { label: METRIC_LABELS[key], value: formatMetricValue(key, value), detail };
+};
 
 const count = (label: string, value: number): HeadlineStat => ({
 	label,
@@ -93,45 +95,28 @@ const count = (label: string, value: number): HeadlineStat => ({
 
 const blockPoints = (s: PlayerSeason) => count(STAT_LABELS.block_points, s.block_points);
 
-const attackRate = (s: PlayerSeason) => rate(STAT_LABELS.attack_success_rate, s.attack_points, s.attack_total, '得分');
-
-type HeadlineAdvanced = Pick<PlayerAdvancedEntry, 'below_threshold' | 'team_sets'> & {
-	ratios: Pick<PlayerAdvancedEntry['ratios'], 'blocks_per_set'>;
-};
-
-const blocksPerSet = (s: PlayerSeason, a: HeadlineAdvanced | undefined): HeadlineStat[] =>
-	a?.ratios.blocks_per_set == null
-		? []
-		: [
-				{
-					label: STAT_LABELS.blocks_per_set,
-					value: a.ratios.blocks_per_set.toFixed(2),
-					detail: `攔網 ${s.block_points}／球隊 ${a.team_sets} 局`
-				}
-			];
-
 const HEADLINES: Record<string, (s: PlayerSeason, a?: HeadlineAdvanced) => HeadlineStat[]> = {
-	S: (s) => [
-		excellentRate(STAT_LABELS.set_excellent_rate, s.set_excellent, s.set_total),
-		excellentRate(STAT_LABELS.dig_excellent_rate, s.dig_excellent, s.dig_total),
+	S: (s, a) => [
+		metricHeadline('set_excellent_rate', a),
+		metricHeadline('dig_excellent_rate', a),
 		blockPoints(s)
 	],
-	L: (s) => [
-		excellentRate(STAT_LABELS.receive_excellent_rate, s.receive_excellent, s.receive_total),
-		excellentRate(STAT_LABELS.dig_excellent_rate, s.dig_excellent, s.dig_total),
-		count('防守總次數', s.receive_total + s.dig_total)
+	L: (_, a) => [
+		metricHeadline('receive_excellent_rate', a),
+		metricHeadline('dig_excellent_rate', a),
+		count('防守總次數', a?.ratios.defense_load.value ?? 0)
 	],
-	OH: (s) => [
-		attackRate(s),
-		excellentRate(STAT_LABELS.receive_excellent_rate, s.receive_excellent, s.receive_total),
+	OH: (s, a) => [
+		metricHeadline('attack_success_rate', a),
+		metricHeadline('receive_excellent_rate', a),
 		blockPoints(s)
 	],
 	MB: (s, a) => [
-		...blocksPerSet(s, a),
-		attackRate(s),
+		...(a && a.team_sets > 0 ? [metricHeadline('blocks_per_set', a)] : []),
+		metricHeadline('attack_success_rate', a),
 		blockPoints(s)
 	],
-	OP: (s) => [attackRate(s), count(STAT_LABELS.attack_points, s.attack_points), blockPoints(s)]
+	OP: (s, a) => [metricHeadline('attack_success_rate', a), count(STAT_LABELS.attack_points, s.attack_points), blockPoints(s)]
 };
 
 const scoringHeadlines = (s: PlayerSeason) => [
@@ -171,22 +156,13 @@ export function findDistribution(
 	);
 }
 
-const SHARED_GATE: Partial<Record<MetricKey, string>> = {
-	points_per_game: 'blocks_per_game',
-	defense_load: 'blocks_per_game'
-};
-
 export function distributionMetricKeys(
 	advanced: PlayerAdvancedEntry,
 	distribution: PositionDistribution,
 	position: string | null
 ): MetricKey[] {
-	const pr: Partial<Record<string, number | null>> = { ...advanced.pr };
-	return availableMetrics(METRIC_KEYS, advanced.ratios.blocks_per_set, position).filter(
-		(key) =>
-			advanced.ratios[key] !== null &&
-			pr[SHARED_GATE[key] ?? key] !== null &&
-			distribution.metrics[key].values.length > 0
+	return availableMetrics(METRIC_KEYS, advanced.team_sets, position).filter(
+		(key) => advanced.eligible.includes(key) && advanced.ratios[key].value !== null && distribution.metrics[key].values.length > 0
 	);
 }
 
@@ -269,7 +245,7 @@ export type GameStats = Omit<RegularStatRow, 'player_id' | 'team_id' | 'jersey_n
 export type GameLogEntry = {
 	date: string;
 	golden: boolean;
-	sets: number | null;
+	metrics: RegularStatRow['metrics'];
 	stats: GameStats;
 };
 
@@ -294,63 +270,17 @@ type TrendDef = {
 	label: string;
 	isRate: boolean;
 	integer?: boolean;
-	compute: (s: GameStats, sets: number | null) => TrendValue;
 };
 
-const trendRate =
-	(good: (s: GameStats) => number, total: (s: GameStats) => number, goodWord: string) =>
-	(s: GameStats): TrendValue =>
-		total(s) === 0
-			? { value: null, detail: null }
-			: {
-					value: Math.round((good(s) / total(s)) * 1000) / 10,
-					detail: `${goodWord} ${good(s)}／${total(s)}`
-				};
-
 const TREND_DEFS = {
-	points: { label: '得分', isRate: false, integer: true, compute: (s) => ({ value: s.total_points, detail: null }) },
-	attack_success_rate: {
-		label: METRIC_LABELS.attack_success_rate,
-		isRate: true,
-		compute: trendRate((s) => s.attack_points, (s) => s.attack_total, '得分')
-	},
-	serve_point_rate: {
-		label: METRIC_LABELS.serve_point_rate,
-		isRate: true,
-		compute: trendRate((s) => s.serve_points, (s) => s.serve_total, '得分')
-	},
-	blocks_per_set: {
-		label: METRIC_LABELS.blocks_per_set,
-		isRate: false,
-		compute: (s, sets) =>
-			!sets
-				? { value: null, detail: null }
-				: {
-						value: Math.round((s.block_points / sets) * 100) / 100,
-						detail: `攔網 ${s.block_points}／${sets} 局`
-					}
-	},
-	block_points: {
-		label: STAT_LABELS.block_points,
-		isRate: false,
-		integer: true,
-		compute: (s) => ({ value: s.block_points, detail: null })
-	},
-	receive_excellent_rate: {
-		label: METRIC_LABELS.receive_excellent_rate,
-		isRate: true,
-		compute: trendRate((s) => s.receive_excellent, (s) => s.receive_total, '到位')
-	},
-	dig_excellent_rate: {
-		label: METRIC_LABELS.dig_excellent_rate,
-		isRate: true,
-		compute: trendRate((s) => s.dig_excellent, (s) => s.dig_total, '到位')
-	},
-	set_excellent_rate: {
-		label: METRIC_LABELS.set_excellent_rate,
-		isRate: true,
-		compute: trendRate((s) => s.set_excellent, (s) => s.set_total, '到位')
-	}
+	points: { label: '得分', isRate: false, integer: true },
+	attack_success_rate: { label: METRIC_LABELS.attack_success_rate, isRate: true },
+	serve_point_rate: { label: METRIC_LABELS.serve_point_rate, isRate: true },
+	blocks_per_set: { label: METRIC_LABELS.blocks_per_set, isRate: false },
+	block_points: { label: STAT_LABELS.block_points, isRate: false, integer: true },
+	receive_excellent_rate: { label: METRIC_LABELS.receive_excellent_rate, isRate: true },
+	dig_excellent_rate: { label: METRIC_LABELS.dig_excellent_rate, isRate: true },
+	set_excellent_rate: { label: METRIC_LABELS.set_excellent_rate, isRate: true }
 } satisfies Record<string, TrendDef>;
 
 export type TrendMetric = keyof typeof TREND_DEFS;
@@ -367,16 +297,27 @@ const DEFAULT_TREND: Record<string, TrendMetric> = {
 	OP: 'attack_success_rate'
 };
 
-export const defaultTrendMetric = (position: string | null, blocksPerSet: number | null): TrendMetric =>
-	blocksPerSet === null && position === 'MB' ? 'block_points' : DEFAULT_TREND[position ?? ''] ?? 'points';
+export const defaultTrendMetric = (position: string | null, teamSets: number): TrendMetric =>
+	teamSets === 0 && position === 'MB' ? 'block_points' : DEFAULT_TREND[position ?? ''] ?? 'points';
 
 const goldenPoint = (value: number) => ({ value, symbol: 'diamond', symbolSize: 14, golden: true });
 
 export type TrendPoint = TrendValue & { date: string; heading: string; golden: boolean };
 
+function trendValue(entry: GameLogEntry, key: TrendMetric): TrendValue {
+	if (key === 'points' || key === 'block_points') {
+		return { value: entry.stats[key === 'points' ? 'total_points' : key], detail: null };
+	}
+	const [numerator, denominator, value] = entry.metrics[key];
+	if (value === null) return { value, detail: null };
+	const detail = key === 'blocks_per_set'
+		? `攔網 ${numerator}／${denominator} 局`
+		: `${key === 'attack_success_rate' || key === 'serve_point_rate' ? '得分' : '到位'} ${numerator}／${denominator}`;
+	return { value, detail };
+}
+
 export function trendPoints(log: GameLogEntry[], metric: TrendMetric): TrendPoint[] {
-	const compute = TREND_DEFS[metric].compute as TrendDef['compute'];
-	return log.map((e) => ({ ...compute(e.stats, e.sets), date: e.date, heading: e.date, golden: e.golden }));
+	return log.map((e) => ({ ...trendValue(e, metric), date: e.date, heading: e.date, golden: e.golden }));
 }
 
 export function trendSummary(points: TrendPoint[], metric: TrendMetric): string {
@@ -456,7 +397,7 @@ export function playerGameLog(
 			// 趨勢圖沿用名單標記，紀錄表只標有技術統計的黃金決勝局。
 			golden: goldenRow !== undefined,
 			playedGoldenSet: goldenRow !== undefined && hasTechnicalStats(toGameStats(goldenRow)),
-			sets: match.sets.length || null,
+			metrics: row.metrics,
 			stats: toGameStats(row)
 		});
 	}

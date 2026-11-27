@@ -44,10 +44,10 @@
 	onMount(() => {
 		if (window.matchMedia('(min-width: 64rem)').matches) open = true;
 	});
-	const blocksPerSet = $derived(advanced?.ratios.blocks_per_set ?? null);
+	const teamSets = $derived(advanced?.team_sets ?? 0);
 	const metricKeys = $derived(advanced && distribution ? distributionMetricKeys(advanced, distribution, position) : []);
-	const prKeys = $derived(availableMetrics(PR_METRICS, blocksPerSet, position));
-	const trendKeys = $derived(availableMetrics(TREND_METRICS, blocksPerSet, position));
+	const prKeys = $derived(availableMetrics(PR_METRICS, teamSets, position));
+	const trendKeys = $derived(availableMetrics(TREND_METRICS, teamSets, position));
 	let selectedMetric = $state<MetricKey>('attack_success_rate');
 	const metric = $derived<MetricKey | undefined>(metricKeys.includes(selectedMetric) ? selectedMetric : metricKeys[0]);
 	const hasMissingPr = $derived(advanced ? prKeys.some((key) => advanced.pr[key] === null) : false);
@@ -59,17 +59,17 @@
 	const fmt = formatMetricValue;
 	const distOption = $derived(
 		distribution && metric
-			? distributionOption(distribution.metrics[metric], advanced?.ratios[metric] ?? null, METRIC_LABELS[metric])
+			? distributionOption(distribution.metrics[metric], advanced?.ratios[metric].value ?? null, METRIC_LABELS[metric])
 			: null
 	);
 	let selectedTrend = $state<TrendMetric | null>(null);
 	const trendMetric = $derived(
-		selectedTrend && trendKeys.includes(selectedTrend) ? selectedTrend : defaultTrendMetric(position, blocksPerSet)
+		selectedTrend && trendKeys.includes(selectedTrend) ? selectedTrend : defaultTrendMetric(position, teamSets)
 	);
 	const points = $derived(trendPoints(gameLog, trendMetric));
 	const trend = $derived(points.length ? trendLineOption(points, trendMetric) : null);
 	const distSummary = $derived(distribution && metric
-		? distributionSummary(distribution.metrics[metric], advanced?.ratios[metric] ?? null, metric)
+		? distributionSummary(distribution.metrics[metric], advanced?.ratios[metric].value ?? null, metric)
 		: null);
 </script>
 
@@ -102,7 +102,7 @@
 						{#each prKeys as key (key)}
 							<tr>
 								<th scope="row">{METRIC_LABELS[key]}</th>
-								<td class="num">{fmt(key, advanced.ratios[key])}</td>
+								<td class="num">{fmt(key, advanced.ratios[key].value)}</td>
 								<td class="num strong">
 									<span class="pr">
 										{#if advanced.pr[key] !== null && advanced.pr[key] !== undefined}
@@ -149,7 +149,7 @@
 								<tr>
 									<th scope="row">{i + 1}</th>
 									<td class="num">{fmt(metric, value)}</td>
-									<td>{value === advanced?.ratios[metric] ? '本人或同值球員' : '—'}</td>
+									<td>{value === advanced?.ratios[metric].value ? '本人或同值球員' : '—'}</td>
 								</tr>
 							{/each}
 						</tbody>

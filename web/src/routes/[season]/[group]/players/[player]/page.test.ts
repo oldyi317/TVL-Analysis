@@ -22,7 +22,11 @@ const advancedEntry = (over: { below_threshold?: boolean; team_sets?: number; bl
 		position: 'MB',
 		team_sets: over.team_sets ?? 36,
 		below_threshold: over.below_threshold ?? false,
-		ratios: { blocks_per_set: over.blocks_per_set === undefined ? 0.17 : over.blocks_per_set },
+		eligible: [],
+		ratios: {
+			blocks_per_set: { numerator: 6, denominator: over.team_sets ?? 36, value: over.blocks_per_set === undefined ? 0.17 : over.blocks_per_set },
+			attack_success_rate: { numerator: 5, denominator: 12, value: 41.67 }
+		},
 		pr: {}
 	}) as unknown as PageProps['data']['advanced'];
 
@@ -45,7 +49,12 @@ describe('球員頁逐場紀錄', () => {
 	it('有紀錄就顯示欄列標頭、單場連結、季後賽與黃金決勝局標記', () => {
 		const game: PageProps['data']['gameLog'][number] = {
 			gameId: 310, date: '2026-03-21', stage: '總決賽', side: 'away', opponent: '對手隊',
-			won: false, score: [2, 3], golden: true, playedGoldenSet: true, sets: 5,
+			won: false, score: [2, 3], golden: true, playedGoldenSet: true,
+			metrics: {
+				attack_success_rate: [7, 22, 31.82], serve_point_rate: [1, 11, 9.09],
+				blocks_per_set: [1, 5, 0.2], receive_excellent_rate: [6, 13, 46.15],
+				dig_excellent_rate: [3, 5, 60], set_excellent_rate: [0, 0, null]
+			},
 			stats: {
 				sets_played: null, total_points: 9, attack_points: 7, block_points: 1, serve_points: 1,
 				attack_total: 22, serve_total: 11, receive_excellent: 6, receive_total: 13,

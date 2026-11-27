@@ -44,7 +44,7 @@ def _oh(conn, player_id, name, reg_id, team_id, atk_pts, atk_tot=20, gender="M",
 
 
 def test_ratios_follow_old_site_formulas_and_count_golden_set_rows(export):
-    """十項比率沿用舊站公式（百分比、分母為 0 給 0）；每局攔網分母是球隊已打局數；黃金決勝局列照算且算一場。"""
+    """十項比率沿用舊站公式（百分比、分母為 0 時沒有值）；每局攔網分母是球隊已打局數；黃金決勝局列照算且算一場。"""
     def build(conn):
         seed_player(conn, 1, "男甲")
         seed_registration(conn, 1, 1, team_id=1, position="OH")
@@ -63,16 +63,16 @@ def test_ratios_follow_old_site_formulas_and_count_golden_set_rows(export):
     assert entry["below_threshold"] is False
     assert "sets_played" not in entry and "insufficient_sets" not in entry
     assert entry["ratios"] == {
-        "attack_success_rate": 51.52,   # 17 / 33
-        "receive_excellent_rate": 50.0,  # 5 / 10
-        "serve_point_rate": 40.0,        # 4 / 10
-        "dig_excellent_rate": 50.0,      # 8 / 16
-        "points_per_game": 8.0,          # 24 / 3
-        "set_excellent_rate": 50.0,      # 5 / 10
-        "blocks_per_set": 0.43,          # 3 / 球隊全季 7 局（含黃金決勝局 1 局）
-        "blocks_per_game": 1.0,          # 3 / 3
-        "defense_load": 26,              # 10 + 16
-        "defense_efficiency": 50.0,      # 13 / 26
+        "attack_success_rate": {"numerator": 17, "denominator": 33, "value": 51.52},
+        "receive_excellent_rate": {"numerator": 5, "denominator": 10, "value": 50.0},
+        "serve_point_rate": {"numerator": 4, "denominator": 10, "value": 40.0},
+        "dig_excellent_rate": {"numerator": 8, "denominator": 16, "value": 50.0},
+        "points_per_game": {"numerator": 24, "denominator": 3, "value": 8.0},
+        "set_excellent_rate": {"numerator": 5, "denominator": 10, "value": 50.0},
+        "blocks_per_set": {"numerator": 3, "denominator": 7, "value": 0.43},
+        "blocks_per_game": {"numerator": 3, "denominator": 3, "value": 1.0},
+        "defense_load": {"numerator": 26, "denominator": None, "value": 26},
+        "defense_efficiency": {"numerator": 13, "denominator": 26, "value": 50.0},
     }
     assert set(entry["pr"]) == set(PR_KEYS)
     assert "player_count" not in payload["distributions"][0]
@@ -113,7 +113,7 @@ def test_player_below_every_threshold_gets_null_pr_with_flag_and_stays_out_of_po
     assert short["eligible"] == []
     assert short["below_threshold"] is True
     assert short["pr"] == dict.fromkeys(PR_KEYS)
-    assert short["ratios"]["attack_success_rate"] == 100.0
+    assert short["ratios"]["attack_success_rate"]["value"] == 100.0
     full = next(p for p in players if p["player_id"] == 1)
     totals = {"position": "OH", "attack_total": 20, "serve_total": 10, "receive_total": 10,
               "dig_total": 10, "set_total": 4}
@@ -137,7 +137,7 @@ def test_player_without_position_keeps_ratios_but_no_pr(export):
     none_pos = next(p for p in payload["players"] if p["player_id"] == 2)
     assert none_pos["position"] is None and none_pos["below_threshold"] is False
     assert none_pos["pr"] == dict.fromkeys(PR_KEYS)
-    assert none_pos["ratios"]["attack_success_rate"] == 75.0
+    assert none_pos["ratios"]["attack_success_rate"]["value"] == 75.0
     assert [d["position"] for d in payload["distributions"]] == ["OH"]
     assert payload["distributions"][0]["metrics"]["attack_success_rate"]["values"] == [25.0]
 
@@ -238,8 +238,8 @@ def test_missing_team_sets_keep_blocks_per_set_null_but_other_metrics_work(expor
 
     [entry] = payload["players"]
     assert entry["team_sets"] == 0
-    assert entry["ratios"]["blocks_per_set"] is None and entry["pr"]["blocks_per_set"] is None
-    assert entry["ratios"]["blocks_per_game"] == 2.0 and entry["pr"]["blocks_per_game"] == 100.0
+    assert entry["ratios"]["blocks_per_set"]["value"] is None and entry["pr"]["blocks_per_set"] is None
+    assert entry["ratios"]["blocks_per_game"]["value"] == 2.0 and entry["pr"]["blocks_per_game"] == 100.0
     assert entry["pr"]["attack_success_rate"] == 100.0
     metrics = payload["distributions"][0]["metrics"]
     assert metrics["blocks_per_set"] == {"median": None, "values": []}
@@ -262,9 +262,9 @@ def test_blocks_per_set_divides_by_team_sets_and_ignores_sets_played():
     totals = {"sets_played": 99, "games": 4, "block_points": 6, "attack_total": 0, "attack_points": 0,
               "receive_total": 0, "receive_excellent": 0, "serve_total": 0, "serve_points": 0,
               "dig_total": 0, "dig_excellent": 0, "total_points": 0, "set_total": 0, "set_excellent": 0}
-    assert compute_ratios(totals, 12)["blocks_per_set"] == 0.5
-    assert compute_ratios(totals, 0)["blocks_per_set"] is None
-    assert compute_ratios(totals)["blocks_per_set"] is None
+    assert compute_ratios(totals, 12)["blocks_per_set"].value == 0.5
+    assert compute_ratios(totals, 0)["blocks_per_set"].value is None
+    assert compute_ratios(totals)["blocks_per_set"].value is None
 
 
 def prow(player_id, team_id=1, position="OH", **changes):
@@ -312,8 +312,8 @@ def test_blocks_per_set_uses_team_sets_and_is_none_without_them():
     rows = [prow(1, attack_total=30, block_points=5), prow(2, team_id=2, attack_total=30, block_points=5)]
     results = {r["player_id"]: r for r in compute_advanced(rows, {1: 10})}
 
-    assert results[1]["ratios"]["blocks_per_set"] == 0.5
-    assert results[2]["ratios"]["blocks_per_set"] is None and results[2]["pr"]["blocks_per_set"] is None
+    assert results[1]["ratios"]["blocks_per_set"].value == 0.5
+    assert results[2]["ratios"]["blocks_per_set"].value is None and results[2]["pr"]["blocks_per_set"] is None
     assert distributions(list(results.values()))["OH"]["blocks_per_set"] == [0.5]
 
 
@@ -377,7 +377,7 @@ def test_team_sets_cover_whole_season_with_golden_set_counted_as_one(export):
     [entry] = export(build)["players"]
 
     assert entry["team_sets"] == 8
-    assert entry["ratios"]["blocks_per_set"] == 0.75  # 全季攔網 6 / 8
+    assert entry["ratios"]["blocks_per_set"]["value"] == 0.75  # 全季攔網 6 / 8
 
 
 def test_all_zero_stat_rows_do_not_count_as_games_even_with_sets_played(export):
@@ -392,8 +392,8 @@ def test_all_zero_stat_rows_do_not_count_as_games_even_with_sets_played(export):
 
     [entry] = export(build)["players"]
     assert entry["games"] == 1
-    assert entry["ratios"]["points_per_game"] == 8.0
-    assert entry["ratios"]["blocks_per_game"] == 2.0
+    assert entry["ratios"]["points_per_game"]["value"] == 8.0
+    assert entry["ratios"]["blocks_per_game"]["value"] == 2.0
 
 
 def test_row_with_only_receive_and_dig_counts_as_a_game(export):
@@ -417,9 +417,9 @@ def test_season_of_only_all_zero_rows_is_left_out_of_advanced_like_a_season_with
     assert export(build)["players"] == []
 
 
-def test_per_game_ratios_are_zero_not_an_error_when_games_is_zero():
+def test_per_game_ratios_have_no_value_when_games_is_zero():
     totals = {"games": 0, "block_points": 0, "attack_total": 0, "attack_points": 0, "serve_total": 0,
               "serve_points": 0, "receive_total": 0, "receive_excellent": 0, "dig_total": 0, "dig_excellent": 0,
               "set_total": 0, "set_excellent": 0, "total_points": 0}
     ratios = compute_ratios(totals, 10)
-    assert ratios["points_per_game"] == 0.0 and ratios["blocks_per_game"] == 0.0
+    assert ratios["points_per_game"].value is None and ratios["blocks_per_game"].value is None

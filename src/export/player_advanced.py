@@ -5,7 +5,7 @@
 """
 from collections.abc import Iterable, Mapping, Sequence
 
-from src.export.metrics import measure
+from src.export.metrics import Measure, measure
 from src.export.thresholds import RATIO_KEYS, eligible_metrics
 
 PR_KEYS = (
@@ -14,14 +14,9 @@ PR_KEYS = (
 )
 
 
-def compute_ratios(totals: Mapping, sets: int | None = None) -> dict[str, float | None]:
-    """十項比率：率類為百分比；球隊已打局數 sets 缺或為 0 時每局攔網為 None。"""
-    ratios = {}
-    for key in RATIO_KEYS:
-        value = measure(key, totals, sets=sets).value
-        # 暫時：分母為 0 仍輸出 0.0，#348 會刪
-        ratios[key] = 0.0 if value is None and key != "blocks_per_set" else value
-    return ratios
+def compute_ratios(totals: Mapping, sets: int | None = None) -> dict[str, Measure]:
+    """十項指標各自的分子、分母與未取位的值；分母為 0 或球隊已打局數 sets 缺時沒有值。"""
+    return {key: measure(key, totals, sets=sets) for key in RATIO_KEYS}
 
 
 def percentile_ranks(values: Sequence[float]) -> list[float]:
@@ -67,8 +62,8 @@ def compute_advanced(rows: Iterable[Mapping], team_sets: Mapping[int, int]) -> l
             pools.setdefault(result["position"], []).append(result)
     for members in pools.values():
         for key in PR_KEYS:
-            ranked = [m for m in members if key in m["eligible"] and m["ratios"][key] is not None]
-            ranks = percentile_ranks([m["ratios"][key] for m in ranked])
+            ranked = [m for m in members if key in m["eligible"] and m["ratios"][key].value is not None]
+            ranks = percentile_ranks([m["ratios"][key].value for m in ranked])
             for member, rank in zip(ranked, ranks):
                 member["pr"][key] = rank
     return results
@@ -82,8 +77,8 @@ def distributions(results: Iterable[Mapping]) -> dict[str, dict[str, list[float]
             continue
         metrics = out.setdefault(result["position"], {key: [] for key in RATIO_KEYS})
         for key in RATIO_KEYS:
-            if key in result["eligible"] and result["ratios"][key] is not None:
-                metrics[key].append(result["ratios"][key])
+            if key in result["eligible"] and result["ratios"][key].value is not None:
+                metrics[key].append(result["ratios"][key].value)
     for metrics in out.values():
         for values in metrics.values():
             values.sort()

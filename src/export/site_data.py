@@ -339,7 +339,11 @@ def _advanced_entry(cup_id: int, group: str, result: dict) -> dict:
         "team_sets": result["team_sets"],
         "below_threshold": result["below_threshold"],
         "eligible": [key for key in RATIO_KEYS if key in result["eligible"]],
-        "ratios": {key: round(value, 2) if value is not None else None for key, value in result["ratios"].items()},
+        "ratios": {
+            key: {"numerator": metric.numerator, "denominator": metric.denominator,
+                  "value": round(metric.value, 2) if metric.value is not None else None}
+            for key, metric in result["ratios"].items()
+        },
         "pr": result["pr"],
     }
 
