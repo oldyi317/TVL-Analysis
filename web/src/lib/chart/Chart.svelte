@@ -17,40 +17,25 @@
 		registered = true;
 		return echarts;
 	}
-
-	type Obj = Record<string, unknown>;
-	type ECBasicOption = import('echarts/core').EChartsCoreOption;
-
-	function withDefaults(option: object): ECBasicOption {
-		const o = option as Obj;
-		const grid = o.grid;
-		const legend: Obj = { bottom: 0, ...(o.legend as Obj) };
-		const bottom = legend.show === false ? 8 : 40;
-		return {
-			...o,
-			tooltip: { confine: true, ...(o.tooltip as Obj) },
-			legend,
-			grid: { top: 24, right: 16, bottom, left: 8, containLabel: true, ...(grid as Obj) }
-		};
-	}
 </script>
 
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { ECharts } from 'echarts/core';
+	import type { ChartOption } from './spec.js';
 
 	let {
 		option,
 		height = '16rem',
 		ariaLabel
-	}: { option: object; height?: string; ariaLabel: string } = $props();
+	}: { option: ChartOption; height?: string; ariaLabel: string } = $props();
 
 	let el: HTMLDivElement;
 	let chart: ECharts | undefined;
 
 	$effect(() => {
 		// 先讀 option 建立依賴；chart 尚未初始化時若用 ?. 短路，effect 會沒有依賴而永不重跑
-		const next = withDefaults(option);
+		const next = option.option;
 		chart?.setOption(next, true);
 	});
 
@@ -63,7 +48,7 @@
 			if (!echarts) return;
 			chart?.dispose();
 			chart = echarts.init(el, query.matches ? 'tvl-dark' : 'tvl-light');
-			chart.setOption(withDefaults(option));
+			chart.setOption(option.option);
 		}
 
 		loadEcharts().then((loaded) => {

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import type { ChartOption } from '#lib/chart/spec.js';
 	import Chart from '#lib/chart/Chart.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 
@@ -19,7 +20,7 @@
 		title: string;
 		games: number | readonly { name: string; games: number }[];
 		conclusion: string | null;
-		option: object | null;
+		option: ChartOption | null;
 		emptyTitle: string;
 		note?: string;
 		height?: string;

@@ -125,7 +125,11 @@ JS 端需要色值的只有兩處：`color.ts` 的 `SURFACE`（算隊色變體�
 
 - 字級：軸標籤與圖例 14px、tooltip 16px；手機不縮小。
 - 配色：軸線與格線用 `--line`、文字用 `--text-muted`、tooltip 底用 `--surface`。序列有隊伍語意時，呼叫端用 `teamPalette()` 的 `inkLight`/`inkDark` 自己設 series 顏色（主題沒有隊伍概念）；沒有隊伍語意時用主題的中性序列，每色對背景 ≥ 3:1（`tokens.test.ts` 守著）。
-- tooltip `confine: true`，不會超出手機畫面；圖例放底部，`Chart.svelte` 會自動把 grid 底部留給圖例（`legend.show: false` 時不留）。自動留的是一行的高度；圖例項目是隊名這類數量與長度不固定的內容時，呼叫端用 `chart/legend.ts` 的 `bottomLegendMedia()` 依圖寬留出折行後的高度。
+- 各圖的設定一律由 `web/src/lib/chart/spec.ts` 的 `chartOption(spec)` 產生，`Chart.svelte` 與 `ChartFrame.svelte` 只收它回傳的 `ChartOption`，裸物件過不了 `npm run check`。各圖只交代資料與語意：`series`、兩軸、圖例項目（`legend`）、窄螢幕時不同的值（`narrow`）、tooltip 的文字行（`tooltip.lines`）。呼叫規則寫在 `spec.ts` 檔頭。
+- 圖例放底部。底部留白由圖表層照圖例項目算：依圖例的折行規則算出各容器寬度下的行數，留圖例高度加間距；橫軸有 `name` 時多留軸名的高度。各圖不寫 `grid.bottom`。
+- 窄螢幕的斷點是容器寬度 480px（`NARROW_MAX`），是圖表層唯一的斷點常數；比的是圖表容器寬度，不是視窗寬度。各圖在 `narrow` 只寫和寬圖不同的值，寬圖的值寫在主設定的同一個路徑上，找不到時 `chartOption` 當場丟錯。
+- `media` 由圖表層合成：把容器寬度切成互不重疊的區段（切點是圖例各行數的門檻與 481），每段一筆 query、帶該段完整的值。各圖不得自己寫 `media`。
+- tooltip `confine: true`，不會超出手機畫面。tooltip 以 HTML 顯示，一律由圖表層跳脫：各圖只回純文字行（粗體那一行用 `{ bold }` 標記），圖表層逐行跳脫後用 `<br/>` 接起來。各圖的程式裡不出現 HTML，也不自己跳脫。
 - 類別軸標籤不抽稀（`interval: 0`），類別多於手機放得下時由呼叫端自己縮減或改橫向長條。
 - 只驗容器存在，不驗圖內容（父 spec 的接縫決定）。
 

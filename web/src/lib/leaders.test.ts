@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { chartOption } from '#lib/chart/spec.js';
 import type { VolumeRate } from '#lib/data/types.js';
 import { teamPalette } from '#lib/color.js';
 import { seasons, seasonTeam, teams, teamsIn } from '#lib/site.js';
@@ -10,6 +11,13 @@ import {
 	volumeRateNote,
 	volumeRateOption
 } from './leaders.js';
+
+vi.mock('#lib/chart/spec.js', async (importOriginal) => {
+	const original = await importOriginal<typeof import('#lib/chart/spec.js')>();
+	return { ...original, chartOption: vi.fn(original.chartOption) };
+});
+
+const lastSpec = () => vi.mocked(chartOption).mock.lastCall![0];
 
 const rows = (ranks: number[]) => ranks.map((rank, i) => ({ rank, player_id: i + 1 }));
 
@@ -58,7 +66,7 @@ describe('量率散點', () => {
 	});
 
 	it('散點以次數為橫軸、率為縱軸，兩軸中位數畫虛線', () => {
-		const option = volumeRateOption(view) as any;
+		const option = volumeRateOption(view)!.option as any;
 		expect(option.xAxis.name).toBe('攻擊次數');
 		expect(option.yAxis.name).toBe('攻擊成功率（%）');
 		const [series] = option.series;
@@ -81,7 +89,7 @@ describe('量率散點', () => {
 		};
 		const mixedView = toVolumeRateView(mixed, 'men', seasons[0].cup_id);
 		expect(mixedView.points.map((p) => p.color)).toEqual([b, a, b].map((t) => teamPalette(t.color).chart));
-		const option = volumeRateOption(mixedView) as any;
+		const option = volumeRateOption(mixedView)!.option as any;
 		expect(option.legend.show).not.toBe(false);
 		expect(option.legend.data).toEqual([a.short_name, b.short_name]);
 		const [sa, sb, medians] = option.series;
@@ -93,33 +101,30 @@ describe('量率散點', () => {
 		expect(option.legend.data).not.toContain(medians.name);
 	});
 
-	it('圖例隨圖寬折行時底部跟著多留高度，不蓋到橫軸軸名；橫軸刻度標籤放不下就隱藏', () => {
+	it('圖例依球隊順序列出隊名，橫軸刻度標籤放不下就隱藏', () => {
 		const names = ['屏東台電', '雲林美津濃', '臺北國北獅', '桃園臺產', '獅子王'];
 		const teams = names.map((name, i) => ({ team_id: i + 1, name, color: '#123456' }));
 		const points = teams.map((t) => ({ ...view.points[0], team_id: t.team_id, team: t.name }));
-		const option = volumeRateOption({ ...view, teams, points }) as any;
-		expect(option.grid.bottom).toBeUndefined();
-		const byMinWidth = (minWidth: number) => option.media.find((m: any) => m.query?.minWidth === minWidth).option;
-		expect(option.legend.data).toEqual(names);
-		expect([466, 272, 196].map(byMinWidth)).toEqual([
-			{ grid: { bottom: 64 } },
-			{ grid: { bottom: 86 } },
-			{ grid: { bottom: 108 } }
-		]);
+		const option = volumeRateOption({ ...view, teams, points })!.option as any;
+		expect(lastSpec().legend).toEqual(names);
 		expect(option.xAxis.axisLabel.hideOverlap).toBe(true);
 	});
 
 	it('點的提示顯示球員、隊名、次數與率', () => {
-		const option = volumeRateOption(view) as any;
+		const option = volumeRateOption(view)!.option as any;
 		const tip = option.tooltip.formatter({ data: option.series[0].data[0] });
 		expect(tip).toBe(`球員1（${view.points[0].team}）<br/>攻擊次數：40<br/>攻擊成功率：60%`);
 	});
 
-	it('提示裡的球員與隊名轉義成文字，不當成 HTML', () => {
+	it('提示行保留球員與隊名的原文', () => {
 		const name = '<img src=x onerror=alert(1)>';
-		const option = volumeRateOption({ ...view, points: [{ ...view.points[0], name, team: '<b>隊</b>' }] }) as any;
-		const tip = option.tooltip.formatter({ data: option.series[0].data[0] });
-		expect(tip).toBe('&lt;img src=x onerror=alert(1)&gt;（&lt;b&gt;隊&lt;/b&gt;）<br/>攻擊次數：40<br/>攻擊成功率：60%');
+		const option = volumeRateOption({ ...view, points: [{ ...view.points[0], name, team: '<b>隊</b>' }] })!.option as any;
+		const tip = lastSpec().tooltip;
+		if (tip.trigger !== 'item') throw new Error('散點提示應使用 item');
+		const data = option.series[0].data[0];
+		expect(tip.lines({ name, value: data.value, data })).toEqual([
+			`${name}（<b>隊</b>）`, '攻擊次數：40', '攻擊成功率：60%'
+		]);
 	});
 
 	it('沒有球員達門檻時不產生圖', () => {

@@ -1,3 +1,4 @@
+import { chartOption } from '#lib/chart/spec.js';
 import { currentSeason, seasons, teamsIn, type SeasonTeam, type StandingsRow } from '#lib/site.js';
 import type { StyleMatch } from '#lib/match.js';
 
@@ -93,9 +94,13 @@ export const samplePlayers = [
 	{ name: '林小美', number: 12, position: null, team: women2024[0] }
 ];
 
-export const trendOption = {
-	tooltip: { trigger: 'axis' },
-	xAxis: { type: 'category', data: ['1', '2', '3', '4', '5', '6', '7', '8'] },
+const trendGames = ['1', '2', '3', '4', '5', '6', '7', '8'];
+const trendScores = [78, 92, 85, 101, 88, 96, 104, 99];
+
+export const trendOption = chartOption({
+	legend: ['單場得分'],
+	tooltip: { trigger: 'axis', lines: (i) => [trendGames[i], `單場得分：${trendScores[i]}`] },
+	xAxis: { type: 'category', data: trendGames },
 	yAxis: { type: 'value' },
-	series: [{ name: '單場得分', type: 'line', data: [78, 92, 85, 101, 88, 96, 104, 99] }]
-};
+	series: [{ name: '單場得分', type: 'line', data: trendScores }]
+});

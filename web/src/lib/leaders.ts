@@ -1,7 +1,6 @@
 import leadersJson from '#lib/data/leaders.json';
 import type { GroupLeaders, LeaderBoard, LeaderRow, LeadersData, VolumeRate, VolumeRatePoint } from '#lib/data/types.js';
-import { escapeHtml } from '#lib/advanced.js';
-import { bottomLegendMedia } from '#lib/chart/legend.js';
+import { chartOption, type ChartOption } from '#lib/chart/spec.js';
 import { teamPalette } from '#lib/color.js';
 import { teamOf, teams as allTeams, type Group, type SeasonTeam } from '#lib/site.js';
 import { STAT_LABELS } from '#lib/statLabels.js';
@@ -67,7 +66,7 @@ export function toVolumeRateView(v: VolumeRate, group: Group, cupId: number): Vo
 
 type VolumeRateDatum = { value: [number, number]; name: string; team: string };
 
-export function volumeRateOption(v: VolumeRateView): object | null {
+export function volumeRateOption(v: VolumeRateView): ChartOption | null {
 	if (v.points.length === 0) return null;
 	const byTeam = v.teams.map((t) => {
 		const data: VolumeRateDatum[] = v.points
@@ -88,15 +87,14 @@ export function volumeRateOption(v: VolumeRateView): object | null {
 		}
 	};
 	const names = v.teams.map((t) => t.name);
-	return {
-		legend: { data: names },
+	return chartOption<VolumeRateDatum>({
+		legend: names,
 		grid: { top: 32, right: 24 },
-		// 圖例與繪圖區之間留 40 放橫軸軸名
-		media: bottomLegendMedia(names, 40),
 		tooltip: {
 			trigger: 'item',
-			formatter: ({ data: d }: { data: VolumeRateDatum }) =>
-				`${escapeHtml(d.name)}（${escapeHtml(d.team)}）<br/>${v.countLabel}：${d.value[0]}<br/>${v.rateLabel}：${d.value[1]}%`
+			lines: ({ data: d }) => [
+				`${d.name}（${d.team}）`, `${v.countLabel}：${d.value[0]}`, `${v.rateLabel}：${d.value[1]}%`
+			]
 		},
 		xAxis: {
 			type: 'value',
@@ -108,7 +106,7 @@ export function volumeRateOption(v: VolumeRateView): object | null {
 		},
 		yAxis: { type: 'value', name: `${v.rateLabel}（%）`, nameTextStyle: { align: 'left' }, scale: true },
 		series: [...byTeam, medians]
-	};
+	});
 }
 
 export function volumeRateNote(v: VolumeRateView, threshold: string | null): string {
