@@ -30,7 +30,7 @@
 			...o,
 			tooltip: { confine: true, ...(o.tooltip as Obj) },
 			legend,
-			grid: Array.isArray(grid) ? grid : { top: 24, right: 16, bottom, left: 8, containLabel: true, ...(grid as Obj) }
+			grid: { top: 24, right: 16, bottom, left: 8, containLabel: true, ...(grid as Obj) }
 		};
 	}
 </script>

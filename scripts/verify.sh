@@ -40,7 +40,7 @@ else
 	echo "✗ lint     找不到 actionlint。裝到 PATH，版本照 .github/workflows/ci.yml 的 VERSION：https://github.com/rhysd/actionlint/blob/main/docs/install.md"
 	failed+=(lint)
 fi
-# SC1087 出在 /wizard skill 產生的固定函式庫（launch_wizard.sh 等），不手改它
+# SC1087 出在 /wizard skill 產生的固定函式庫（score_token_wizard.sh），不手改它
 if command -v shellcheck > /dev/null; then
 	step shell "$repo" shellcheck -S warning -e SC1087 "$repo"/scripts/*.sh
 else
