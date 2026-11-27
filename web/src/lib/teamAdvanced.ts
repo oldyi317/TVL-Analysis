@@ -1,5 +1,6 @@
 import type { TeamAdvanced, TeamAdvancedData, TeamGameMetric, TeamMetrics, TeamTrendGame } from '#lib/data/types.js';
-import { escapeHtml, formatMetricValue, trendLineOption } from '#lib/advanced.js';
+import { chartOption, type ChartOption } from '#lib/chart/spec.js';
+import { formatMetricValue, trendLineOption } from '#lib/advanced.js';
 import { teamPalette } from '#lib/color.js';
 import type { Group } from '#lib/site.js';
 import { STAT_LABELS } from '#lib/statLabels.js';
@@ -80,12 +81,11 @@ function rowPoints(c: TeamComparison, key: TeamMetricKey, row: number, teamName:
 	});
 }
 
-export function metricsDotOption(c: TeamComparison, teamName: (id: number) => string): object {
+export function metricsDotOption(c: TeamComparison, teamName: (id: number) => string): ChartOption {
 	const points = TEAM_METRIC_KEYS.flatMap((key, row) => rowPoints(c, key, row, teamName));
-	return {
-		legend: { show: false },
-		grid: { top: 8, bottom: 8 },
-		tooltip: { trigger: 'item', formatter: (p: { data: DotPoint }) => `${escapeHtml(p.data.name)}<br/>${p.data.detail}` },
+	return chartOption<DotPoint>({
+		grid: { top: 8 },
+		tooltip: { trigger: 'item', lines: ({ data }) => [data.name, data.detail] },
 		xAxis: {
 			type: 'value',
 			min: 0,
@@ -101,7 +101,7 @@ export function metricsDotOption(c: TeamComparison, teamName: (id: number) => st
 				data: [...points.filter((p) => !p.isTeam), ...points.filter((p) => p.isTeam)]
 			}
 		]
-	};
+	});
 }
 
 export type MetricsTableRow = {
@@ -164,31 +164,27 @@ function sourceTeams(c: TeamComparison): TeamAdvanced[] {
 	return [c.team, ...c.teams.filter((t) => t.team_id !== c.team.team_id)].filter(hasPoints);
 }
 
-export function sourcesBarOption(c: TeamComparison, teamName: (id: number) => string): object {
+export function sourcesBarOption(c: TeamComparison, teamName: (id: number) => string): ChartOption {
 	const teams = sourceTeams(c);
-	const tooltipText = (t: TeamAdvanced) =>
-		[
-			escapeHtml(teamName(t.team_id)),
-			...SCORE_SOURCES.map(
-				({ key, label }) => `${label}：${t.points[key]} 分（${percent(share(t, key))}）`
-			),
-			`比分總分：${t.points.total} 分`,
-			OPPONENT_ERROR_NOTE
-		].join('<br/>');
-	return {
-		legend: { data: SCORE_SOURCES.map((s) => s.label) },
+	const tooltipLines = (t: TeamAdvanced) => [
+		teamName(t.team_id),
+		...SCORE_SOURCES.map(
+			({ key, label }) => `${label}：${t.points[key]} 分（${percent(share(t, key))}）`
+		),
+		`比分總分：${t.points.total} 分`,
+		OPPONENT_ERROR_NOTE
+	];
+	return chartOption({
+		legend: SCORE_SOURCES.map((s) => s.label),
 		grid: { top: 8 },
-		// 四個圖例項目排成一行約 406px；圖更窄時折成兩行，底部多留一行的高度，橫軸標籤也減到不互相重疊
-		media: [
-			{ query: { maxWidth: 480 }, option: { grid: { bottom: 64 }, xAxis: { interval: 50 } } },
-			{ option: { grid: { bottom: 40 }, xAxis: { interval: 20 } } }
-		],
+		// 手機寬度下每 20 標一次的橫軸標籤會互相重疊，只標 0／50／100
+		narrow: { xAxis: { interval: 50 } },
 		tooltip: {
 			trigger: 'axis',
 			axisPointer: { type: 'shadow' },
-			formatter: (params: { dataIndex: number }[]) => tooltipText(teams[params[0].dataIndex])
+			lines: (i) => tooltipLines(teams[i])
 		},
-		xAxis: { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}%' } },
+		xAxis: { type: 'value', min: 0, max: 100, interval: 20, axisLabel: { formatter: '{value}%' } },
 		yAxis: {
 			type: 'category',
 			inverse: true,
@@ -203,7 +199,7 @@ export function sourcesBarOption(c: TeamComparison, teamName: (id: number) => st
 				itemStyle: { opacity: t.team_id === c.team.team_id ? 1 : 0.35 }
 			}))
 		}))
-	};
+	});
 }
 
 export type SourcesTableRow = {
@@ -283,41 +279,30 @@ function pregameBars(m: PregameComparison, side: 'home' | 'away'): PregameBar[] 
 	});
 }
 
-export function pregameBarOption(m: PregameComparison, names: Pair<string>, colors: Pair<string>): object {
+export function pregameBarOption(m: PregameComparison, names: Pair<string>, colors: Pair<string>): ChartOption {
 	const sides = (['home', 'away'] as const).map((side) => ({ side, bars: pregameBars(m, side) }));
-	const tooltipText = (row: number) =>
-		[metricLabel(TEAM_METRIC_KEYS[row]), ...sides.map(({ side, bars }) => `${escapeHtml(names[side])}：${bars[row].actual}`)].join(
-			'<br/>'
-		);
-	return {
-		legend: { data: [names.home, names.away] },
-		grid: { top: 8 },
+	return chartOption({
+		legend: [names.home, names.away],
+		grid: { top: 8, left: 8, right: 16 },
 		// 長條兩端的數值標籤最寬約 56px。手機寬度放不下「名稱、數值、長條、數值」一列，
 		// 名稱移到長條上方、兩側各留 64px 給數值；更寬時名稱在左，橫軸多留 70% 給數值
-		media: [
-			{
-				query: { maxWidth: 480 },
-				option: {
-					grid: { left: 64, right: 64 },
-					xAxis: { min: -100, max: 100 },
-					yAxis: { axisLabel: { inside: true, margin: 0, verticalAlign: 'bottom', padding: [0, 0, 12, 0] } }
-				}
-			},
-			{
-				option: {
-					grid: { left: 8, right: 16 },
-					xAxis: { min: -170, max: 170 },
-					yAxis: { axisLabel: { inside: false, margin: 8, verticalAlign: 'middle', padding: 0 } }
-				}
-			}
-		],
+		narrow: {
+			grid: { left: 64, right: 64 },
+			xAxis: { min: -100, max: 100 },
+			yAxis: { axisLabel: { inside: true, margin: 0, verticalAlign: 'bottom', padding: [0, 0, 12, 0] } }
+		},
 		tooltip: {
 			trigger: 'axis',
 			axisPointer: { type: 'shadow' },
-			formatter: (params: { dataIndex: number }[]) => tooltipText(params[0].dataIndex)
+			lines: (row) => [
+				metricLabel(TEAM_METRIC_KEYS[row]), ...sides.map(({ side, bars }) => `${names[side]}：${bars[row].actual}`)
+			]
 		},
-		xAxis: { type: 'value', show: false },
-		yAxis: { type: 'category', inverse: true, data: TEAM_METRIC_KEYS.map(metricLabel), axisTick: { show: false } },
+		xAxis: { type: 'value', show: false, min: -170, max: 170 },
+		yAxis: {
+			type: 'category', inverse: true, data: TEAM_METRIC_KEYS.map(metricLabel), axisTick: { show: false },
+			axisLabel: { inside: false, margin: 8, verticalAlign: 'middle', padding: 0 }
+		},
 		series: sides.map(({ side, bars }) => ({
 			type: 'bar',
 			name: names[side],
@@ -330,7 +315,7 @@ export function pregameBarOption(m: PregameComparison, names: Pair<string>, colo
 			},
 			data: bars
 		}))
-	};
+	});
 }
 
 type PregameCell = { value: string; rank: string };
@@ -354,7 +339,7 @@ const trendDetail = (key: TeamMetricKey, { numerator, denominator }: TeamGameMet
 const opponentName = (game: TeamTrendGame, teamName: (id: number) => string): string | null =>
 	game.opponent_id === null ? null : teamName(game.opponent_id);
 
-export function teamTrendOption(team: TeamAdvanced, key: TeamMetricKey, teamName: (id: number) => string): object {
+export function teamTrendOption(team: TeamAdvanced, key: TeamMetricKey, teamName: (id: number) => string): ChartOption {
 	return trendLineOption(
 		team.trend.map((game) => {
 			const metric = game.metrics[key];

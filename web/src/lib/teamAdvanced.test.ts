@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { chartOption } from '#lib/chart/spec.js';
 import { teamPalette } from '#lib/color.js';
 import type { TeamAdvanced, TeamAdvancedData, TeamGameMetrics, TeamMetric, TeamMetrics, TeamTrendGame } from '#lib/data/types.js';
 import {
@@ -21,6 +22,19 @@ import {
 	trendTable,
 	teamTrendOption
 } from './teamAdvanced.js';
+
+vi.mock('#lib/chart/spec.js', async (importOriginal) => {
+	const original = await importOriginal<typeof import('#lib/chart/spec.js')>();
+	return { ...original, chartOption: vi.fn(original.chartOption) };
+});
+
+const lastSpec = () => vi.mocked(chartOption).mock.lastCall![0];
+
+function axisLines(index: number) {
+	const tip = lastSpec().tooltip;
+	if (tip.trigger !== 'axis') throw new Error('此圖應使用 axis');
+	return tip.lines(index);
+}
 
 const metric = (value: number | null, rank: number | null): TeamMetric => ({
 	numerator: 0,
@@ -136,7 +150,7 @@ describe('metricsDotOption', () => {
 	};
 	const names: Record<number, string> = { 1: '屏東台電', 2: '雲林美津濃', 4: '臺北鳳凰', 5: '龍邁建設' };
 	const option = (teams: TeamAdvanced[]) =>
-		metricsDotOption(teamComparison(data(teams), 21, 'men', 4)!, (id) => names[id]) as DotOption;
+		metricsDotOption(teamComparison(data(teams), 21, 'men', 4)!, (id) => names[id]).option as DotOption;
 	const attackRow = (o: DotOption) => o.series[0].data.filter((p) => p.value[1] === 0);
 
 	it('每列一項指標，依固定順序', () => {
@@ -169,10 +183,15 @@ describe('metricsDotOption', () => {
 		expect(o.tooltip.formatter({ data: blocks })).toBe('屏東台電<br/>每局攔網：50（並列第 1 / 2）');
 	});
 
-	it('tooltip 的隊名轉義成文字', () => {
+	it('提示行保留隊名原文', () => {
 		const c = teamComparison(data([withAttack(4, 45, 1)]), 21, 'men', 4)!;
-		const o = metricsDotOption(c, () => '<img src=x onerror=alert(1)>') as DotOption;
-		expect(o.tooltip.formatter({ data: attackRow(o)[0] })).toBe('&lt;img src=x onerror=alert(1)&gt;<br/>攻擊成功率：45%（第 1 / 1）');
+		const o = metricsDotOption(c, () => '<img src=x onerror=alert(1)>').option as DotOption;
+		const tip = lastSpec().tooltip;
+		if (tip.trigger !== 'item') throw new Error('指標點圖應使用 item');
+		const point = attackRow(o)[0];
+		expect(tip.lines({ name: point.name, value: point.value, data: point })).toEqual([
+			'<img src=x onerror=alert(1)>', '攻擊成功率：45%（第 1 / 1）'
+		]);
 	});
 });
 
@@ -249,8 +268,6 @@ type BarOption = {
 	yAxis: { data: string[]; inverse: boolean };
 	xAxis: { min: number; max: number };
 	legend: { data: string[] };
-	grid: object;
-	media: object[];
 	series: { name: string; stack: string; data: { value: number; itemStyle: { opacity: number } }[] }[];
 	tooltip: { formatter: (p: { dataIndex: number }[]) => string };
 };
@@ -259,7 +276,7 @@ describe('sourcesBarOption', () => {
 	const names: Record<number, string> = { 1: '屏東台電', 4: '臺北鳳凰', 2: '雲林美津濃' };
 	const zero = withPoints(team(2, {}), { attack: 0, block: 0, serve: 0, opponent_error: 0 });
 	const option = () =>
-		sourcesBarOption(comparison([byError(4, 50), byError(1, 10), zero]), (id) => names[id]) as BarOption;
+		sourcesBarOption(comparison([byError(4, 50), byError(1, 10), zero]), (id) => names[id]).option as BarOption;
 
 	it('本隊在最上面並註明本隊，total 為 0 的隊不畫', () => {
 		const o = option();
@@ -277,13 +294,12 @@ describe('sourcesBarOption', () => {
 		expect(o.legend.data).toHaveLength(4);
 	});
 
-	it('圖例在圖的下方：寬 480px 以下替折成兩行的圖例留高度、橫軸只標 0／50／100，更寬時留一行、每 20 標一次', () => {
-		const o = option();
-		expect(o.grid).toEqual({ top: 8 });
-		expect(o.media).toEqual([
-			{ query: { maxWidth: 480 }, option: { grid: { bottom: 64 }, xAxis: { interval: 50 } } },
-			{ option: { grid: { bottom: 40 }, xAxis: { interval: 20 } } }
-		]);
+	it('得分來源窄圖每 50 標一次，寬圖每 20 標一次', () => {
+		option();
+		const spec = lastSpec();
+		expect(spec.grid).toEqual({ top: 8 });
+		expect(spec.narrow).toEqual({ xAxis: { interval: 50 } });
+		expect(spec.xAxis.interval).toBe(20);
 	});
 
 	it('tooltip 顯示四項得分數與佔比，並註明推算值', () => {
@@ -293,9 +309,9 @@ describe('sourcesBarOption', () => {
 		expect(text.endsWith('對手失誤得分是推算值：比分總分 − 技術得分')).toBe(true);
 	});
 
-	it('tooltip 的隊名轉義成文字', () => {
-		const o = sourcesBarOption(comparison([byError(4, 50)]), () => '<img src=x onerror=alert(1)>') as BarOption;
-		expect(o.tooltip.formatter([{ dataIndex: 0 }]).startsWith('&lt;img src=x onerror=alert(1)&gt;<br/>')).toBe(true);
+	it('提示行保留隊名原文', () => {
+		sourcesBarOption(comparison([byError(4, 50)]), () => '<img src=x onerror=alert(1)>');
+		expect(axisLines(0)[0]).toBe('<img src=x onerror=alert(1)>');
 	});
 });
 
@@ -367,7 +383,7 @@ describe('pregameBarOption', () => {
 	const away = team(1, { attack_success_rate: 2 });
 	const m = { home, away, teams: [home, away, team(2, { attack_success_rate: 3 })] };
 	const option = () =>
-		pregameBarOption(m, { home: '台電', away: '鳳凰' }, { home: '#c00000', away: '#0050a0' }) as any;
+		pregameBarOption(m, { home: '台電', away: '鳳凰' }, { home: '#c00000', away: '#0050a0' }).option as any;
 
 	it('主隊在左、客隊在右', () => {
 		const [h, a] = option().series;
@@ -378,7 +394,7 @@ describe('pregameBarOption', () => {
 	});
 
 	it('長條用 teamPalette().chart 圖表隊色，不用原始 hex（#175）', () => {
-		const [h, a] = (pregameBarOption(m, { home: '台電', away: '鳳凰' }, { home: '#0B304B', away: '#0A4951' }) as any).series;
+		const [h, a] = (pregameBarOption(m, { home: '台電', away: '鳳凰' }, { home: '#0B304B', away: '#0A4951' }).option as any).series;
 		expect(h.itemStyle.color).toBe(teamPalette('#0B304B').chart);
 		expect(h.itemStyle.color).not.toBe('#0B304B');
 		expect(a.itemStyle.color).toBe(teamPalette('#0A4951').chart);
@@ -393,23 +409,16 @@ describe('pregameBarOption', () => {
 	});
 
 	it('圖寬 480px 以下指標名稱移到長條上方、兩側各留 64px 放數值標籤；更寬時名稱在左、兩側依比例留空間', () => {
-		expect(option().media).toEqual([
-			{
-				query: { maxWidth: 480 },
-				option: {
-					grid: { left: 64, right: 64 },
-					xAxis: { min: -100, max: 100 },
-					yAxis: { axisLabel: { inside: true, margin: 0, verticalAlign: 'bottom', padding: [0, 0, 12, 0] } }
-				}
-			},
-			{
-				option: {
-					grid: { left: 8, right: 16 },
-					xAxis: { min: -170, max: 170 },
-					yAxis: { axisLabel: { inside: false, margin: 8, verticalAlign: 'middle', padding: 0 } }
-				}
-			}
-		]);
+		option();
+		const spec = lastSpec();
+		expect(spec.narrow).toEqual({
+			grid: { left: 64, right: 64 },
+			xAxis: { min: -100, max: 100 },
+			yAxis: { axisLabel: { inside: true, margin: 0, verticalAlign: 'bottom', padding: [0, 0, 12, 0] } }
+		});
+		expect(spec.grid).toMatchObject({ left: 8, right: 16 });
+		expect(spec.xAxis).toMatchObject({ min: -170, max: 170 });
+		expect(spec.yAxis.axisLabel).toEqual({ inside: false, margin: 8, verticalAlign: 'middle', padding: 0 });
 	});
 
 	it('tooltip 顯示兩隊數值', () => {
@@ -420,9 +429,9 @@ describe('pregameBarOption', () => {
 		expect(option().tooltip.formatter([{ dataIndex: 5 }])).toContain('台電：—');
 	});
 
-	it('tooltip 的隊名轉義成文字', () => {
-		const o = pregameBarOption(m, { home: '<img src=x onerror=alert(1)>', away: '鳳凰' }, { home: '#c00000', away: '#0050a0' }) as any;
-		expect(o.tooltip.formatter([{ dataIndex: 0 }])).toBe('攻擊成功率<br/>&lt;img src=x onerror=alert(1)&gt;：50%<br/>鳳凰：40%');
+	it('提示行保留隊名原文', () => {
+		pregameBarOption(m, { home: '<img src=x onerror=alert(1)>', away: '鳳凰' }, { home: '#c00000', away: '#0050a0' });
+		expect(axisLines(0)).toEqual(['攻擊成功率', '<img src=x onerror=alert(1)>：50%', '鳳凰：40%']);
 	});
 });
 
@@ -508,27 +517,27 @@ describe('球隊逐場趨勢', () => {
 	};
 
 	it('折線沿用球員逐場趨勢的做法：MM/DD、比率 y 軸 0–100、分母為 0 是空點', () => {
-		const o = teamTrendOption(season, 'attack_success_rate', teamName) as O;
+		const o = teamTrendOption(season, 'attack_success_rate', teamName).option as O;
 		expect(o.xAxis.data).toEqual(['01/03', '01/10', '01/17', '01/24', '01/31']);
 		expect(o.yAxis).toMatchObject({ min: 0, max: 100, name: '%' });
 		expect(o.series.map((s) => s.name)).toEqual(['攻擊成功率']);
 		expect(o.series[0].connectNulls).toBe(false);
 		expect(o.series[0].data).toEqual([25, 25, 50, 50, 50]);
-		expect((teamTrendOption(season, 'serve_point_rate', teamName) as O).series[0].data).toEqual([null, null, null, null, null]);
+		expect((teamTrendOption(season, 'serve_point_rate', teamName).option as O).series[0].data).toEqual([null, null, null, null, null]);
 	});
 
 	it('提示框列出日期、對手與分子分母；對手不明時只列日期', () => {
-		const o = teamTrendOption(season, 'attack_success_rate', teamName) as O;
+		const o = teamTrendOption(season, 'attack_success_rate', teamName).option as O;
 		expect(o.tooltip.formatter([{ dataIndex: 1 }])).toBe('2026-01-10 對 美津濃<br/>攻擊成功率：25%（得分 5／20）');
 		expect(o.tooltip.formatter([{ dataIndex: 4 }])).toBe('2026-01-31<br/>攻擊成功率：50%（得分 10／20）');
-		const blocks = teamTrendOption(season, 'blocks_per_set', teamName) as O;
+		const blocks = teamTrendOption(season, 'blocks_per_set', teamName).option as O;
 		expect(blocks.yAxis.max).toBeUndefined();
 		expect(blocks.tooltip.formatter([{ dataIndex: 4 }])).toContain('每局攔網：1（攔網 4／4 局）');
 	});
 
-	it('提示框的對手隊名轉義成文字', () => {
-		const o = teamTrendOption(season, 'attack_success_rate', () => '<img src=x onerror=alert(1)>') as O;
-		expect(o.tooltip.formatter([{ dataIndex: 1 }])).toBe('2026-01-10 對 &lt;img src=x onerror=alert(1)&gt;<br/>攻擊成功率：25%（得分 5／20）');
+	it('提示行保留對手隊名原文', () => {
+		teamTrendOption(season, 'attack_success_rate', () => '<img src=x onerror=alert(1)>');
+		expect(axisLines(1)).toEqual(['2026-01-10 對 <img src=x onerror=alert(1)>', '攻擊成功率：25%（得分 5／20）']);
 	});
 
 	it('結論是近 3 場加總後再除，與本季整體的差距', () => {

@@ -1,12 +1,14 @@
 import { createRawSnippet } from 'svelte';
 import { render } from 'svelte/server';
 import { describe, expect, it } from 'vitest';
+import { chartOption, type ChartOption } from '#lib/chart/spec.js';
 import ChartFrame from './ChartFrame.svelte';
 
 const table = createRawSnippet(() => ({ render: () => '<table aria-label="表"></table>' }));
 const controls = createRawSnippet(() => ({ render: () => '<div role="group" aria-label="選擇技術"></div>' }));
+const option = chartOption({ xAxis: {}, yAxis: {}, series: [], tooltip: { trigger: 'axis', lines: () => [] } });
 type FrameProps = {
-	option: object | null;
+	option: ChartOption | null;
 	conclusion: string | null;
 	games?: number | { name: string; games: number }[];
 	label?: string;
@@ -20,20 +22,20 @@ const frame = (props: FrameProps) =>
 
 describe('ChartFrame', () => {
 	it('有一句話結論時顯示結論，無障礙文字也包含結論', () => {
-		const body = frame({ option: {}, conclusion: '接發球到位率 第 1 / 6' });
+		const body = frame({ option, conclusion: '接發球到位率 第 1 / 6' });
 		expect(body).toContain('<p class="conclusion');
 		expect(body).toContain('aria-label="球隊指標對照組內各隊：接發球到位率 第 1 / 6"');
 		expect(body).toContain('已賽 3 場');
 	});
 
 	it('沒有結論時無障礙文字改用圖名加已賽場數', () => {
-		const body = frame({ option: {}, conclusion: null, games: 2 });
+		const body = frame({ option, conclusion: null, games: 2 });
 		expect(body).not.toContain('class="conclusion');
 		expect(body).toContain('aria-label="球隊指標對照組內各隊，已賽 2 場"');
 	});
 
 	it('以表格檢視按鈕預設收合，有 aria-expanded 與 aria-controls', () => {
-		const body = frame({ option: {}, conclusion: null });
+		const body = frame({ option, conclusion: null });
 		expect(body).toMatch(/<button[^>]*aria-expanded="false"[^>]*aria-controls="[^"]+-table"[^>]*>以表格檢視/);
 	});
 
@@ -47,21 +49,21 @@ describe('ChartFrame', () => {
 
 	it('兩隊對照時分列兩隊已賽場數，場數相同時合併', () => {
 		const two = (a: number, b: number) =>
-			frame({ option: {}, conclusion: null, games: [{ name: '台電', games: a }, { name: '鳳凰', games: b }] });
+			frame({ option, conclusion: null, games: [{ name: '台電', games: a }, { name: '鳳凰', games: b }] });
 		expect(two(3, 2)).toContain('台電 已賽 3 場・鳳凰 已賽 2 場');
 		expect(two(3, 2)).toContain('aria-label="球隊指標對照組內各隊，台電 已賽 3 場・鳳凰 已賽 2 場"');
 		expect(two(3, 3)).toContain('>已賽 3 場<');
 	});
 
 	it('指定無障礙文字時取代預設的圖名加場數', () => {
-		const body = frame({ option: {}, conclusion: null, label: '量率散點：攻擊' });
+		const body = frame({ option, conclusion: null, label: '量率散點：攻擊' });
 		expect(body).toContain('aria-label="量率散點：攻擊"');
 		expect(body).not.toContain('aria-label="球隊指標對照組內各隊，已賽 3 場"');
 	});
 
 	it('標題預設 h3，可指定 h2', () => {
-		expect(frame({ option: {}, conclusion: null })).toMatch(/<h3[^>]*>球隊指標對照組內各隊(<!---->)?<\/h3>/);
-		expect(frame({ option: {}, conclusion: null, heading: 'h2' })).toMatch(/<h2[^>]*>球隊指標對照組內各隊(<!---->)?<\/h2>/);
+		expect(frame({ option, conclusion: null })).toMatch(/<h3[^>]*>球隊指標對照組內各隊(<!---->)?<\/h3>/);
+		expect(frame({ option, conclusion: null, heading: 'h2' })).toMatch(/<h2[^>]*>球隊指標對照組內各隊(<!---->)?<\/h2>/);
 	});
 
 	it('空狀態仍保留切換控制，讀者可以換到有數據的分頁', () => {

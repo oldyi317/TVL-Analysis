@@ -1,3 +1,4 @@
+import { chartOption, type ChartOption } from '#lib/chart/spec.js';
 import type {
 	BoxScoresData,
 	MetricDistribution,
@@ -206,16 +207,15 @@ export function distributionOption(
 	dist: MetricDistribution,
 	playerValue: number | null,
 	metricLabel: string
-): object {
+): ChartOption {
 	const tied = playerValue === null ? 0 : dist.values.filter((v) => v === playerValue).length;
 	const mark = tied === 1 ? '這位球員' : `與這位球員同值（${tied} 人）`;
-	return {
-		legend: { show: false },
-		grid: { bottom: 28 },
+	return chartOption<{ isPlayer: boolean }>({
 		tooltip: {
 			trigger: 'item',
-			formatter: (p: { name: string; value: number; data: { isPlayer: boolean } }) =>
-				`由低到高第 ${p.name} 位<br/>${metricLabel}：${p.value}${p.data.isPlayer ? `<br/><b>${mark}</b>` : ''}`
+			lines: ({ name, value, data }) => [
+				`由低到高第 ${name} 位`, `${metricLabel}：${value}`, ...(data.isPlayer ? [{ bold: mark }] : [])
+			]
 		},
 		xAxis: {
 			type: 'category',
@@ -245,7 +245,7 @@ export function distributionOption(
 				}
 			}
 		]
-	};
+	});
 }
 
 type PoolFields = Pick<PlayerAdvancedEntry, 'below_threshold' | 'position'>;
@@ -384,29 +384,23 @@ export function trendSummary(points: TrendPoint[], metric: TrendMetric): string 
 		: `${title}，本季尚無單場數據。`;
 }
 
-export function trendOption(log: GameLogEntry[], metric: TrendMetric): object {
+export function trendOption(log: GameLogEntry[], metric: TrendMetric): ChartOption {
 	return trendLineOption(trendPoints(log, metric), metric);
 }
 
-const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-
-// ECharts 以 innerHTML 顯示 tooltip，球員、隊名等資料字串要先轉義；不用 echarts 的 format.encodeHTML，靜態匯入會讓 Chart.svelte 的延遲載入失效
-export const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
-
 // 球員與球隊逐場趨勢共用的折線圖
-export function trendLineOption(points: TrendPoint[], metric: TrendMetric): object {
+export function trendLineOption(points: TrendPoint[], metric: TrendMetric): ChartOption {
 	const def: TrendDef = TREND_DEFS[metric];
 	const unit = def.isRate ? '%' : '';
-	return {
-		legend: { show: false },
+	return chartOption({
 		tooltip: {
 			trigger: 'axis',
-			formatter: (params: { dataIndex: number }[]) => {
-				const { value, detail, heading, golden } = points[params[0].dataIndex];
+			lines: (dataIndex) => {
+				const { value, detail, heading, golden } = points[dataIndex];
 				const shown = value === null ? '—' : `${value}${unit}${detail ? `（${detail}）` : ''}`;
-				const lines = [escapeHtml(heading), `${def.label}：${shown}`];
+				const lines = [heading, `${def.label}：${shown}`];
 				if (golden) lines.push('此場另有黃金決勝局，未計入');
-				return lines.join('<br/>');
+				return lines;
 			}
 		},
 		xAxis: {
@@ -425,7 +419,7 @@ export function trendLineOption(points: TrendPoint[], metric: TrendMetric): obje
 				data: points.map(({ value, golden }) => (golden && value !== null ? goldenPoint(value) : value))
 			}
 		]
-	};
+	});
 }
 
 function hasTechnicalStats({ sets_played: _sets, ...skills }: GameStats): boolean {

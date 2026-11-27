@@ -19,7 +19,6 @@ import {
 	distributionMetricKeys,
 	distributionNote,
 	distributionSummary,
-	escapeHtml,
 	headlineStats,
 	inPrPool,
 	noPrReason,
@@ -211,7 +210,7 @@ describe('distributionOption', () => {
 	const seriesOf = (o: object) => (o as { series: { data: Item[]; markLine: unknown }[] }).series[0];
 
 	it('x 軸為 1..N 名次但不顯示刻度，軸名說明人數與排序；長條值為升冪原始值', () => {
-		const o = distributionOption(dist, 40, '攻擊成功率') as {
+		const o = distributionOption(dist, 40, '攻擊成功率').option as {
 			xAxis: { data: string[]; axisLabel: { show: boolean }; name: string };
 		};
 		expect(o.xAxis.data).toEqual(['1', '2', '3', '4', '5']);
@@ -221,24 +220,24 @@ describe('distributionOption', () => {
 	});
 
 	it('只標記與球員數值相等的那一根', () => {
-		const flags = seriesOf(distributionOption(dist, 40, '攻擊成功率')).data.map((d) => d.isPlayer);
+		const flags = seriesOf(distributionOption(dist, 40, '攻擊成功率').option).data.map((d) => d.isPlayer);
 		expect(flags).toEqual([false, false, false, true, false]);
 	});
 
 	it('多人同值時所有相等的長條都標記；playerValue 為 null 或不在池內則都不標', () => {
 		const tied = { median: 20, values: [10, 20, 20, 30] };
-		expect(seriesOf(distributionOption(tied, 20, 'x')).data.map((d) => d.isPlayer)).toEqual([
+		expect(seriesOf(distributionOption(tied, 20, 'x').option).data.map((d) => d.isPlayer)).toEqual([
 			false,
 			true,
 			true,
 			false
 		]);
-		expect(seriesOf(distributionOption(dist, null, 'x')).data.some((d) => d.isPlayer)).toBe(false);
-		expect(seriesOf(distributionOption(dist, 35, 'x')).data.some((d) => d.isPlayer)).toBe(false);
+		expect(seriesOf(distributionOption(dist, null, 'x').option).data.some((d) => d.isPlayer)).toBe(false);
+		expect(seriesOf(distributionOption(dist, 35, 'x').option).data.some((d) => d.isPlayer)).toBe(false);
 	});
 
 	it('markLine 畫中位數橫線', () => {
-		const ml = seriesOf(distributionOption(dist, 40, 'x')).markLine as {
+		const ml = seriesOf(distributionOption(dist, 40, 'x').option).markLine as {
 			data: { yAxis: number }[];
 			lineStyle: { type: string };
 		};
@@ -266,7 +265,7 @@ describe('trendOption', () => {
 		series: { name: string; connectNulls: boolean; data: unknown[] }[];
 		tooltip: { formatter: Fmt };
 	};
-	const build = (metric: TrendMetric) => trendOption(log, metric) as O;
+	const build = (metric: TrendMetric) => trendOption(log, metric).option as O;
 
 	it('x 軸為 MM/DD，只畫選定指標一條線、單一 y 軸', () => {
 		const o = build('points');
@@ -290,7 +289,7 @@ describe('trendOption', () => {
 
 	it('攔網得分是每場原始計數，y 軸取整數', () => {
 		const blocks = [entry('2026-01-03', { block_points: 2, sets_played: null }), entry('2026-01-10', { block_points: 0 })];
-		const o = trendOption(blocks, 'block_points') as O & { yAxis: { minInterval?: number } };
+		const o = trendOption(blocks, 'block_points').option as O & { yAxis: { minInterval?: number } };
 		expect(o.series[0].data).toEqual([2, 0]);
 		expect(o.series[0].name).toBe('攔網得分');
 		expect(o.yAxis.minInterval).toBe(1);
@@ -302,7 +301,7 @@ describe('trendOption', () => {
 			entry('2026-01-10', { block_points: 6 }, false, 4),
 			entry('2026-01-17', { block_points: 1 }, false, null)
 		];
-		const o = trendOption(blocks, 'blocks_per_set') as O;
+		const o = trendOption(blocks, 'blocks_per_set').option as O;
 		expect(o.series[0].data).toEqual([0.67, 1.5, null]);
 		expect(o.tooltip.formatter([{ dataIndex: 1 }])).toBe('2026-01-10<br/>每局攔網：1.5（攔網 6／4 局）');
 	});
@@ -320,7 +319,7 @@ describe('trendOption', () => {
 				set_total: 10
 			})
 		];
-		const value = (m: TrendMetric) => (trendOption(one, m) as O).series[0].data[0];
+		const value = (m: TrendMetric) => (trendOption(one, m).option as O).series[0].data[0];
 		expect(value('serve_point_rate')).toBe(25);
 		expect(value('receive_excellent_rate')).toBe(75);
 		expect(value('dig_excellent_rate')).toBe(12.5);
@@ -341,13 +340,6 @@ describe('trendOption', () => {
 		expect(f([{ dataIndex: 2 }])).toBe('2026-01-17<br/>攻擊成功率：100%（得分 1／1）');
 		expect(f([{ dataIndex: 1 }])).toBe('2026-01-10<br/>攻擊成功率：—<br/>此場另有黃金決勝局，未計入');
 		expect(build('points').tooltip.formatter([{ dataIndex: 0 }])).toBe('2026-01-03<br/>得分：8');
-	});
-});
-
-describe('escapeHtml', () => {
-	it('轉義 HTML 特殊字元，一般姓名與隊名原樣保留', () => {
-		expect(escapeHtml(`<img src=x onerror="alert('&')">`)).toBe('&lt;img src=x onerror=&quot;alert(&#39;&amp;&#39;)&quot;&gt;');
-		expect(escapeHtml('臺北鳳凰（2）Lin 12')).toBe('臺北鳳凰（2）Lin 12');
 	});
 });
 
@@ -402,14 +394,14 @@ describe('inPrPool', () => {
 describe('邊界案例', () => {
 	type Fmt = (p: unknown) => string;
 	it('同位置只有自己一人時 tooltip 標「這位球員」', () => {
-		const o = distributionOption({ median: 5, values: [5] }, 5, 'x') as { tooltip: { formatter: Fmt } };
+		const o = distributionOption({ median: 5, values: [5] }, 5, 'x').option as { tooltip: { formatter: Fmt } };
 		const text = o.tooltip.formatter({ name: '1', value: 5, data: { isPlayer: true } });
-		expect(text).toContain('這位球員');
+		expect(text).toContain('<b>這位球員</b>');
 		expect(text).not.toContain('同值');
 	});
 
 	it('空分佈不丟例外，長條與 x 軸皆空', () => {
-		const o = distributionOption({ median: 0, values: [] }, null, 'x') as {
+		const o = distributionOption({ median: 0, values: [] }, null, 'x').option as {
 			xAxis: { data: string[] };
 			series: { data: unknown[] }[];
 		};

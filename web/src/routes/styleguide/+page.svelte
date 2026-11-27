@@ -11,6 +11,7 @@
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
 	import WinRing from '#lib/components/WinRing.svelte';
 	import { teamStyle } from '#lib/components/teamStyle.js';
+	import { chartOption } from '#lib/chart/spec.js';
 	import Chart from '#lib/chart/Chart.svelte';
 	import { contrastRatio, SURFACE, teamPalette } from '#lib/color.js';
 	import { currentSeason, GROUP_LABEL, seasonTeam, teams, teamsIn } from '#lib/site.js';
@@ -96,9 +97,9 @@
 	const surface = $derived(dark ? SURFACE.dark : SURFACE.light);
 
 	const barTeams = menTeams.slice(0, 4);
-	const barOption = $derived({
-		legend: { show: false },
-		tooltip: { trigger: 'axis' },
+	const barPoints = [92, 88, 85, 80];
+	const barOption = $derived(chartOption({
+		tooltip: { trigger: 'axis', lines: (i) => [barTeams[i].short_name, `場均得分：${barPoints[i]}`] },
 		xAxis: { type: 'category', data: barTeams.map((t) => t.short_name) },
 		yAxis: { type: 'value' },
 		series: [
@@ -107,11 +108,11 @@
 				type: 'bar',
 				data: barTeams.map((t, i) => {
 					const p = teamPalette(t.color);
-					return { value: [92, 88, 85, 80][i], itemStyle: { color: dark ? p.inkDark : p.inkLight } };
+					return { value: barPoints[i], itemStyle: { color: dark ? p.inkDark : p.inkLight } };
 				})
 			}
 		]
-	});
+	}));
 </script>
 
 <SiteHead title="樣式指南｜VStat 企排" />
