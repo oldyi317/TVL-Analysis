@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup
 
 from pathlib import Path
 
+from src.etl.player_stats_store import normalize_name
 from src.utils.db_config import DB_PATH, get_connection
 from src.utils.logger import get_logger
 from src.utils.seasons import Season, get_season, resolve_date_in_season
@@ -28,11 +29,6 @@ from src.utils.teams import UnknownTeamError, resolve_team
 SCHEMA_PATH = Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
 
 logger = get_logger(__name__)
-
-
-def normalize_name(name: str) -> str:
-    """正規化姓名：去除全形/半形空白、轉小寫、去除不間斷空白。"""
-    return re.sub(r"[\s\u3000\xa0]+", "", name).lower()
 
 
 def safe_int(val: str) -> int | None:

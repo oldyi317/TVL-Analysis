@@ -108,6 +108,21 @@ def test_writes_stats_and_match_page_registrations_for_a_candidate(conn):
     assert candidate_matches(conn) == []
 
 
+def test_missing_season_roster_skips_whole_match(conn):
+    seed_match(conn, "F", 281)
+    conn.execute("INSERT INTO players (name, gender) VALUES ('林良黛', 'F')")
+    conn.commit()
+    players_before = conn.execute("SELECT COUNT(*) FROM players").fetchone()
+
+    summary = write_match_stats(conn, fetch_fixture)
+
+    assert summary["written"] == []
+    assert summary["skipped"] == [(("F", 281), "cup_id=22 無賽季報名名單，官網來源不動態新增球員")]
+    assert conn.execute("SELECT COUNT(*) FROM players").fetchone() == players_before
+    assert conn.execute("SELECT COUNT(*) FROM roster_registrations").fetchone() == (0,)
+    assert conn.execute("SELECT COUNT(*) FROM player_match_stats").fetchone() == (0,)
+
+
 def test_second_run_is_a_no_op(conn):
     seed_match(conn, "F", 281)
     seed_roster_from_fixture(conn, "F", 281)
