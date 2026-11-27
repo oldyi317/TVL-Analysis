@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import type { Locator } from '@playwright/test';
 import { BASE, findSeason, readJson, seasonsData, expect, test } from './helpers.js';
 import { isPlayed } from '../src/lib/match.js';
 
@@ -139,27 +140,49 @@ test.describe('手機', () => {
 		test.skip(!menGame || !womenGame || !fiveSetGame, '缺少男子、女子或打滿五局的單場數據樣本');
 		await page.setViewportSize({ width: 375, height: 812 });
 
-		const sumColumn = async (table: import('@playwright/test').Locator, colIndex: number) => {
-			const cells = await table.locator(`tbody tr.main td:nth-child(${colIndex})`).allTextContents();
-			return cells.reduce((acc, text) => acc + Number(text.trim()), 0);
-		};
+		const readComparisonTable = (table: Locator) =>
+			table.evaluate((el) => ({
+				colCount: el.querySelectorAll('thead th[scope="col"]').length,
+				rows: Array.from(el.querySelectorAll('tbody tr'), (tr) => ({
+					header: tr.querySelector('th[scope="row"]')!.textContent!.trim(),
+					cells: Array.from(tr.querySelectorAll('td'), (td) => td.textContent!.trim())
+				}))
+			}));
 
 		for (const item of [menGame!, womenGame!, fiveSetGame!]) {
 			await page.goto(`${BASE}/${item.season}/${item.group}/matches/${item.game.game_id}/`);
 
-			const headings = await page.locator('main h2').allTextContents();
-			expect(headings.slice(0, 4)).toEqual(['逐局比分', '賽後對戰比較', '單場前三名', '單場數據']);
+			const [headings, sourcesData, metricsData, boxSums, setsTexts, overflow] = await Promise.all([
+				page.locator('main h2').allTextContents(),
+				readComparisonTable(page.getByRole('table', { name: '得分來源' })),
+				readComparisonTable(page.getByRole('table', { name: '球隊指標' })),
+				page.getByRole('table', { name: /單場數據$/ }).evaluateAll((tables) =>
+					tables.map((table) => {
+						const sums = [0, 0, 0];
+						for (const tr of table.querySelectorAll('tbody tr.main')) {
+							const cells = tr.querySelectorAll(':scope > td');
+							sums[0] += Number(cells[3].textContent!.trim());
+							sums[1] += Number(cells[4].textContent!.trim());
+							sums[2] += Number(cells[5].textContent!.trim());
+						}
+						return sums;
+					})
+				),
+				page.locator('.sets-table tr.total td').allTextContents(),
+				page.evaluate(
+					() => document.documentElement.scrollWidth - document.documentElement.clientWidth
+				)
+			]);
 
-			const sources = page.getByRole('table', { name: '得分來源' });
-			const metrics = page.getByRole('table', { name: '球隊指標' });
-			await expect(sources.getByRole('rowheader')).toHaveText([
+			expect(headings.slice(0, 4)).toEqual(['逐局比分', '賽後對戰比較', '單場前三名', '單場數據']);
+			expect(sourcesData.rows.map((r) => r.header)).toEqual([
 				'攻擊得分',
 				'攔網得分',
 				'發球得分',
 				'對手失誤得分',
 				'總得分'
 			]);
-			await expect(metrics.getByRole('rowheader')).toHaveText([
+			expect(metricsData.rows.map((r) => r.header)).toEqual([
 				'攻擊成功率',
 				'發球得分率',
 				'接發球到位率',
@@ -167,32 +190,23 @@ test.describe('手機', () => {
 				'舉球到位率',
 				'每局攔網'
 			]);
-			await expect(sources.getByRole('columnheader')).toHaveCount(3);
-			await expect(metrics.getByRole('columnheader')).toHaveCount(3);
+			expect(sourcesData.colCount).toBe(3);
+			expect(metricsData.colCount).toBe(3);
+			expect(boxSums).toHaveLength(2);
 
-			const boxTables = page.getByRole('table', { name: /單場數據$/ });
-			const homeBox = boxTables.nth(0);
-			const awayBox = boxTables.nth(1);
-			const setsTotalCells = page.locator('.sets-table tr.total td');
+			const [homeSums, awaySums] = boxSums;
+			const setsTotals = setsTexts.map((t) => Number(t.trim()));
+			const sourceByHeader = new Map(sourcesData.rows.map((r) => [r.header, r.cells]));
 			const expectedRows: [string, number, number][] = [
-				['攻擊得分', await sumColumn(homeBox, 4), await sumColumn(awayBox, 4)],
-				['攔網得分', await sumColumn(homeBox, 5), await sumColumn(awayBox, 5)],
-				['發球得分', await sumColumn(homeBox, 6), await sumColumn(awayBox, 6)],
-				[
-					'總得分',
-					Number((await setsTotalCells.nth(0).textContent())!.trim()),
-					Number((await setsTotalCells.nth(1).textContent())!.trim())
-				]
+				['攻擊得分', homeSums[0], awaySums[0]],
+				['攔網得分', homeSums[1], awaySums[1]],
+				['發球得分', homeSums[2], awaySums[2]],
+				['總得分', setsTotals[0], setsTotals[1]]
 			];
 			for (const [label, homeSum, awaySum] of expectedRows) {
-				const row = sources.locator('tbody tr', { has: page.getByRole('rowheader', { name: label, exact: true }) });
-				await expect(row.locator('td').nth(0)).toHaveText(String(homeSum));
-				await expect(row.locator('td').nth(1)).toHaveText(String(awaySum));
+				expect(sourceByHeader.get(label)).toEqual([String(homeSum), String(awaySum)]);
 			}
 
-			const overflow = await page.evaluate(
-				() => document.documentElement.scrollWidth - document.documentElement.clientWidth
-			);
 			expect(overflow).toBeLessThanOrEqual(0);
 		}
 	});
@@ -253,30 +267,58 @@ test.describe('手機', () => {
 		test.skip(!menGame || !womenGame || !oldSeasonGame, '缺少男子、女子或舊賽季的單場數據樣本');
 		await page.setViewportSize({ width: 375, height: 812 });
 
-		const readBoxPlayers = async (table: import('@playwright/test').Locator) => {
-			const label = (await table.getAttribute('aria-label'))!;
-			const team = label.replace(/ 單場數據$/, '');
-			const rows = table.locator('tbody tr.main');
-			const count = await rows.count();
-			const out: { name: string; team: string; values: [number, number, number, number] }[] = [];
-			for (let i = 0; i < count; i++) {
-				const tr = rows.nth(i);
-				const name = (await tr.locator('.name').textContent())!.trim();
-				const vals = await Promise.all(
-					[3, 4, 5, 6].map(async (col) => Number((await tr.locator(`td:nth-child(${col})`).textContent())!.trim()))
-				);
-				out.push({ name, team, values: vals as [number, number, number, number] });
-			}
-			return out;
-		};
-
 		const CATEGORIES = ['得分', '攻擊得分', '攔網得分', '發球得分'] as const;
 
-		for (const item of [menGame!, womenGame!, oldSeasonGame!]) {
+		// 男子組放最後一場，比對完直接點球員連結，省一次重複載入
+		for (const item of [womenGame!, oldSeasonGame!, menGame!]) {
 			await page.goto(`${BASE}/${item.season}/${item.group}/matches/${item.game.game_id}/`);
 
-			const boxTables = page.getByRole('table', { name: /單場數據$/ });
-			const allPlayers = [...(await readBoxPlayers(boxTables.nth(0))), ...(await readBoxPlayers(boxTables.nth(1)))];
+			const [boxSides, topEntries, overflow] = await Promise.all([
+				page.getByRole('table', { name: /單場數據$/ }).evaluateAll((tables) =>
+					tables.map((table) => {
+						const team = table.getAttribute('aria-label')!.replace(/ 單場數據$/, '');
+						return Array.from(table.querySelectorAll('tbody tr.main'), (tr) => {
+							const cells = tr.querySelectorAll(':scope > td');
+							return {
+								name: tr.querySelector('.name')!.textContent!.trim(),
+								team,
+								values: [2, 3, 4, 5].map((i) => Number(cells[i].textContent!.trim())) as [
+									number,
+									number,
+									number,
+									number
+								]
+							};
+						});
+					})
+				),
+				page.getByRole('table', { name: /單場前三名$/ }).evaluateAll((tables) =>
+					tables.map(
+						(table) =>
+							[
+								table.getAttribute('aria-label')!,
+								{
+									headers: Array.from(table.querySelectorAll('thead th[scope="col"]'), (th) =>
+										th.textContent!.trim()
+									),
+									rows: Array.from(table.querySelectorAll('tbody tr'), (tr) => ({
+										rank: Number(tr.querySelector('td.rank')!.textContent!.trim()),
+										name: tr.querySelector('.name')!.textContent!.trim(),
+										team: tr.querySelector('.team')!.textContent!.trim(),
+										value: Number(tr.querySelector('td.num')!.textContent!.trim())
+									}))
+								}
+							] as const
+					)
+				),
+				page.evaluate(
+					() => document.documentElement.scrollWidth - document.documentElement.clientWidth
+				)
+			]);
+
+			expect(boxSides).toHaveLength(2);
+			const allPlayers = boxSides.flat();
+			const topTables = new Map(topEntries);
 
 			for (let idx = 0; idx < CATEGORIES.length; idx++) {
 				const cat = CATEGORIES[idx];
@@ -284,28 +326,19 @@ test.describe('手機', () => {
 					.map((p) => ({ name: p.name, team: p.team, value: p.values[idx] }))
 					.filter((p) => p.value > 0)
 					.sort((a, b) => b.value - a.value);
-				const table = page.getByRole('table', { name: `${cat}單場前三名`, exact: true });
+				const board = topTables.get(`${cat}單場前三名`);
 				if (positive.length === 0) {
-					await expect(table).toHaveCount(0);
+					expect(board).toBeUndefined();
 					continue;
 				}
 				const cutoffValue = positive[Math.min(2, positive.length - 1)].value;
 				const expected = positive.filter((p) => p.value >= cutoffValue);
 
-				await expect(table.getByRole('columnheader')).toHaveText(['名次', '球員', cat]);
-				const bodyRows = table.locator('tbody tr');
-				await expect(bodyRows).toHaveCount(expected.length);
+				expect(board).toBeDefined();
+				expect(board!.headers).toEqual(['名次', '球員', cat]);
+				const actual = board!.rows;
+				expect(actual).toHaveLength(expected.length);
 
-				const actual: { name: string; team: string; value: number; rank: number }[] = [];
-				for (let r = 0; r < expected.length; r++) {
-					const tr = bodyRows.nth(r);
-					actual.push({
-						rank: Number((await tr.locator('td.rank').textContent())!.trim()),
-						name: (await tr.locator('.name').textContent())!.trim(),
-						team: (await tr.locator('.team').textContent())!.trim(),
-						value: Number((await tr.locator('td.num').textContent())!.trim())
-					});
-				}
 				// 名次依同分並列跳號，且每組數值對應的球員集合與單場數據表一致
 				expect(actual.map((a) => a.value)).toEqual(expected.map((e) => e.value));
 				for (let r = 0; r < actual.length; r++) {
@@ -316,25 +349,23 @@ test.describe('手機', () => {
 				expect(actual.map(keyOf).sort()).toEqual(expected.map(keyOf).sort());
 			}
 
-			const overflow = await page.evaluate(
-				() => document.documentElement.scrollWidth - document.documentElement.clientWidth
-			);
 			expect(overflow).toBeLessThanOrEqual(0);
 		}
 
 		// 點第一位球員名稱連到正確的球員頁
-		await page.goto(`${BASE}/${menGame!.season}/${menGame!.group}/matches/${menGame!.game.game_id}/`);
 		const firstLink = page
 			.getByRole('table', { name: '得分單場前三名', exact: true })
 			.locator('tbody tr')
 			.first()
 			.getByRole('link');
-		const firstPlayerName = (await firstLink.locator('.name').textContent())!.trim();
-		const href = await firstLink.getAttribute('href');
+		const [firstPlayerName, href] = await Promise.all([
+			firstLink.locator('.name').textContent(),
+			firstLink.getAttribute('href')
+		]);
 		expect(href).toMatch(new RegExp(`/${menGame!.season}/${menGame!.group}/players/\\d+/$`));
 		await firstLink.click();
 		await expect(page).toHaveURL(new RegExp(`/${menGame!.season}/${menGame!.group}/players/\\d+/$`));
-		await expect(page.getByRole('heading', { level: 1 })).toHaveText(firstPlayerName);
+		await expect(page.getByRole('heading', { level: 1 })).toHaveText(firstPlayerName!.trim());
 	});
 
 	test('單場前三名：某項目全場為 0 時該項目不顯示', async ({ page }) => {
