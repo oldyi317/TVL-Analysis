@@ -2,7 +2,6 @@
 	import { resolve } from '$app/paths';
 	import SiteHead from '#lib/components/SiteHead.svelte';
 	import TeamBadge from '#lib/components/TeamBadge.svelte';
-	import BigStat from '#lib/components/BigStat.svelte';
 	import ChartFrame from '#lib/components/ChartFrame.svelte';
 	import DataNote from '#lib/components/DataNote.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';

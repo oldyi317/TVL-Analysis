@@ -11,7 +11,7 @@ cd web && npm run dev                            # 以下 npm 指令都在 web/ 
 npm run build                                    # 建置到 web/build/
 npm run check                                    # 型別檢查
 npm run test:unit                                # 單元測試
-npm run test:e2e                                 # Playwright smoke（需先 build）
+npm run test:e2e                                 # Playwright smoke（會自己先 build）
 
 # Ticket 流程（從 repo 根目錄跑）
 bash scripts/new-worktree.sh <分支> [base]        # 在 ~/work 開 worktree，依賴與資料一併備好；已經開過就印現況（未 commit 的改動、領先的 commit、筆記目錄的 STATE.md）

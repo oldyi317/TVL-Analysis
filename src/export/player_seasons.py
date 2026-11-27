@@ -76,7 +76,8 @@ def compute_player_seasons(
     registrations: 週登錄（Registration），不必排序；最新一週登錄決定球隊與背號，
         position 為各週登錄的多數決（不計空白），同數取最近一次。
     season_rosters: 賽季報名名單（SeasonRoster）。
-        只補顯示（ADR 0004）：沒有登錄的賽季補一列零統計；有登錄且同隊才補 season_roster_position
+        補在主要位置之外（ADR 0004；#102 起主要位置為空時，PR 值的比較也用它）：
+        沒有登錄的賽季補一列零統計；有登錄且同隊才補 season_roster_position
         與缺的背號，position 仍是主要位置。
     """
     groups: dict[tuple[int, int], list[Registration]] = {}

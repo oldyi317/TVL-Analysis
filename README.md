@@ -96,12 +96,12 @@ TVL-Analysis/
 ├── .github/workflows/
 │   ├── daily-crawl.yml            # 每日更新爬蟲（雲端 runner；備援期可改用筆電自架 runner）
 │   ├── pages.yml                  # 靜態站建置與 GitHub Pages 部署（雲端 runner）
-│   ├── ci.yml                     # PR 測試守門（pytest、svelte-check、Vitest、actionlint）
+│   ├── ci.yml                     # PR 測試守門（pytest、svelte-check、Vitest、Playwright e2e、actionlint、shellcheck、發送服務與比分服務的檢查）
 │   └── domain-expiry.yml          # 每週檢查網域到期日，快到期就開 issue（雲端 runner）
 ├── data/db/tvl_database.db        # SQLite 資料庫（進 git）
 ├── tests/                         # Python 單元與合約測試（pytest）
 ├── docs/
-│   ├── adr/                       # 架構決策紀錄（ADR 0001–0009）
+│   ├── adr/                       # 架構決策紀錄（ADR）
 │   ├── ops/season-switch.md       # 換季操作檢查表
 │   ├── ops/daily-crawl.md         # daily-crawl 維運：雲端 runner、比分服務的部署與 token、失敗排查、備援期筆電 runner
 │   ├── ops/service-worker.md      # service worker 維運：換版機制、自我移除版的部署、退回與演練
@@ -137,7 +137,7 @@ cd web && npm run dev                            # 以下 npm 指令都在 web/ 
 npm run build                                    # 建置到 web/build/
 npm run check                                    # 型別檢查
 npm run test:unit                                # 單元測試
-npm run test:e2e                                 # Playwright smoke（需先 build）
+npm run test:e2e                                 # Playwright smoke（會自己先 build）
 
 # 爬蟲（皆從 repo 根目錄以 module 方式執行）
 python -m src.etl.crawler                        # 官網球員名單 → data/raw/
@@ -167,8 +167,8 @@ python -m src.models.predict                     # 未開打賽事的主隊賽�
    - 當 `main` 分支有 push 或由 `daily_update.sh` 觸發時，在 GitHub 雲端 runner（`ubuntu-latest`）執行。
    - 不安裝 `requirements.txt`，直接以 Python 3.14 標準庫執行匯出器（`src.export.site_data`）從 repo 內的 `.db` 產出 JSON，接著在 `web/` 下安裝前端依賴並建置靜態站（含 Ajv JSON Schema 驗證與型別產生），最後將 `web/build` 部署至 GitHub Pages。
 3. **PR 持續整合檢查（`ci.yml`）**：
-   - 於 Pull Request 時在雲端 runner 執行 Python 測試（pytest）以及前端 JSON 匯出、型別檢查與單元測試。
-   - 以 actionlint（含 shellcheck）檢查 `.github/workflows/*.yml`；新 workflow 合併前無法手動觸發，這是合併前唯一的檢查。
+   - 於 Pull Request 時在雲端 runner 執行 Python 測試（pytest），以及前端 JSON 匯出、型別檢查、單元測試與 Playwright e2e；發送服務與比分服務各跑型別檢查與單元測試。
+   - 以 actionlint（含 shellcheck）檢查 `.github/workflows/*.yml`，並以 shellcheck 檢查 `scripts/*.sh`；新 workflow 合併前無法手動觸發，這是合併前唯一的檢查。
 4. **網域到期的每週檢查（`domain-expiry.yml`）**：
    - 每週一在雲端 runner 執行 `python -m src.utils.domain_expiry`，向 TWNIC 的公開查詢取 `vstat.tw` 的到期日。
    - 剩餘天數少於 90 天就由 `scripts/domain-expiry-issue.sh` 開一張 `ready-for-human` 的 issue 提醒續約（PChome 後台沒有自動續約）；同標題的 issue 還開著就不重開。查詢失敗會讓 workflow 失敗。
