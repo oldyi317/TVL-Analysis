@@ -7,6 +7,7 @@
 - import 一律走 `from src.utils...` 絕對路徑，從 repo 根目錄執行。
 - 共用常數（隊伍對照表、headers、DB 路徑）只放 `src/utils/constants.py` 與
   `src/utils/db_config.py`，個別檔案引用它們，不各自複製一份。
+- 指標的分子分母只寫在 `src/export/metrics.py`。
 - DB 連線用 `src/utils/db_config.get_connection()`（有開 `PRAGMA foreign_keys`），
   取代裸用 `sqlite3.connect()`。
 - Schema DDL 的唯一來源是 `sql/schema.sql`，爬蟲引用它，不自己寫 CREATE TABLE。
