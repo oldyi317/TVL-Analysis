@@ -1,0 +1,5 @@
+# Python 靜態檢查設定：只啟用 Pyflakes（F 類規則），範圍限 src、tests、scripts
+include = ["src/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
+
+[lint]
+select = ["F"]

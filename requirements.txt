@@ -11,3 +11,4 @@ xgboost==3.4.1
 # 測試
 pytest==9.1.1
 jsonschema==4.26.0
+ruff==0.17.6

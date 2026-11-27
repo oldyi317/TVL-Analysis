@@ -1,7 +1,6 @@
 
 import logging
 
-import pytest
 from bs4 import BeautifulSoup
 
 from src.etl.crawler import parse_player_card

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 收工各項：pytest、npm run check、npm run test:unit、e2e（先 build，再跑 scripts/e2e.sh）。
-# 另外驗 push/、score/ 的 npm run check 與 npm test（CI 的 push、score job 同款），並用 actionlint 檢查 .github/workflows、用 shellcheck 檢查 scripts/。
+# 另外驗 push/、score/ 的 npm run check 與 npm test（CI 的 push、score job 同款），並用 actionlint 檢查 .github/workflows、用 shellcheck 檢查 scripts/、用 ruff 檢查 Python。
 # actionlint、shellcheck 找不到就算失敗（actionlint 版本以 .github/workflows/ci.yml 的 VERSION 為準）；push/、score/ 缺 node_modules 也算失敗，先在該目錄跑 npm ci，腳本不自己安裝。
 # pytest 在背景與網站那一串同時跑；網站那一串依序跑（check、unit、build 啟動時都會重寫 gen 與 svelte-kit sync 的產生檔，不能並行）。
 # push/、score/ 接在網站那一串之後依序跑（各自獨立目錄，不碰 web/ 的產生檔，也不與它並行）。
@@ -47,6 +47,7 @@ else
 	echo "✗ shell    找不到 shellcheck（sudo apt install shellcheck）。少了它，actionlint 也會靜默略過 workflow 的 run 區塊"
 	failed+=(shell)
 fi
+step ruff "$repo" "$python" -m ruff check
 # 缺 node_modules 就失敗並提示 npm ci，不自己安裝
 need_deps() {
 	[ -d "$repo/$1/node_modules" ] && return 0
@@ -82,4 +83,4 @@ if [ ${#failed[@]} -gt 0 ]; then
 	echo "失敗：${failed[*]}（共 ${SECONDS}s，log 在 $logs）"
 	exit 1
 fi
-echo "收工全過：pytest、check、unit、e2e、lint、shell、push、score（export、build 為前置步驟；共 ${SECONDS}s，log 在 $logs）"
+echo "收工全過：ruff、pytest、check、unit、e2e、lint、shell、push、score（export、build 為前置步驟；共 ${SECONDS}s，log 在 $logs）"

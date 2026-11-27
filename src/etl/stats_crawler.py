@@ -332,7 +332,7 @@ def print_summary(
     print(f"動態新增球員數：{new_players}")
     print(f"players 表總人數：{total_players}")
 
-    print(f"\n===== 前 3 筆資料 =====")
+    print("\n===== 前 3 筆資料 =====")
     df = pd.read_sql_query(
         """SELECT s.stat_id, p.name, s.match_date, s.opponent,
                   s.sets_played, s.attack_points, s.block_points,

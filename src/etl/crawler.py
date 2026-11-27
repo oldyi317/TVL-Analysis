@@ -247,7 +247,7 @@ def main():
         print(sub.groupby(["team_id", "team_name"]).size().to_string())
 
     print(f"\n總計：{df['team_id'].nunique()} 支球隊，{len(df)} 位球員")
-    print(f"\n===== DataFrame 前 5 筆 =====")
+    print("\n===== DataFrame 前 5 筆 =====")
     print(df.head().to_string(index=False))
 
 

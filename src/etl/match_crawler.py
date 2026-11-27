@@ -15,7 +15,7 @@ import requests
 from bs4 import BeautifulSoup
 from pathlib import Path
 
-from src.utils.db_config import DB_PATH, get_connection
+from src.utils.db_config import get_connection
 from src.utils.logger import get_logger
 from src.utils.constants import (
     EXT_HEADERS as HEADERS,
@@ -425,7 +425,7 @@ def main():
             delay=args.delay,
         )
 
-    print(f"\n===== 比賽結果爬取完成 =====")
+    print("\n===== 比賽結果爬取完成 =====")
     print(f"本次請求：{stats['requested']} 頁")
     print(f"matches 表總筆數：{stats['total']}")
     print(f"本次新增：{stats['inserted']} 場")

@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from bs4 import BeautifulSoup
 
 from src.utils.seasons import Season, get_season
 from tests.conftest import connect_seeded
@@ -206,7 +205,6 @@ def test_crawl_all_rosters_resilient_to_fetch_failures(tmp_db_path, caplog):
     記錄警告、跳過該場、繼續爬取其他場次。
     """
     import requests
-    from pathlib import Path as _P
     from src.etl.stats_crawler import crawl_all_rosters
 
     conn = connect_seeded(tmp_db_path)
@@ -409,7 +407,6 @@ def test_cli_cup_id_passed_to_stats_mode():
 def test_build_name_to_pid_distinguishes_gender(tmp_db_path):
     """同名不同性別是兩位球員，查找表不得互相覆蓋。"""
     from pathlib import Path as _P
-    from src.etl.stats_crawler import build_name_to_pid
 
     schema_sql = (_P(__file__).resolve().parents[1] / "sql" / "schema.sql").read_text(encoding="utf-8")
     conn = sqlite3.connect(tmp_db_path)
