@@ -1,4 +1,4 @@
-# PR 守門：pytest、svelte-check、vitest、Playwright e2e、workflow 檔的 actionlint，以及發送服務與比分服務的型別檢查與單元測試。pages.yml 只負責部署（匯出器不裝 pip 套件），本 workflow 才裝 requirements.txt。
+# PR 守門：ruff、pytest、svelte-check、vitest、Playwright e2e、workflow 檔的 actionlint，以及發送服務與比分服務的型別檢查與單元測試。pages.yml 只負責部署（匯出器不裝 pip 套件），本 workflow 才裝 requirements.txt。
 name: ci
 
 on:
@@ -22,6 +22,8 @@ jobs:
           python-version: '3.14'
           cache: pip
       - run: pip install -r requirements.txt
+      - name: ruff
+        run: ruff check
       - name: pytest
         run: python -m pytest -q
 

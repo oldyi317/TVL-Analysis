@@ -173,7 +173,7 @@ def test_proper_noun_terms_come_from_glossary():
 def test_draft_flags_english_avoid_term(tmp_path, capsys):
     code, out = draft_hits(tmp_path, capsys, "改用 Worker 觸發\n")
     assert code == 1
-    assert f"draft.md:1\tWorker\t改用 Worker 觸發" in out
+    assert "draft.md:1\tWorker\t改用 Worker 觸發" in out
 
 
 def test_draft_allows_cloudflare_workers_product_name(tmp_path, capsys):

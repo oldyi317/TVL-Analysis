@@ -185,7 +185,7 @@ def main():
     df.to_csv(CLEANED_CSV, index=False, encoding="utf-8-sig")
     logger.info("已儲存清洗後資料至 %s", CLEANED_CSV)
 
-    print(f"===== 清洗後前 5 筆 =====")
+    print("===== 清洗後前 5 筆 =====")
     print(df.head().to_string(index=False))
 
 

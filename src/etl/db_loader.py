@@ -7,7 +7,6 @@ import argparse
 import sqlite3
 from datetime import date
 from pathlib import Path
-import numpy as np
 import pandas as pd
 
 from src.etl.cleaner import load_raw, clean, quality_report
