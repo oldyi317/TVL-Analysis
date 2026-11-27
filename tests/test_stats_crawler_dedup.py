@@ -9,7 +9,8 @@ import sqlite3
 from pathlib import Path
 
 from src.etl import stats_crawler
-from src.etl.stats_crawler import PlayerResolver, collect_player_rows, insert_stat_rows
+from src.etl.player_stats_store import write_stat_lines
+from src.etl.stats_crawler import PlayerResolver, collect_player_rows
 
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "sql" / "schema.sql"
 
@@ -67,7 +68,7 @@ def test_filter_new_records_prevents_duplicate_insert_on_rerun(tmp_db_path, monk
 
         def run_once():
             rows, skipped = collect_player_rows(None, resolver, 1, 1, "M", p)
-            insert_stat_rows(conn, rows)
+            write_stat_lines(conn, rows)
             conn.commit()
             return rows, skipped
 

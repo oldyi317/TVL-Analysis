@@ -59,6 +59,7 @@ TVL-Analysis/
 │   │   ├── match_crawler.py       # 官網賽事頁 → matches 各局比分
 │   │   ├── official_box_score.py  # 官網賽事頁單場數據 HTML 解析與驗證
 │   │   ├── match_stats_writer.py  # 本季（cup ≥22）有比分且無統計的場次 → roster_registrations + player_match_stats
+│   │   ├── player_stats_store.py  # 單場數據寫入端：對到球員（賽季報名名單）、寫週登錄與統計列；三個寫入者共用
 │   │   ├── stats_crawler.py       # 歷史工具：外部統計系統週登錄與單場數據回填（僅 cup ≤21，ADR 0009）
 │   │   ├── season_backfill.py     # 歷史賽季一次性回填（各局得分＋週登錄＋單場數據＋待確認清單，ADR 0010）
 │   │   └── cleaner.py             # 資料清洗與異常檢查（只標記異常，不插補）

@@ -18,10 +18,12 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
+from src.etl.player_stats_store import (
+    Registration, StatLine, normalize_name, write_page_registration, write_stat_lines,
+)
 from src.etl.stats_crawler import (
-    PlayerResolver, WeekLabelUnresolved, ext_team_map_for, filter_new_records, find_registration_id, insert_stat_rows,
-    normalize_name, reject_external_path_for_official_cup, resolve_week_label, safe_int,
-    upsert_roster_registration,
+    PlayerResolver, WeekLabelUnresolved, ext_team_map_for, filter_new_records,
+    reject_external_path_for_official_cup, resolve_week_label, safe_int,
 )
 from src.utils.constants import (
     BACKFILL_SEASONS, EXT_BASE, EXT_HEADERS, EXT_TEAM_MAPS, EXT_TEAM_SEASON_NAMES,
@@ -280,25 +282,24 @@ def _insert_registrations_and_stats(
             pid = resolver.resolve(side.team_id, page.gender, p["name"], p["jersey_number"])
             if pid is None:
                 continue
-            reg_row = {
-                "team_id": side.team_id, "team_gender": page.gender,
-                "jersey_number": p["jersey_number"], "position": p["position"],
-            }
-            upsert_roster_registration(conn, pid, reg_row, week_label, week_start, "match_page", season.cup_id)
+            reg = Registration(
+                player_id=pid, team_id=side.team_id, gender=page.gender, cup_id=season.cup_id,
+                week_label=week_label, week_start_date=week_start,
+            )
+            rid = write_page_registration(conn, reg, jersey_number=p["jersey_number"], position=p["position"])
             registrations += 1
             record = {"match_date": page.match_date, "is_golden_set": page.is_golden_set}
             if not filter_new_records(conn, pid, [record]):
                 continue
-            rid = find_registration_id(conn, pid, side.team_id, page.gender, season.cup_id, week_label)
-            insert_stat_rows(conn, [(
-                rid, page.match_date, other.name, None,
-                p["attack_total"], p["attack_points"], p["block_points"],
-                p["serve_total"], p["serve_points"],
-                p["receive_total"], p["receive_excellent"],
-                p["dig_total"], p["dig_excellent"],
-                p["set_total"], p["set_excellent"], p["total_points"],
-                page.is_golden_set,
-            )])
+            line = StatLine(
+                match_date=page.match_date, opponent=other.name, is_golden_set=page.is_golden_set,
+                attack_total=p["attack_total"], attack_points=p["attack_points"], block_points=p["block_points"],
+                serve_total=p["serve_total"], serve_points=p["serve_points"],
+                receive_total=p["receive_total"], receive_excellent=p["receive_excellent"],
+                dig_total=p["dig_total"], dig_excellent=p["dig_excellent"],
+                set_total=p["set_total"], set_excellent=p["set_excellent"], total_points=p["total_points"],
+            )
+            write_stat_lines(conn, [(rid, line)])
             stats += 1
     return registrations, stats
 

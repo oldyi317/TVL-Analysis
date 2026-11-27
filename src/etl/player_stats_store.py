@@ -129,6 +129,8 @@ def write_page_registration(
 
 
 def fill_missing_registration(conn: sqlite3.Connection, reg: Registration) -> int:
+    """補登錄：該週已有週登錄就原樣回傳，沒有才補一筆。背號與位置只取自該球員該季的賽季報名名單
+    （不限球隊），查無就留 NULL，不用其他資料推測。"""
     rid = _registration_id(conn, reg)
     if rid is not None:
         return rid
