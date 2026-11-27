@@ -2,9 +2,10 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from statistics import median
 from typing import Any, TypeVar
 
+from src.export.metrics import SETS, measure
 from src.export.player_seasons import STAT_FIELDS, has_played
 from src.export.thresholds import (
-    RATE_BOARDS, TEAM_SETS, THRESHOLD_FLOOR, BoardSpec, attempts, threshold_for,
+    RATE_BOARDS, THRESHOLD_FLOOR, BoardSpec, attempts, threshold_for,
 )
 
 T = TypeVar("T")
@@ -101,10 +102,6 @@ def makeup_candidate(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, 
     return min(candidates, key=lambda c: c[0])[1] if candidates else None
 
 
-def _rate_value(row: Mapping, spec: BoardSpec, denominator: int) -> float:
-    return round(row[spec.numerator] / denominator * spec.scale, 2)
-
-
 def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int], apply_makeup: bool = False) -> dict:
     if spec.kind == "rate":
         threshold = threshold_text(spec, team_sets)
@@ -116,19 +113,19 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int], appl
     makeup_ids: set[int] = set()
     candidate = None
     if spec.kind == "rate":
-        per_set = spec.denominator == TEAM_SETS
+        per_set = spec.denominator == SETS
         qualified = []
         for r in rows:
             sets = team_sets.get(r["team_id"], 0)
             if attempts(r, spec) < threshold_for(spec, sets):
                 continue
-            denom = sets if per_set else r[spec.denominator]
-            if not denom:
+            result = measure(spec.key, r, sets=sets)
+            if result.value is None:
                 continue
-            qualified.append({**r, spec.key: _rate_value(r, spec, denom), "_denominator": denom})
-            tiebreak[r["player_id"]] = r[spec.numerator] if per_set else denom
+            qualified.append({**r, spec.key: round(result.value, 2), "_measure": result})
+            tiebreak[r["player_id"]] = result.numerator if per_set else result.denominator
         if spec.makeup and apply_makeup and qualified:
-            leader_rate = max(r[spec.numerator] / r[spec.denominator] * spec.scale for r in qualified)
+            leader_rate = max(r["_measure"].value for r in qualified)
         else:
             leader_rate = None
         candidate = makeup_candidate(spec, rows, team_sets, leader_rate) if spec.makeup and apply_makeup else None
@@ -138,8 +135,8 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int], appl
     ordered = sorted(rows, key=lambda r: (-r[spec.key], -tiebreak.get(r["player_id"], 0), r["name"]))
     ranks = rank_ordered([r[spec.key] for r in ordered])
     if candidate:
-        denom = candidate[spec.denominator]
-        ordered.insert(0, {**candidate, spec.key: _rate_value(candidate, spec, denom), "_denominator": denom})
+        result = measure(spec.key, candidate, sets=team_sets.get(candidate["team_id"], 0))
+        ordered.insert(0, {**candidate, spec.key: round(result.value, 2), "_measure": result})
         ranks = [1] + [rank + 1 for rank in ranks]
     leaders = []
     for r, rank in zip(ordered, ranks):
@@ -151,8 +148,8 @@ def _board(spec: BoardSpec, rows: list[dict], team_sets: Mapping[int, int], appl
             "team_short": r["team_short"],
             "position": r["position"],
             "value": r[spec.key],
-            "numerator": r[spec.numerator] if spec.numerator else None,
-            "denominator": r["_denominator"] if spec.kind == "rate" else None,
+            "numerator": r["_measure"].numerator if spec.kind == "rate" else None,
+            "denominator": r["_measure"].denominator if spec.kind == "rate" else None,
             "title": spec.title if rank == 1 else None,
             "makeup": r["player_id"] in makeup_ids,
         })

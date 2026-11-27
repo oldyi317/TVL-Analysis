@@ -5,17 +5,15 @@
 import logging
 from collections.abc import Iterable, Mapping
 
+from src.export.metrics import columns, measure
+
 logger = logging.getLogger(__name__)
 
 METRICS = (
-    ("attack_success_rate", "attack_points", "attack_total", 100),
-    ("serve_point_rate", "serve_points", "serve_total", 100),
-    ("receive_excellent_rate", "receive_excellent", "receive_total", 100),
-    ("dig_excellent_rate", "dig_excellent", "dig_total", 100),
-    ("set_excellent_rate", "set_excellent", "set_total", 100),
-    ("blocks_per_set", "block_points", "sets", 1),
+    "attack_success_rate", "serve_point_rate", "receive_excellent_rate",
+    "dig_excellent_rate", "set_excellent_rate", "blocks_per_set",
 )
-TOTAL_FIELDS = sorted({f for _, *fields, _ in METRICS for f in fields} - {"sets"})
+TOTAL_FIELDS = columns(METRICS)
 
 
 def _game_points(skill: Mapping[str, int], total_points: int, game_id: int, team_id: int) -> dict[str, int]:
@@ -46,13 +44,12 @@ def _team_totals(games: Iterable[Mapping], scores: Mapping[int, Mapping[str, int
             skill = {field: sum(row[field] for row in rows) for field in TOTAL_FIELDS}
             for field in TOTAL_FIELDS:
                 team[field] += skill[field]
-            game_totals = {**skill, "sets": score["sets"]}
             game_points = _game_points(skill, score[f"{side}_points"], game["game_id"], team["team_id"])
             team["trend"].append({
                 "game_id": game["game_id"], "date": game["date"],
                 "opponent_id": score["away_team_id" if side == "home" else "home_team_id"],
                 "points": game_points,
-                "metrics": {key: _metric(game_totals, num, den, scale) for key, num, den, scale in METRICS},
+                "metrics": {key: _metric(skill, key, sets=score["sets"]) for key in METRICS},
             })
             team["total"] += game_points["total"]
             team["opponent_error"] += game_points["opponent_error"]
@@ -61,9 +58,10 @@ def _team_totals(games: Iterable[Mapping], scores: Mapping[int, Mapping[str, int
     return sorted(totals.values(), key=lambda t: t["team_id"])
 
 
-def _metric(totals: Mapping, numerator: str, denominator: str, scale: int) -> dict:
-    num, den = totals[numerator], totals[denominator]
-    return {"numerator": num, "denominator": den, "value": round(num / den * scale, 2) if den else None}
+def _metric(totals: Mapping, key: str, sets: int) -> dict:
+    result = measure(key, totals, sets=sets)
+    return {"numerator": result.numerator, "denominator": result.denominator,
+            "value": None if result.value is None else round(result.value, 2)}
 
 
 def compute_team_advanced(games: Iterable[Mapping], scores: Mapping[int, Mapping[str, int]]) -> list[dict]:
@@ -72,11 +70,11 @@ def compute_team_advanced(games: Iterable[Mapping], scores: Mapping[int, Mapping
         {"team_id": t["team_id"], "games": t["games"],
          "points": {"attack": t["attack_points"], "block": t["block_points"], "serve": t["serve_points"],
                     "opponent_error": t["opponent_error"], "total": t["total"]},
-         "metrics": {key: _metric(t, num, den, scale) for key, num, den, scale in METRICS},
+         "metrics": {key: _metric(t, key, sets=t["sets"]) for key in METRICS},
          "trend": t["trend"]}
         for t in _team_totals(games, scores)
     ]
-    for key, *_ in METRICS:
+    for key in METRICS:
         values = [t["metrics"][key]["value"] for t in teams if t["metrics"][key]["value"] is not None]
         for t in teams:
             metric = t["metrics"][key]

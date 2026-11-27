@@ -71,6 +71,17 @@ def test_metric_is_team_sum_divided_not_player_average_and_zero_denominator_is_n
     assert metrics["serve_point_rate"] == {"numerator": 0, "denominator": 0, "value": None, "rank": None}
 
 
+def test_blocks_per_set_without_set_scores_keeps_zero_denominator_and_has_no_value(export):
+    def build(conn):
+        match(conn, 1, PHOENIX, TAIPOWER, sets=(None,) * 8)
+        player(conn, 1, 4)
+        seed_stat(conn, 1, stat(block=2), opponent="屏東台電")
+
+    phoenix = team(export(build), 21, "men", 4)
+    assert phoenix["metrics"]["blocks_per_set"] == {"numerator": 2, "denominator": 0, "value": None, "rank": None}
+    assert phoenix["trend"][0]["metrics"]["blocks_per_set"] == {"numerator": 2, "denominator": 0, "value": None}
+
+
 def test_blocks_per_set_uses_score_sets_when_sets_played_is_missing(export):
     def build(conn):
         match(conn, 1, PHOENIX, TAIPOWER, FOUR_SETS, cup_id=22, date="2026-10-17")

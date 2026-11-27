@@ -5,42 +5,23 @@
 """
 from collections.abc import Iterable, Mapping, Sequence
 
-from src.export.thresholds import eligible_metrics
+from src.export.metrics import measure
+from src.export.thresholds import RATIO_KEYS, eligible_metrics
 
-RATIO_KEYS = (
-    "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
-    "points_per_game", "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_load",
-    "defense_efficiency",
-)
 PR_KEYS = (
     "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
     "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_efficiency",
 )
 
 
-def _pct(numerator: float, denominator: float) -> float:
-    return numerator / denominator * 100 if denominator > 0 else 0.0
-
-
-def _per(numerator: float, denominator: float) -> float:
-    return numerator / denominator if denominator > 0 else 0.0
-
-
 def compute_ratios(totals: Mapping, sets: int | None = None) -> dict[str, float | None]:
-    """十項比率，沿用舊站公式：率類為百分比，分母為 0 給 0；球隊已打局數 sets 缺或為 0 時每局攔網為 None。"""
-    defense_total = totals["receive_total"] + totals["dig_total"]
-    return {
-        "attack_success_rate": _pct(totals["attack_points"], totals["attack_total"]),
-        "receive_excellent_rate": _pct(totals["receive_excellent"], totals["receive_total"]),
-        "serve_point_rate": _pct(totals["serve_points"], totals["serve_total"]),
-        "dig_excellent_rate": _pct(totals["dig_excellent"], totals["dig_total"]),
-        "points_per_game": _per(totals["total_points"], totals["games"]),
-        "set_excellent_rate": _pct(totals["set_excellent"], totals["set_total"]),
-        "blocks_per_set": None if not sets else totals["block_points"] / sets,
-        "blocks_per_game": _per(totals["block_points"], totals["games"]),
-        "defense_load": defense_total,
-        "defense_efficiency": _pct(totals["receive_excellent"] + totals["dig_excellent"], defense_total),
-    }
+    """十項比率：率類為百分比；球隊已打局數 sets 缺或為 0 時每局攔網為 None。"""
+    ratios = {}
+    for key in RATIO_KEYS:
+        value = measure(key, totals, sets=sets).value
+        # 暫時：分母為 0 仍輸出 0.0，#348 會刪
+        ratios[key] = 0.0 if value is None and key != "blocks_per_set" else value
+    return ratios
 
 
 def percentile_ranks(values: Sequence[float]) -> list[float]:

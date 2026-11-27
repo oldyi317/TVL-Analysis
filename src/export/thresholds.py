@@ -2,9 +2,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
 
+from src.export.metrics import METRICS, SETS
+
 
 THRESHOLD_FLOOR = 10
-TEAM_SETS = "team_sets"
 
 COEFFICIENTS = {
     "attack_total": 2.0,
@@ -46,60 +47,64 @@ class BoardSpec:
         return COEFFICIENTS[self.attempts_key] if self.attempts_key else None
 
 
+def _rate_board(key: str, label: str, makeup: bool = False) -> BoardSpec:
+    metric = METRICS[key]
+    # 比率榜的分子、分母、看的次數都只有一項，多於一項在這裡就會出錯
+    numerator, = metric.numerator
+    denominator, = metric.denominator
+    attempts_key, = metric.gate
+    return BoardSpec(key, label, "rate", None, numerator, denominator, attempts_key,
+                     metric.scale, metric.position, makeup)
+
+
 RATE_BOARDS = (
-    BoardSpec("attack_success_rate", "攻擊成功率", "rate", None, "attack_points", "attack_total",
-              "attack_total", scale=100, makeup=True),
-    BoardSpec("serve_point_rate", "發球得分率", "rate", None, "serve_points", "serve_total",
-              "serve_total", scale=100, makeup=True),
-    BoardSpec("receive_excellent_rate", "接發球到位率", "rate", None, "receive_excellent", "receive_total",
-              "receive_total", scale=100, makeup=True),
-    BoardSpec("dig_excellent_rate", "防守到位率", "rate", None, "dig_excellent", "dig_total",
-              "dig_total", scale=100, makeup=True),
-    BoardSpec("set_excellent_rate", "舉球到位率", "rate", None, "set_excellent", "set_total",
-              "set_total", scale=100, position="S", makeup=True),
-    BoardSpec("points_per_game", "場均得分", "rate", None, "total_points", "games",
-              "attack_serve_total"),
-    BoardSpec("points_per_set", "每局得分", "rate", None, "total_points", TEAM_SETS,
-              "attack_serve_total"),
-    BoardSpec("attack_points_per_set", "每局攻擊得分", "rate", None, "attack_points", TEAM_SETS,
-              "attack_total"),
-    BoardSpec("blocks_per_set", "每局攔網", "rate", None, "block_points", TEAM_SETS,
-              "attack_serve_total"),
-    BoardSpec("serve_points_per_set", "每局發球得分", "rate", None, "serve_points", TEAM_SETS,
-              "serve_total"),
-    BoardSpec("receive_excellent_per_set", "每局接發球到位", "rate", None, "receive_excellent", TEAM_SETS,
-              "receive_total"),
+    _rate_board("attack_success_rate", "攻擊成功率", makeup=True),
+    _rate_board("serve_point_rate", "發球得分率", makeup=True),
+    _rate_board("receive_excellent_rate", "接發球到位率", makeup=True),
+    _rate_board("dig_excellent_rate", "防守到位率", makeup=True),
+    _rate_board("set_excellent_rate", "舉球到位率", makeup=True),
+    _rate_board("points_per_game", "場均得分"),
+    _rate_board("points_per_set", "每局得分"),
+    _rate_board("attack_points_per_set", "每局攻擊得分"),
+    _rate_board("blocks_per_set", "每局攔網"),
+    _rate_board("serve_points_per_set", "每局發球得分"),
+    _rate_board("receive_excellent_per_set", "每局接發球到位"),
+)
+
+RATIO_KEYS = (
+    "attack_success_rate", "receive_excellent_rate", "serve_point_rate", "dig_excellent_rate",
+    "points_per_game", "set_excellent_rate", "blocks_per_set", "blocks_per_game", "defense_load",
+    "defense_efficiency",
 )
 
 
-def attempts(row: Mapping, spec: BoardSpec) -> int:
-    if spec.attempts_key == "attack_serve_total":
+def _attempts(row: Mapping, key: str) -> int:
+    if key == "attack_serve_total":
         return row["attack_total"] + row["serve_total"]
-    return row[spec.attempts_key]
+    return row[key]
+
+
+def attempts(row: Mapping, spec: BoardSpec) -> int:
+    return _attempts(row, spec.attempts_key)
+
+
+def _threshold(key: str, sets: int) -> int:
+    return max(THRESHOLD_FLOOR, int(COEFFICIENTS[key] * sets))
 
 
 def threshold_for(spec: BoardSpec, sets: int) -> int:
-    return max(THRESHOLD_FLOOR, int(spec.coefficient * sets))
-
-
-_SPECS = {spec.key: spec for spec in RATE_BOARDS}
-_OWN_COUNT_KEYS = tuple(s.key for s in RATE_BOARDS if s.denominator == s.attempts_key)
-
-
-def _met(row: Mapping, key: str, sets: int) -> bool:
-    spec = _SPECS[key]
-    if spec.position and row["position"] != spec.position:
-        return False
-    return attempts(row, spec) >= threshold_for(spec, sets)
+    return _threshold(spec.attempts_key, sets)
 
 
 def eligible_metrics(row: Mapping, sets: int) -> frozenset[str]:
-    """球員在球隊已打局數下達門檻的進階指標；次數與係數取自 RATE_BOARDS。"""
-    eligible = {key for key in _OWN_COUNT_KEYS if _met(row, key, sets)}
-    if _met(row, "points_per_game", sets):
-        eligible |= {"points_per_game", "blocks_per_game", "defense_load"}
-        if sets:
-            eligible.add("blocks_per_set")
-    if _met(row, "receive_excellent_rate", sets) or _met(row, "dig_excellent_rate", sets):
-        eligible.add("defense_efficiency")
+    """球員在球隊已打局數下達門檻的進階指標：位置符合、看的次數任一項達門檻；每局項目另要求局數大於 0。"""
+    eligible = set()
+    for key in RATIO_KEYS:
+        metric = METRICS[key]
+        if metric.position and row["position"] != metric.position:
+            continue
+        if metric.denominator == (SETS,) and sets <= 0:
+            continue
+        if any(_attempts(row, gate) >= _threshold(gate, sets) for gate in metric.gate):
+            eligible.add(key)
     return frozenset(eligible)
