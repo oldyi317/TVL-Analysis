@@ -4,6 +4,7 @@
 # 局數只讀 sets 參數，忽略 totals 裡的 sets 欄。
 # 未知指標或缺少統計欄位時丟出 KeyError。
 # gate 與 position 由 thresholds 判定，measure 只計算數值。
+# 前端不自己選分子分母、不做除法，只顯示這裡算出來的匯出值（ADR 0017）。
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import NamedTuple
