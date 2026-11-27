@@ -384,10 +384,6 @@ export function trendSummary(points: TrendPoint[], metric: TrendMetric): string 
 		: `${title}，本季尚無單場數據。`;
 }
 
-export function trendOption(log: GameLogEntry[], metric: TrendMetric): ChartOption {
-	return trendLineOption(trendPoints(log, metric), metric);
-}
-
 // 球員與球隊逐場趨勢共用的折線圖
 export function trendLineOption(points: TrendPoint[], metric: TrendMetric): ChartOption {
 	const def: TrendDef = TREND_DEFS[metric];

@@ -25,7 +25,7 @@ import {
 	playerGameLog,
 	playerGameLogRows,
 	toGameStats,
-	trendOption,
+	trendLineOption,
 	trendPoints,
 	trendSummary,
 	type GameLogEntry,
@@ -246,7 +246,9 @@ describe('distributionOption', () => {
 	});
 });
 
-describe('trendOption', () => {
+describe('trendLineOption', () => {
+	const lineOption = (entries: Parameters<typeof trendPoints>[0], metric: TrendMetric) =>
+		trendLineOption(trendPoints(entries, metric), metric);
 	const entry = (date: string, over: Partial<StatRow> = {}, golden = false, sets: number | null = 3): GameLogEntry => ({
 		date,
 		golden,
@@ -265,7 +267,7 @@ describe('trendOption', () => {
 		series: { name: string; connectNulls: boolean; data: unknown[] }[];
 		tooltip: { formatter: Fmt };
 	};
-	const build = (metric: TrendMetric) => trendOption(log, metric).option as O;
+	const build = (metric: TrendMetric) => lineOption(log, metric).option as O;
 
 	it('x 軸為 MM/DD，只畫選定指標一條線、單一 y 軸', () => {
 		const o = build('points');
@@ -289,7 +291,7 @@ describe('trendOption', () => {
 
 	it('攔網得分是每場原始計數，y 軸取整數', () => {
 		const blocks = [entry('2026-01-03', { block_points: 2, sets_played: null }), entry('2026-01-10', { block_points: 0 })];
-		const o = trendOption(blocks, 'block_points').option as O & { yAxis: { minInterval?: number } };
+		const o = lineOption(blocks, 'block_points').option as O & { yAxis: { minInterval?: number } };
 		expect(o.series[0].data).toEqual([2, 0]);
 		expect(o.series[0].name).toBe('攔網得分');
 		expect(o.yAxis.minInterval).toBe(1);
@@ -301,7 +303,7 @@ describe('trendOption', () => {
 			entry('2026-01-10', { block_points: 6 }, false, 4),
 			entry('2026-01-17', { block_points: 1 }, false, null)
 		];
-		const o = trendOption(blocks, 'blocks_per_set').option as O;
+		const o = lineOption(blocks, 'blocks_per_set').option as O;
 		expect(o.series[0].data).toEqual([0.67, 1.5, null]);
 		expect(o.tooltip.formatter([{ dataIndex: 1 }])).toBe('2026-01-10<br/>每局攔網：1.5（攔網 6／4 局）');
 	});
@@ -319,7 +321,7 @@ describe('trendOption', () => {
 				set_total: 10
 			})
 		];
-		const value = (m: TrendMetric) => (trendOption(one, m).option as O).series[0].data[0];
+		const value = (m: TrendMetric) => (lineOption(one, m).option as O).series[0].data[0];
 		expect(value('serve_point_rate')).toBe(25);
 		expect(value('receive_excellent_rate')).toBe(75);
 		expect(value('dig_excellent_rate')).toBe(12.5);

@@ -16,6 +16,12 @@ it('沒有圖例與橫軸名時採用預設留白，所有寬度共用主設定'
 	expect(option.series).toBe(base.series);
 });
 
+it('圖例沒有項目時等同沒有圖例', () => {
+	const { option } = chartOption({ ...base, legend: [] });
+	expect(option.legend).toEqual({ show: false, bottom: 0 });
+	expect(option.grid).toMatchObject({ bottom: 8 });
+});
+
 it('橫軸有軸名、沒有圖例時底部留 28', () => {
 	expect(chartOption({ ...base, xAxis: { name: '得分' } }).option.grid).toMatchObject({ bottom: 28 });
 });
